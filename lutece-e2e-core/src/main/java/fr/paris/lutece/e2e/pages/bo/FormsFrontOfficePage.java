@@ -1,4 +1,4 @@
-package fr.paris.lutece.e2e.tests.bo.pages;
+package fr.paris.lutece.e2e.pages.bo;
 
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.*;

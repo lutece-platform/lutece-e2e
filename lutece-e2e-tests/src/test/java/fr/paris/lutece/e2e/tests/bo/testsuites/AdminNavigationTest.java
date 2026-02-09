@@ -1,7 +1,7 @@
 package fr.paris.lutece.e2e.tests.bo.testsuites;
 
 import fr.paris.lutece.e2e.tests.bo.config.BaseTest;
-import fr.paris.lutece.e2e.tests.bo.pages.*;
+import fr.paris.lutece.e2e.pages.bo.*;
 import com.microsoft.playwright.Page;
 
 import org.junit.jupiter.api.*;

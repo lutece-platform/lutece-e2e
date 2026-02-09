@@ -52,11 +52,18 @@ lutece-e2e/                 (parent POM)
 
 ## Patterns et conventions
 
-### Page Objects (`lutece-e2e-core/pages/`)
+### Page Objects CDI (`lutece-e2e-core/pages/`)
 - Scope CDI : `@Dependent` (nouvelle instance par injection)
-- Etendent `BasePage` qui fournit acces a `Page` Playwright
+- Etendent `BasePage` qui fournit acces a `Page` Playwright via `BrowserManager`
 - Methodes chainees (fluent API) : `myPage.navigateTo().fillForm(value)`
 - Selecteurs CSS/XPath pour les elements Lutece (Bootstrap 5, offcanvas)
+
+### Page Objects POJO (`lutece-e2e-core/pages/bo/`)
+- POJOs instancies via `new LoginPage(page, baseUrl)` (pas de CDI)
+- Recoivent directement `Page` Playwright et `baseUrl` dans le constructeur
+- Methodes chainees (fluent API) identique aux pages CDI
+- Utilises par les tests bo3 (Playwright direct, sans conteneur CDI)
+- 11 pages : LoginPage, AdminMenuPage, SitePropertiesPage, WorkflowListPage, WorkflowCreationFormPage, WorkflowEditPage, FormsListPage, FormsCreationPage, FormsEditPage, FormsFrontOfficePage, FormsResponsesPage
 
 ### Actions (`lutece-e2e-core/actions/`)
 - Scope CDI : `@ApplicationScoped`
@@ -145,8 +152,8 @@ Le module de tests combine deux patterns de tests qui coexistent :
 
 ### Deux patterns de tests
 
-1. **Tests CDI** (`fr.paris.lutece.e2e.tests.*`) - Utilise `@EnableAutoWeld`, injection CDI, Page Objects du core
-2. **Tests bo3** (`fr.paris.lutece.e2e.tests.bo.*`) - Playwright direct via `BaseTest`, Page Objects locaux, suites ordonnees
+1. **Tests CDI** (`fr.paris.lutece.e2e.tests.*`) - Utilise `@EnableAutoWeld`, injection CDI, Page Objects CDI du core (`fr.paris.lutece.e2e.pages`)
+2. **Tests bo3** (`fr.paris.lutece.e2e.tests.bo.*`) - Playwright direct via `BaseTest`, Page Objects POJO du core (`fr.paris.lutece.e2e.pages.bo`), suites ordonnees
 
 ### Deux modes d'execution
 
@@ -216,12 +223,30 @@ mvn test -pl lutece-e2e-tests \
 ### Structure des tests bo3
 
 ```
-src/test/java/fr/paris/lutece/e2e/tests/bo/
+lutece-e2e-core/src/main/java/fr/paris/lutece/e2e/pages/
+├── BasePage.java              # Base CDI (existant)
+├── LoginPage.java             # CDI (existant)
+├── AdminMenuPage.java         # CDI (existant)
+├── WorkflowPage.java          # CDI (existant)
+├── FormsPage.java             # CDI (existant)
+└── bo/                        # POJOs Playwright direct
+    ├── LoginPage.java
+    ├── AdminMenuPage.java
+    ├── SitePropertiesPage.java
+    ├── WorkflowListPage.java
+    ├── WorkflowCreationFormPage.java
+    ├── WorkflowEditPage.java
+    ├── FormsListPage.java
+    ├── FormsCreationPage.java
+    ├── FormsEditPage.java
+    ├── FormsFrontOfficePage.java
+    └── FormsResponsesPage.java
+
+lutece-e2e-tests/src/test/java/fr/paris/lutece/e2e/tests/bo/
 ├── config/
 │   └── BaseTest.java              # Cycle de vie Playwright (BeforeAll/AfterAll)
 ├── containers/
 │   └── LuteceContainer.java       # GenericContainer + health check HTTP
-├── pages/                          # 11 Page Objects (LoginPage, FormsListPage, etc.)
 └── testsuites/
     ├── ContainerSetup.java                # Demarre MariaDB + Lutece via Testcontainers
     ├── ContainerIntegrationSuite.java     # Suite Docker (23 tests)
@@ -262,3 +287,4 @@ Cela permet de surcharger via la ligne de commande : `-Dtest.headless=true`, `-D
 - Les tests bo3 utilisent `setFullPage(true)` pour les screenshots debug - necessite un timeout suffisant (30s)
 - En mode conteneur, le demarrage de Lutece prend ~3-4 minutes (Liquibase + initialisation)
 - Les tests CDI et bo3 coexistent dans des packages separes sans conflit
+- Les Page Objects bo (POJOs) sont dans `lutece-e2e-core` (`fr.paris.lutece.e2e.pages.bo`) pour centraliser tout le code Playwright dans un seul module
