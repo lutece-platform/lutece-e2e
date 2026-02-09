@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>fr.paris.lutece.e2e</groupId>
+        <artifactId>lutece-e2e</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>lutece-e2e-web</artifactId>
+    <packaging>war</packaging>
+    <name>Lutece E2E Web</name>
+    <description>Interface Web pour l'Agent IA Lutece sur OpenLiberty</description>
+
+    <properties>
+        <liberty.var.default.http.port>9090</liberty.var.default.http.port>
+        <liberty.var.default.https.port>9443</liberty.var.default.https.port>
+    </properties>
+
+    <dependencies>
+        <!-- Module Agent (contient les Tools et LuteceAiService) -->
+        <!-- Exclusions des dependances fournies par OpenLiberty -->
+        <dependency>
+            <groupId>fr.paris.lutece.e2e</groupId>
+            <artifactId>lutece-e2e-agent</artifactId>
+            <exclusions>
+                <!-- Weld SE - OpenLiberty fournit sa propre implementation CDI -->
+                <exclusion>
+                    <groupId>org.jboss.weld.se</groupId>
+                    <artifactId>weld-se-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.jboss.weld</groupId>
+                    <artifactId>weld-junit5</artifactId>
+                </exclusion>
+                <!-- SmallRye Config - OpenLiberty fournit MicroProfile Config -->
+                <exclusion>
+                    <groupId>io.smallrye.config</groupId>
+                    <artifactId>smallrye-config</artifactId>
+                </exclusion>
+                <!-- Jakarta APIs - provided by OpenLiberty -->
+                <exclusion>
+                    <groupId>jakarta.enterprise</groupId>
+                    <artifactId>jakarta.enterprise.cdi-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>jakarta.inject</groupId>
+                    <artifactId>jakarta.inject-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>jakarta.annotation</groupId>
+                    <artifactId>jakarta.annotation-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Jakarta EE API (provided by OpenLiberty) -->
+        <dependency>
+            <groupId>jakarta.platform</groupId>
+            <artifactId>jakarta.jakartaee-web-api</artifactId>
+            <version>10.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- MicroProfile (provided by OpenLiberty) -->
+        <dependency>
+            <groupId>org.eclipse.microprofile</groupId>
+            <artifactId>microprofile</artifactId>
+            <version>6.1</version>
+            <type>pom</type>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- LangChain4j CDI -->
+        <dependency>
+            <groupId>dev.langchain4j.cdi</groupId>
+            <artifactId>langchain4j-cdi-portable-ext</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j.cdi.mp</groupId>
+            <artifactId>langchain4j-cdi-config</artifactId>
+        </dependency>
+
+        <!-- LangChain4j Azure OpenAI -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-azure-open-ai</artifactId>
+        </dependency>
+
+        <!-- LangChain4j (main library with service classes) -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+        </dependency>
+
+        <!-- SLF4J backed by JUL for OpenLiberty -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-jdk14</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>${project.artifactId}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>3.4.0</version>
+            </plugin>
+
+            <!-- Liberty Maven Plugin -->
+            <plugin>
+                <groupId>io.openliberty.tools</groupId>
+                <artifactId>liberty-maven-plugin</artifactId>
+                <version>3.11.5</version>
+                <configuration>
+                    <serverName>luteceAgent</serverName>
+                    <configDirectory>${project.basedir}/src/main/liberty/config</configDirectory>
+                    <!-- copyDependencies desactive - utiliser les jars dans WEB-INF/lib -->
+                    <!--
+                    <copyDependencies>
+                        <dependencyGroup>
+                            <location>lib/global</location>
+                            <dependency>
+                                <groupId>dev.langchain4j</groupId>
+                                <artifactId>langchain4j</artifactId>
+                            </dependency>
+                        </dependencyGroup>
+                    </copyDependencies>
+                    -->
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # Base de donnees MariaDB
+  db:
+    image: mariadb:10.11
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: lutece
+      MYSQL_USER: lutece
+      MYSQL_PASSWORD: lutece
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./src/test/resources/sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mariadb", "-u", "root", "-proot", "-e", "SELECT 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Serveur Open Liberty avec Lutece
+  lutece:
+    image: icr.io/appcafe/open-liberty:full-java17-openj9-ubi
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "9080:9080"
+      - "9443:9443"
+    environment:
+      # Variables pour la connexion DB
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: lutece
+      DB_USER: lutece
+      DB_PASSWORD: lutece
+    volumes:
+      # WAR de l'application Lutece
+      - ${LUTECE_WAR_PATH:-./target/site-deontologie.war}:/config/dropins/site-deontologie.war:ro
+      # Configuration Liberty
+      - ./src/test/resources/liberty/server.xml:/config/server.xml:ro
+      # Driver JDBC
+      - ./src/test/resources/liberty/lib:/config/lib:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9080/site-deontologie/"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+
+  # Conteneur Playwright pour executer les tests
+  playwright:
+    image: mcr.microsoft.com/playwright/java:v1.41.0-jammy
+    depends_on:
+      lutece:
+        condition: service_healthy
+    working_dir: /app
+    environment:
+      LUTECE_BASE_URL: http://lutece:9080/site-deontologie
+    volumes:
+      - .:/app
+      - maven-cache:/root/.m2
+    command: >
+      sh -c "
+        mvn test -Dtest=fr.paris.lutece.e2e.tests.bo.testsuites.WorkflowFormsIntegrationSuite
+        -Dlutece.base.url=http://lutece:9080/site-deontologie
+        -Dtest.headless=true
+      "
+
+volumes:
+  maven-cache:

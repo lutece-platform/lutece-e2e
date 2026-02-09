@@ -1,0 +1,38 @@
+# Build
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Maven
+dependency-reduced-pom.xml
+
+# Playwright - binaires extraits (~500 Mo)
+playwright-driver/java/
+playwright-driver/node_modules/
+auth-state.json
+
+# Liberty - config locale (chemins absolus, proxy, cles API)
+lutece-e2e-web/src/main/liberty/config/server.env
+lutece-e2e-web/src/main/liberty/config/jvm.options
+
+# Test artifacts
+test-run-suffix.txt
+*.log
+target/screenshots/
+
+# Secrets
+.env
+*.key
