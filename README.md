@@ -28,7 +28,8 @@ graph TB
 
     subgraph "lutece-e2e-core"
         ACTIONS[Actions Layer]
-        PAGES[Page Objects]
+        PAGES[Page Objects CDI]
+        PAGES_BO[Page Objects POJO bo]
         BROWSER[BrowserManager]
         PW[Playwright]
     end
@@ -83,9 +84,9 @@ graph LR
 
 | Module | Description |
 |--------|-------------|
-| `lutece-e2e-core` | Page Objects Playwright et Actions métier |
+| `lutece-e2e-core` | Page Objects Playwright (CDI + POJO bo) et Actions métier |
 | `lutece-e2e-agent` | Service IA LangChain4j et Tools |
-| `lutece-e2e-tests` | Tests E2E : CDI + bo3 Playwright direct + Testcontainers |
+| `lutece-e2e-tests` | Tests E2E : CDI + bo3 Playwright direct + Testcontainers (Page Objects dans core) |
 | `lutece-e2e-web` | API REST sur OpenLiberty |
 | `lutece-e2e-cli` | Interface ligne de commande |
 
@@ -397,7 +398,7 @@ Le module fait cohabiter deux patterns :
 |---|---|---|
 | **Package** | `fr.paris.lutece.e2e.tests` | `fr.paris.lutece.e2e.tests.bo` |
 | **Infrastructure** | `@EnableAutoWeld` + CDI | `BaseTest` + Playwright direct |
-| **Page Objects** | Injectés depuis `lutece-e2e-core` | Locaux dans `bo/pages/` |
+| **Page Objects** | CDI depuis `lutece-e2e-core` (`fr.paris.lutece.e2e.pages`) | POJO depuis `lutece-e2e-core` (`fr.paris.lutece.e2e.pages.bo`) |
 | **Configuration** | `@Inject @ConfigProperty` | `ConfigProvider.getConfig()` |
 | **Conteneurs** | Non | Oui (Testcontainers) |
 
@@ -416,6 +417,36 @@ Basse       lutece-e2e-core/agent config    100
 Cela permet de surcharger via la ligne de commande : `-Dtest.headless=true`, `-Dlutece.base.url=...`
 
 ## Développement
+
+### Structure des Page Objects
+
+Le module `lutece-e2e-core` centralise tous les Page Objects Playwright dans deux sous-packages :
+
+```
+lutece-e2e-core/src/main/java/fr/paris/lutece/e2e/pages/
+├── BasePage.java                  # Base CDI (@Dependent)
+├── LoginPage.java                 # CDI - utilisé par les Actions/Tools
+├── AdminMenuPage.java             # CDI
+├── WorkflowPage.java              # CDI
+├── FormsPage.java                 # CDI
+└── bo/                            # POJOs Playwright direct
+    ├── LoginPage.java             # new LoginPage(page, baseUrl)
+    ├── AdminMenuPage.java
+    ├── SitePropertiesPage.java
+    ├── WorkflowListPage.java
+    ├── WorkflowCreationFormPage.java
+    ├── WorkflowEditPage.java
+    ├── FormsListPage.java
+    ├── FormsCreationPage.java
+    ├── FormsEditPage.java
+    ├── FormsFrontOfficePage.java
+    └── FormsResponsesPage.java
+```
+
+- **Pages CDI** (`fr.paris.lutece.e2e.pages`) : `@Dependent`, etendent `BasePage`, injectees via CDI dans les Actions
+- **Pages POJO bo** (`fr.paris.lutece.e2e.pages.bo`) : instanciees via constructeur `(Page, baseUrl)`, utilisees par les tests bo3
+
+Les deux patterns coexistent dans le meme module core, centralisant tout le code d'interaction Playwright.
 
 ### Ajouter un nouveau Tool
 

@@ -1,7 +1,7 @@
 package fr.paris.lutece.e2e.tests.bo.testsuites;
 
 import fr.paris.lutece.e2e.tests.bo.config.BaseTest;
-import fr.paris.lutece.e2e.tests.bo.pages.LoginPage;
+import fr.paris.lutece.e2e.pages.bo.LoginPage;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;

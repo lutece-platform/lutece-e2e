@@ -1,8 +1,8 @@
 package fr.paris.lutece.e2e.tests.bo.testsuites;
 
 import fr.paris.lutece.e2e.tests.bo.containers.LuteceContainer;
-import fr.paris.lutece.e2e.tests.bo.pages.AdminMenuPage;
-import fr.paris.lutece.e2e.tests.bo.pages.LoginPage;
+import fr.paris.lutece.e2e.pages.bo.AdminMenuPage;
+import fr.paris.lutece.e2e.pages.bo.LoginPage;
 import com.microsoft.playwright.*;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
