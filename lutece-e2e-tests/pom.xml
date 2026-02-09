@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>fr.paris.lutece.e2e</groupId>
+        <artifactId>lutece-e2e</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>lutece-e2e-tests</artifactId>
+    <name>Lutece E2E Tests</name>
+    <description>Tests JUnit classiques utilisant les Actions</description>
+
+    <properties>
+        <!-- Image Docker Lutece pour les tests Testcontainers -->
+        <lutece.image>nexus-docker-fastdeploy.api.paris.mdp/bild/f98/site-deontologie:1.0.0-SNAPSHOT</lutece.image>
+        <lutece.http.port>9090</lutece.http.port>
+        <lutece.context.root>/lutece</lutece.context.root>
+    </properties>
+
+    <dependencies>
+        <!-- Module Core -->
+        <dependency>
+            <groupId>fr.paris.lutece.e2e</groupId>
+            <artifactId>lutece-e2e-core</artifactId>
+        </dependency>
+
+        <!-- Module Agent (pour tester les Tools) -->
+        <dependency>
+            <groupId>fr.paris.lutece.e2e</groupId>
+            <artifactId>lutece-e2e-agent</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit 5 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-suite</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- CDI pour tests -->
+        <dependency>
+            <groupId>org.jboss.weld</groupId>
+            <artifactId>weld-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.weld.se</groupId>
+            <artifactId>weld-se-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Testcontainers -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mariadb</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- MariaDB JDBC Driver (requis par Testcontainers MariaDBContainer pour le healthcheck) -->
+        <dependency>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+            <version>3.3.3</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Surefire Plugin pour les tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                    </includes>
+                    <systemPropertyVariables>
+                        <lutece.base.url>${lutece.base.url}</lutece.base.url>
+                        <lutece.image>${lutece.image}</lutece.image>
+                        <lutece.http.port>${lutece.http.port}</lutece.http.port>
+                        <lutece.context.root>${lutece.context.root}</lutece.context.root>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+
+            <!-- Plugin exec pour installer les navigateurs Playwright -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.1</version>
+                <configuration>
+                    <mainClass>com.microsoft.playwright.CLI</mainClass>
+                    <arguments>
+                        <argument>install</argument>
+                        <argument>--with-deps</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
+
+            <!-- Failsafe Plugin pour les tests d'intégration avec Testcontainers -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <includes>
+                        <include>**/ContainerIntegrationSuite.java</include>
+                        <include>**/*IT.java</include>
+                    </includes>
+                    <systemPropertyVariables>
+                        <lutece.image>${lutece.image}</lutece.image>
+                        <lutece.http.port>${lutece.http.port}</lutece.http.port>
+                        <lutece.context.root>${lutece.context.root}</lutece.context.root>
+                    </systemPropertyVariables>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- Profil pour exécuter les tests avec Testcontainers -->
+        <profile>
+            <id>container-tests</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <skipTests>true</skipTests>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/ContainerIntegrationSuite.java</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

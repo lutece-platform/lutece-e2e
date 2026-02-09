@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<server description="Lutece E2E Agent Server">
+
+    <!-- Enable features -->
+    <featureManager>
+        <feature>webProfile-10.0</feature>
+        <feature>mpConfig-3.1</feature>
+        <feature>mpHealth-4.0</feature>
+        <feature>mpOpenAPI-3.1</feature>
+    </featureManager>
+
+    <!-- HTTP Endpoint -->
+    <httpEndpoint id="defaultHttpEndpoint"
+                  httpPort="${default.http.port}"
+                  httpsPort="${default.https.port}"/>
+
+    <!-- Application avec classloader parentLast pour ServiceLoader -->
+    <webApplication location="lutece-e2e-web.war" contextRoot="/lutece-e2e-web">
+        <classloader delegation="parentLast"
+                     apiTypeVisibility="spec, ibm-api, api, stable, third-party"/>
+    </webApplication>
+
+    <!-- Logging -->
+    <logging consoleLogLevel="INFO"
+             traceSpecification="*=info:dev.langchain4j.*=debug:fr.paris.lutece.*=debug"/>
+
+    <!-- Variables d'environnement Azure OpenAI -->
+    <!-- Ces valeurs peuvent etre surchargees par des variables d'environnement -->
+    <variable name="AZURE_OPENAI_API_KEY" defaultValue="${env.AZURE_OPENAI_API_KEY}"/>
+    <variable name="AZURE_OPENAI_ENDPOINT" defaultValue="${env.AZURE_OPENAI_ENDPOINT}"/>
+    <variable name="AZURE_OPENAI_DEPLOYMENT_NAME" defaultValue="${env.AZURE_OPENAI_DEPLOYMENT_NAME}"/>
+
+
+</server>

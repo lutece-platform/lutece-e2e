@@ -1,0 +1,504 @@
+/**
+ * Pipeline Jenkins pour les tests E2E Lutece
+ *
+ * Deux modes d'exécution:
+ * - EXTERNAL: Tests sur une instance Lutece existante (recette, preprod, etc.)
+ * - TESTCONTAINERS: Tests avec environnement Podman isolé (MariaDB + Lutece)
+ *
+ * Architecture:
+ * - Étapes Maven: agent any (contrôleur Jenkins)
+ * - Étapes Podman/Tests: agent podman
+ */
+
+pipeline {
+    agent none  // Pas d'agent global, défini par stage
+
+    environment {
+        // Java / Maven
+        JAVA_MAVEN = 'temurin-17-jdk'
+        MAVEN = 'Maven 3.8.5'
+        MAVEN_OPTS = '-Dmaven.repo.local=m2-repo'
+        MAVEN_USER_HOME = '.m2'  // Pour que le wrapper télécharge Maven dans le workspace
+
+        // Playwright
+        PLAYWRIGHT_BROWSERS_PATH = '.playwright-browsers'
+
+        // Container Registry
+        DOCKER_REGISTRY = 'nexus-docker-fastdeploy.api.paris.mdp'
+        DOCKER_CREDENTIALS_ID = 'NexusSTIPS_bild_user'
+
+        // Lutece Testcontainers config
+        LUTECE_CONTEXT_ROOT = '/lutece'
+        LUTECE_HTTP_PORT = '9090'
+
+        // Testcontainers avec Podman - les valeurs exactes seront détectées dynamiquement
+        TESTCONTAINERS_RYUK_DISABLED = 'true'
+    }
+
+    parameters {
+        choice(
+            name: 'TEST_MODE',
+            choices: ['TESTCONTAINERS', 'EXTERNAL'],
+            description: 'Mode d\'exécution: TESTCONTAINERS (Docker isolé) ou EXTERNAL (instance existante)'
+        )
+        string(
+            name: 'LUTECE_IMAGE',
+            defaultValue: 'nexus-docker-fastdeploy.api.paris.mdp/bild/f98/site-deontologie:1.0.0-SNAPSHOT',
+            description: '[TESTCONTAINERS] Image Docker Lutece à tester'
+        )
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['recette', 'preprod', 'local'],
+            description: '[EXTERNAL] Environnement cible'
+        )
+        string(
+            name: 'LUTECE_URL',
+            defaultValue: '',
+            description: '[EXTERNAL] URL personnalisée (override ENVIRONMENT)'
+        )
+        choice(
+            name: 'TEST_SUITE',
+            choices: [
+                'ContainerIntegrationSuite',
+                'WorkflowFormsIntegrationSuite',
+                'LoginContainerTest',
+                'LoginTest',
+                'RbacConfigurationTest',
+                'WorkflowCreationTest',
+                'FormsCreationTest',
+                'FormsSubmissionTest'
+            ],
+            description: 'Suite de tests à exécuter'
+        )
+        booleanParam(
+            name: 'HEADLESS',
+            defaultValue: true,
+            description: 'Exécuter en mode headless'
+        )
+        booleanParam(
+            name: 'SONAR_ANALYSIS',
+            defaultValue: false,
+            description: 'Envoyer les rapports à SonarQube'
+        )
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Build & Prepare') {
+            agent any  // Contrôleur Jenkins avec Maven
+            stages {
+                stage('Checkout') {
+                    steps {
+                        checkout scm
+                        echo """
+                        ╔══════════════════════════════════════════════════════════════╗
+                        ║              LUTECE E2E TESTS - CONFIGURATION                ║
+                        ╠══════════════════════════════════════════════════════════════╣
+                        ║  Mode        : ${params.TEST_MODE}
+                        ║  Test Suite  : ${params.TEST_SUITE}
+                        ║  Headless    : ${params.HEADLESS}
+                        ║  Branch      : ${env.BRANCH_NAME ?: 'N/A'}
+                        ║  Commit      : ${env.GIT_COMMIT?.take(8) ?: 'N/A'}
+                        ╚══════════════════════════════════════════════════════════════╝
+                        """
+                    }
+                }
+
+                stage('Verify Environment') {
+                    steps {
+                        echo '=== Vérification de l\'environnement ==='
+                        withMaven(jdk: "${JAVA_MAVEN}", maven: "${MAVEN}", traceability: false) {
+                            sh '''
+                                echo "Java:"
+                                java -version
+                                echo "Maven:"
+                                mvn -version
+                            '''
+                        }
+                    }
+                }
+
+                stage('Determine Target URL') {
+                    when {
+                        expression { params.TEST_MODE == 'EXTERNAL' }
+                    }
+                    steps {
+                        script {
+                            if (params.LUTECE_URL?.trim()) {
+                                env.TARGET_URL = params.LUTECE_URL
+                            } else {
+                                switch(params.ENVIRONMENT) {
+                                    case 'recette':
+                                        env.TARGET_URL = 'https://f56-forms-dsin.rec.apps.paris.mdp/lutece'
+                                        break
+                                    case 'preprod':
+                                        env.TARGET_URL = 'https://preprod.lutece.paris.fr/site-deontologie'
+                                        break
+                                    case 'local':
+                                    default:
+                                        env.TARGET_URL = 'http://localhost:9080/lutece'
+                                }
+                            }
+                            echo "Target URL: ${env.TARGET_URL}"
+                        }
+                    }
+                }
+
+                stage('Install Dependencies') {
+                    steps {
+                        echo '=== Installation des dépendances Maven ==='
+                        withMaven(jdk: "${JAVA_MAVEN}", maven: "${MAVEN}", traceability: false) {
+                            sh '''
+                                # Build du parent et de tous les modules (sans tests)
+                                cd ../.. && mvn clean install -DskipTests -Dmaven.repo.local=${WORKSPACE}/m2-repo -B -q
+                                cd ${WORKSPACE}
+                                # Télécharger TOUT pour le mode offline
+                                mvn dependency:go-offline -Dmaven.repo.local=m2-repo -B
+                                # Forcer le téléchargement explicite des plugins de test
+                                mvn surefire:help failsafe:help -Dmaven.repo.local=m2-repo -B -q
+                                # Télécharger explicitement les providers JUnit Platform et leurs dépendances
+                                mvn dependency:get -Dartifact=org.apache.maven.surefire:surefire-junit-platform:3.2.5 -Dtransitive=true -Dmaven.repo.local=m2-repo -B
+                                mvn dependency:get -Dartifact=org.apache.maven.surefire:surefire-booter:3.2.5 -Dtransitive=true -Dmaven.repo.local=m2-repo -B
+                                mvn dependency:get -Dartifact=org.apache.maven.surefire:surefire-api:3.2.5 -Dtransitive=true -Dmaven.repo.local=m2-repo -B
+                                # Dépendances supplémentaires de surefire-junit-platform
+                                mvn dependency:get -Dartifact=org.opentest4j:opentest4j:1.3.0 -Dmaven.repo.local=m2-repo -B
+                                mvn dependency:get -Dartifact=org.junit.platform:junit-platform-launcher:1.10.2 -Dtransitive=true -Dmaven.repo.local=m2-repo -B
+                            '''
+                        }
+                    }
+                }
+
+                stage('Install Playwright Browsers') {
+                    when {
+                        // Skip sur le contrôleur - sera fait sur l'agent Podman
+                        expression { false }
+                    }
+                    steps {
+                        echo '=== Installation des navigateurs Playwright (skipped - fait sur agent) ==='
+                    }
+                }
+
+                stage('Stash Artifacts') {
+                    steps {
+                        echo '=== Préparation des artefacts pour l\'agent Podman ==='
+                        // Debug: vérifier le contenu de m2-repo
+                        sh '''
+                            echo "=== Vérification m2-repo ==="
+                            ls -la m2-repo/ | head -20 || echo "m2-repo n'existe pas"
+                            find m2-repo -name "maven-failsafe-plugin*" 2>/dev/null || echo "failsafe plugin non trouvé"
+                        '''
+                        // m2-repo (sans le point) sera inclus normalement par **
+                        stash includes: '**', excludes: '.git/**', name: 'workspace-stash'
+                    }
+                }
+            }
+        }
+
+        stage('Run Tests on Podman Agent') {
+            agent { label 'podman' }
+            stages {
+                stage('Unstash Workspace') {
+                    steps {
+                        unstash 'workspace-stash'
+                        // Supprimer les fichiers de métadonnées qui empêchent le mode offline
+                        sh '''
+                            echo "=== Nettoyage des métadonnées ==="
+                            find m2-repo -name "_remote.repositories" -delete
+                            find m2-repo -name "*.lastUpdated" -delete
+                            echo "=== Vérification m2-repo ==="
+                            ls -la m2-repo/org/apache/maven/plugins/maven-failsafe-plugin/3.2.5/ || echo "ERREUR: failsafe-plugin introuvable!"
+                            ls -la m2-repo/org/apache/maven/surefire/surefire-junit-platform/3.2.5/ || echo "ERREUR: surefire-junit-platform introuvable!"
+                        '''
+                    }
+                }
+
+                stage('Verify Podman') {
+                    steps {
+                        echo '=== Vérification de Podman ==='
+                        sh '''
+                            echo "Podman:"
+                            podman --version
+                            podman info --format '{{.Host.RemoteSocket.Path}}'
+                        '''
+                    }
+                }
+
+                stage('Podman Login') {
+                    when {
+                        expression { params.TEST_MODE == 'TESTCONTAINERS' }
+                    }
+                    steps {
+                        echo '=== Connexion au registry avec Podman ==='
+                        withCredentials([usernamePassword(
+                            credentialsId: "${DOCKER_CREDENTIALS_ID}",
+                            usernameVariable: 'DOCKER_USER',
+                            passwordVariable: 'DOCKER_PASS'
+                        )]) {
+                            sh '''
+                                echo "$DOCKER_PASS" | podman login -u "$DOCKER_USER" --password-stdin ${DOCKER_REGISTRY}
+                            '''
+                        }
+                    }
+                }
+
+                stage('Pull Lutece Image') {
+                    when {
+                        expression { params.TEST_MODE == 'TESTCONTAINERS' }
+                    }
+                    steps {
+                        echo "=== Pull de l'image: ${params.LUTECE_IMAGE} ==="
+                        sh """
+                            podman pull ${params.LUTECE_IMAGE}
+                            echo "Image téléchargée:"
+                            podman images | grep -E "site-deontologie|lutece" | head -5
+                        """
+                    }
+                }
+
+                stage('Install Playwright Browsers on Agent') {
+                    steps {
+                        echo '=== Installation des navigateurs Playwright sur l\'agent Podman ==='
+                        sh '''
+                            export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
+                            export PLAYWRIGHT_BROWSERS_PATH=${WORKSPACE}/.playwright-browsers
+
+                            # Vérifier les dépendances système
+                            echo "=== Vérification des dépendances Playwright ==="
+                            MISSING_DEPS=""
+                            for lib in libnss3.so libnspr4.so libatk-1.0.so.0 libdrm.so.2 libxkbcommon.so.0; do
+                                if ! ldconfig -p 2>/dev/null | grep -q "$lib"; then
+                                    MISSING_DEPS="$MISSING_DEPS $lib"
+                                fi
+                            done
+
+                            if [ -n "$MISSING_DEPS" ]; then
+                                echo "ATTENTION: Dépendances manquantes détectées:$MISSING_DEPS"
+                                echo "Tentative d'installation avec --with-deps (nécessite sudo)..."
+                                mvn exec:java -o \
+                                    -Dmaven.repo.local=m2-repo \
+                                    -Dexec.mainClass=com.microsoft.playwright.CLI \
+                                    -Dexec.args="install --with-deps chromium" \
+                                    -B || {
+                                    echo "ERREUR: Impossible d'installer les dépendances automatiquement."
+                                    echo "L'agent Jenkins doit avoir les packages suivants installés:"
+                                    echo "  libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2"
+                                    echo "  libdrm2 libxcb1 libxkbcommon0 libatspi2.0-0 libx11-6"
+                                    echo "  libxcomposite1 libxdamage1 libxext6 libxfixes3 libxrandr2"
+                                    echo "  libgbm1 libpango-1.0-0 libcairo2 libasound2"
+                                    exit 1
+                                }
+                            else
+                                echo "Dépendances système OK"
+                                mvn exec:java -o \
+                                    -Dmaven.repo.local=m2-repo \
+                                    -Dexec.mainClass=com.microsoft.playwright.CLI \
+                                    -Dexec.args="install chromium" \
+                                    -B
+                            fi
+                        '''
+                    }
+                }
+
+                stage('Run E2E Tests - Testcontainers') {
+                    when {
+                        expression { params.TEST_MODE == 'TESTCONTAINERS' }
+                    }
+                    steps {
+                        echo """
+                        ╔══════════════════════════════════════════════════════════════╗
+                        ║           EXÉCUTION DES TESTS TESTCONTAINERS                 ║
+                        ╠══════════════════════════════════════════════════════════════╣
+                        ║  Image Lutece : ${params.LUTECE_IMAGE}
+                        ║  Context Root : ${LUTECE_CONTEXT_ROOT}
+                        ║  Port HTTP    : ${LUTECE_HTTP_PORT}
+                        ║  Test Suite   : ${params.TEST_SUITE}
+                        ╚══════════════════════════════════════════════════════════════╝
+                        """
+
+                        script {
+                            def testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.${params.TEST_SUITE}"
+                            if (params.TEST_SUITE == 'WorkflowFormsIntegrationSuite') {
+                                testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.ContainerIntegrationSuite"
+                            }
+                            if (params.TEST_SUITE == 'LoginTest') {
+                                testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.LoginContainerTest"
+                            }
+
+                            sh 'mkdir -p target/screenshots'
+
+                            // Détecter le socket Podman dynamiquement et configurer Testcontainers
+                            sh """
+                                export JAVA_HOME=\$(dirname \$(dirname \$(readlink -f \$(which java))))
+                                export PLAYWRIGHT_BROWSERS_PATH=\${WORKSPACE}/.playwright-browsers
+
+                                # Détecter le socket Podman
+                                PODMAN_SOCKET=\$(podman info --format '{{.Host.RemoteSocket.Path}}')
+                                echo "Socket Podman détecté: \$PODMAN_SOCKET"
+
+                                # Configurer Testcontainers pour Podman
+                                export DOCKER_HOST="unix://\$PODMAN_SOCKET"
+                                export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="\$PODMAN_SOCKET"
+                                export TESTCONTAINERS_RYUK_DISABLED=true
+
+                                mvn test -o \
+                                    -Dmaven.repo.local=m2-repo \
+                                    -Dtest=${testClass} \
+                                    -Dlutece.image=${params.LUTECE_IMAGE} \
+                                    -Dlutece.context.root=${LUTECE_CONTEXT_ROOT} \
+                                    -Dlutece.http.port=${LUTECE_HTTP_PORT} \
+                                    -Dtest.headless=${params.HEADLESS} \
+                                    -Dtest.timeout=30000 \
+                                    -B \
+                                    --fail-at-end
+                            """
+                        }
+                    }
+                    post {
+                        always {
+                            junit(
+                                testResults: 'target/surefire-reports/*.xml',
+                                allowEmptyResults: true
+                            )
+                        }
+                    }
+                }
+
+                stage('Run E2E Tests - External') {
+                    when {
+                        expression { params.TEST_MODE == 'EXTERNAL' }
+                    }
+                    steps {
+                        echo """
+                        ╔══════════════════════════════════════════════════════════════╗
+                        ║           EXÉCUTION DES TESTS SUR INSTANCE EXTERNE           ║
+                        ╠══════════════════════════════════════════════════════════════╣
+                        ║  URL         : ${env.TARGET_URL}
+                        ║  Test Suite  : ${params.TEST_SUITE}
+                        ╚══════════════════════════════════════════════════════════════╝
+                        """
+
+                        script {
+                            def testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.${params.TEST_SUITE}"
+                            if (params.TEST_SUITE == 'ContainerIntegrationSuite') {
+                                testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.WorkflowFormsIntegrationSuite"
+                            }
+                            if (params.TEST_SUITE == 'LoginContainerTest') {
+                                testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.LoginTest"
+                            }
+
+                            sh 'mkdir -p target/screenshots'
+
+                            sh """
+                                export JAVA_HOME=\$(dirname \$(dirname \$(readlink -f \$(which java))))
+                                export PLAYWRIGHT_BROWSERS_PATH=\${WORKSPACE}/.playwright-browsers
+
+                                mvn test -o \
+                                    -Dmaven.repo.local=m2-repo \
+                                    -Dtest=${testClass} \
+                                    -Dlutece.base.url=${env.TARGET_URL} \
+                                    -Dtest.headless=${params.HEADLESS} \
+                                    -Dtest.timeout=10000 \
+                                    -B \
+                                    --fail-at-end
+                            """
+                        }
+                    }
+                    post {
+                        always {
+                            junit(
+                                testResults: 'target/surefire-reports/*.xml',
+                                allowEmptyResults: true
+                            )
+                        }
+                    }
+                }
+
+                stage('Cleanup Podman') {
+                    steps {
+                        echo '=== Nettoyage Podman ==='
+                        sh '''
+                            podman logout ${DOCKER_REGISTRY} || true
+                            podman container prune -f || true
+                            podman network prune -f || true
+                            podman images --filter "dangling=true" --format "{{.ID}}" | xargs -r podman rmi || echo "Aucune image dangling à supprimer."
+                        '''
+                    }
+                }
+
+                stage('Archive Results') {
+                    steps {
+                        echo '=== Archivage des artefacts ==='
+                        archiveArtifacts(
+                            artifacts: 'target/screenshots/**/*.png',
+                            allowEmptyArchive: true,
+                            fingerprint: true
+                        )
+                        archiveArtifacts(
+                            artifacts: 'target/surefire-reports/**/*',
+                            allowEmptyArchive: true
+                        )
+                    }
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            agent any
+            when {
+                expression { params.SONAR_ANALYSIS == true }
+            }
+            steps {
+                unstash 'workspace-stash'
+                echo '''
+                ╔══════════════════════════════════════════════════════════════╗
+                ║                 ANALYSE SONARQUBE                            ║
+                ╚══════════════════════════════════════════════════════════════╝
+                '''
+                withSonarQubeEnv('SonarQube') {
+                    withMaven(jdk: "${JAVA_MAVEN}", maven: "${MAVEN}", traceability: false) {
+                        sh """
+                            mvn sonar:sonar \
+                                -Dsonar.projectKey=lutece-e2e-tests \
+                                -Dsonar.projectName='Lutece E2E Tests' \
+                                -Dsonar.sources=src/test/java \
+                                -Dsonar.tests=src/test/java \
+                                -Dsonar.java.binaries=target/test-classes \
+                                -Dsonar.junit.reportPaths=target/surefire-reports \
+                                -Dsonar.qualitygate.wait=false \
+                                -B
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '''
+            ╔══════════════════════════════════════════════════════════════╗
+            ║                    TESTS RÉUSSIS                             ║
+            ╚══════════════════════════════════════════════════════════════╝
+            '''
+        }
+        failure {
+            echo '''
+            ╔══════════════════════════════════════════════════════════════╗
+            ║                    TESTS ÉCHOUÉS                             ║
+            ╚══════════════════════════════════════════════════════════════╝
+            '''
+        }
+        unstable {
+            echo '''
+            ╔══════════════════════════════════════════════════════════════╗
+            ║               TESTS INSTABLES (certains échecs)              ║
+            ╚══════════════════════════════════════════════════════════════╝
+            '''
+        }
+    }
+}
