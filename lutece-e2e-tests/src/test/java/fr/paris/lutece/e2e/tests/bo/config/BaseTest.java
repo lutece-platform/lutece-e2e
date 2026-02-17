@@ -20,8 +20,11 @@ public abstract class BaseTest {
     // Configuration MicroProfile
     protected static final Config config = ConfigProvider.getConfig();
 
-    // BASE_URL - peut être mis à jour par ContainerSetup
-    protected static String BASE_URL = config.getValue("lutece.base.url", String.class);
+    // BASE_URL - peut être mis à jour par ContainerSetup via updateBaseUrl()
+    // Utilise getOptionalValue pour eviter ExceptionInInitializerError en mode conteneur
+    // (ContainerSetup definit l'URL dynamiquement avant les autres tests)
+    protected static String BASE_URL = config.getOptionalValue("lutece.base.url", String.class)
+        .orElse("http://localhost:9080/lutece");
 
     /**
      * Met à jour l'URL de base. Appelé par ContainerSetup pour les tests en conteneur.

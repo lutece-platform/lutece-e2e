@@ -6,10 +6,8 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.DockerImageName;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 /**
@@ -77,22 +75,14 @@ public class LuteceContainer extends GenericContainer<LuteceContainer> {
         withEnv("portal.user", username);
         withEnv("portal.password", password);
 
-        // ConfigDropin pour forcer le type du driver JDBC explicitement.
-        // Sous Podman, l'auto-detection de Liberty avec <properties> generiques
-        // echoue et retombe sur H2 (feature persistence-3.1).
-        // Ce configDropin ajoute uniquement javax.sql.DataSource sur le jdbcDriver
-        // existant - les <properties> et <variable> du server.xml restent inchangees.
-        String jdbcDriverOverride = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-            + "<server>\n"
-            + "    <dataSource jndiName=\"jdbc/portal\">\n"
-            + "        <jdbcDriver libraryRef=\"jdbcLib\"\n"
-            + "            javax.sql.DataSource=\"com.mysql.cj.jdbc.MysqlDataSource\"/>\n"
-            + "    </dataSource>\n"
-            + "</server>\n";
-
-        withCopyToContainer(
-            Transferable.of(jdbcDriverOverride.getBytes(StandardCharsets.UTF_8)),
-            "/config/configDropins/overrides/jdbc-driver-type.xml");
+        // Patch server.xml pour utiliser <properties.mysql> au lieu de <properties> generiques.
+        // Sous Podman, l'auto-detection Liberty echoue et retombe sur H2 (feature persistence-3.1).
+        // L'approche configDropins/overrides ne fonctionne pas car redeclarer un <dataSource>
+        // avec le meme jndiName cree un conflit JNDI (CWWKG0031E).
+        // On utilise sed pour patcher server.xml avant le demarrage de Liberty.
+        withCommand("bash", "-c",
+            "sed -i 's/<properties /<properties.mysql /' /config/server.xml && " +
+            "exec /opt/ol/wlp/bin/server run defaultServer");
 
         return this;
     }
