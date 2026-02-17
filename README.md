@@ -509,6 +509,20 @@ Si les sélecteurs ne trouvent pas les éléments :
 - Utiliser `diagnoseWorkflowPage` pour voir les éléments disponibles
 - Les sélecteurs Lutece 8 utilisent des composants offcanvas Bootstrap 5
 
+### JDBC sous Podman (`DSRA4000E: No implementations of org.h2.jdbcx.JdbcDataSource`)
+
+Sous Podman, l'auto-detection JDBC de Liberty echoue et retombe sur H2 au lieu de MySQL.
+Cela est cause par la feature `persistence-3.1` qui fournit des classes H2 dans le classpath.
+
+`LuteceContainer` corrige cela automatiquement en patchant le `<jdbcDriver>` du `server.xml`
+au demarrage du conteneur pour forcer les classes MySQL (`MysqlDataSource`,
+`MysqlConnectionPoolDataSource`, `MysqlXADataSource`).
+
+Si le probleme reapparait apres un changement d'image Liberty, verifier :
+1. Que le `server.xml` de l'image contient bien `libraryRef="jdbcLib"` dans le `<jdbcDriver>`
+2. Que le JAR `mysql-connector-j-*.jar` est present dans `WEB-INF/lib/`
+3. Que l'ENTRYPOINT de l'image est bien `/opt/ol/helpers/runtime/docker-server.sh`
+
 ### Proxy
 
 Pour les environnements avec proxy, configurer `jvm.options` :
