@@ -75,14 +75,19 @@ public class LuteceContainer extends GenericContainer<LuteceContainer> {
         withEnv("portal.user", username);
         withEnv("portal.password", password);
 
-        // Patch server.xml pour utiliser <properties.mysql> au lieu de <properties> generiques.
-        // Sous Podman, l'auto-detection Liberty echoue et retombe sur H2 (feature persistence-3.1).
-        // L'approche configDropins/overrides ne fonctionne pas car redeclarer un <dataSource>
-        // avec le meme jndiName cree un conflit JNDI (CWWKG0031E).
-        // On utilise sed pour patcher server.xml avant le demarrage de Liberty.
-        withCommand("bash", "-c",
-            "sed -i 's/<properties /<properties.mysql /' /config/server.xml && " +
-            "exec /opt/ol/wlp/bin/server run defaultServer");
+        // Sous Podman, l'auto-detection JDBC de Liberty echoue et retombe sur H2
+        // (classes H2 fournies par la feature persistence-3.1).
+        // On force les classes MySQL sur le <jdbcDriver> pour contourner l'auto-detection.
+        // On garde <properties> generique (pas <properties.mysql>) pour ne pas changer
+        // le comportement de connexion (MysqlConnectionPoolDataSource vs DataSource generique).
+        // withCommand (CMD) est ignore par certaines images Liberty, on surcharge l'ENTRYPOINT.
+        withCreateContainerCmdModifier(cmd ->
+            cmd.withEntrypoint("bash", "-c",
+                "sed -i 's|libraryRef=\"jdbcLib\"|libraryRef=\"jdbcLib\" " +
+                "javax.sql.DataSource=\"com.mysql.cj.jdbc.MysqlDataSource\" " +
+                "javax.sql.ConnectionPoolDataSource=\"com.mysql.cj.jdbc.MysqlConnectionPoolDataSource\" " +
+                "javax.sql.XADataSource=\"com.mysql.cj.jdbc.MysqlXADataSource\"|' /config/server.xml && " +
+                "exec /opt/ol/helpers/runtime/docker-server.sh /opt/ol/wlp/bin/server run defaultServer"));
 
         return this;
     }
