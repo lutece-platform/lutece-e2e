@@ -155,8 +155,11 @@ pipeline {
                         withMaven(jdk: "${JAVA_MAVEN}", maven: "${MAVEN}", traceability: false) {
                             sh '''
                                 # Build du parent et de tous les modules (sans tests)
-                                cd ../.. && mvn clean install -DskipTests -Dmaven.repo.local=${WORKSPACE}/m2-repo -B -q
-                                cd ${WORKSPACE}
+                                # WORKSPACE = racine du repo (contient le pom.xml parent)
+                                mvn clean install -DskipTests -Dmaven.repo.local=${WORKSPACE}/lutece-e2e-tests/m2-repo -B -q
+
+                                # Les commandes suivantes s'exécutent depuis le module lutece-e2e-tests
+                                cd ${WORKSPACE}/lutece-e2e-tests
                                 # Télécharger TOUT pour le mode offline
                                 mvn dependency:go-offline -Dmaven.repo.local=m2-repo -B
                                 # Forcer le téléchargement explicite des plugins de test
@@ -169,7 +172,6 @@ pipeline {
                                 mvn dependency:get -Dartifact=org.opentest4j:opentest4j:1.3.0 -Dmaven.repo.local=m2-repo -B
                                 mvn dependency:get -Dartifact=org.junit.platform:junit-platform-launcher:1.10.2 -Dtransitive=true -Dmaven.repo.local=m2-repo -B
                                 # Initialiser le Maven Wrapper
-                                cd ${WORKSPACE}
                                 ./mvnw -Dmaven.repo.local=m2-repo --version
                             '''
                         }
@@ -182,10 +184,10 @@ pipeline {
                         // Debug: vérifier le contenu de m2-repo
                         sh '''
                             echo "=== Vérification m2-repo ==="
-                            ls -la m2-repo/ | head -20 || echo "m2-repo n'existe pas"
-                            find m2-repo -name "maven-failsafe-plugin*" 2>/dev/null || echo "failsafe plugin non trouvé"
+                            ls -la lutece-e2e-tests/m2-repo/ | head -20 || echo "m2-repo n'existe pas"
+                            find lutece-e2e-tests/m2-repo -name "maven-failsafe-plugin*" 2>/dev/null || echo "failsafe plugin non trouvé"
                         '''
-                        // m2-repo (sans le point) sera inclus normalement par **
+                        // Stash tout le repo (m2-repo est dans lutece-e2e-tests/)
                         stash includes: '**', excludes: '.git/**', name: 'workspace-stash'
                     }
                 }
@@ -201,11 +203,11 @@ pipeline {
                         // Supprimer les fichiers de métadonnées qui empêchent le mode offline
                         sh '''
                             echo "=== Nettoyage des métadonnées ==="
-                            find m2-repo -name "_remote.repositories" -delete
-                            find m2-repo -name "*.lastUpdated" -delete
+                            find lutece-e2e-tests/m2-repo -name "_remote.repositories" -delete
+                            find lutece-e2e-tests/m2-repo -name "*.lastUpdated" -delete
                             echo "=== Vérification m2-repo ==="
-                            ls -la m2-repo/org/apache/maven/plugins/maven-failsafe-plugin/3.2.5/ || echo "ERREUR: failsafe-plugin introuvable!"
-                            ls -la m2-repo/org/apache/maven/surefire/surefire-junit-platform/3.2.5/ || echo "ERREUR: surefire-junit-platform introuvable!"
+                            ls -la lutece-e2e-tests/m2-repo/org/apache/maven/plugins/maven-failsafe-plugin/3.2.5/ || echo "ERREUR: failsafe-plugin introuvable!"
+                            ls -la lutece-e2e-tests/m2-repo/org/apache/maven/surefire/surefire-junit-platform/3.2.5/ || echo "ERREUR: surefire-junit-platform introuvable!"
                         '''
                     }
                 }
@@ -296,7 +298,7 @@ pipeline {
                                 testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.LoginContainerTest"
                             }
 
-                            sh 'mkdir -p target/screenshots'
+                            sh 'mkdir -p lutece-e2e-tests/target/screenshots'
 
                             // Exécuter les tests dans le conteneur Playwright
                             // Le conteneur a Chromium + toutes les dépendances système pré-installées
@@ -309,7 +311,7 @@ pipeline {
                                     --user root \
                                     -v \${WORKSPACE}:/work:Z \
                                     -v \$PODMAN_SOCKET:/var/run/docker.sock \
-                                    -w /work \
+                                    -w /work/lutece-e2e-tests \
                                     -e DOCKER_HOST=unix:///var/run/docker.sock \
                                     -e TESTCONTAINERS_RYUK_DISABLED=true \
                                     -e TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock \
@@ -330,7 +332,7 @@ pipeline {
                     post {
                         always {
                             junit(
-                                testResults: 'target/surefire-reports/*.xml',
+                                testResults: 'lutece-e2e-tests/target/surefire-reports/*.xml',
                                 allowEmptyResults: true
                             )
                         }
@@ -361,7 +363,7 @@ pipeline {
                                 testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.LoginTest"
                             }
 
-                            sh 'mkdir -p target/screenshots'
+                            sh 'mkdir -p lutece-e2e-tests/target/screenshots'
 
                             // Exécuter les tests dans le conteneur Playwright
                             sh """
@@ -369,7 +371,7 @@ pipeline {
                                     --network=host \
                                     --user root \
                                     -v \${WORKSPACE}:/work:Z \
-                                    -w /work \
+                                    -w /work/lutece-e2e-tests \
                                     ${PLAYWRIGHT_IMAGE} \
                                     ./mvnw test -o \
                                         -Dmaven.repo.local=m2-repo \
@@ -385,7 +387,7 @@ pipeline {
                     post {
                         always {
                             junit(
-                                testResults: 'target/surefire-reports/*.xml',
+                                testResults: 'lutece-e2e-tests/target/surefire-reports/*.xml',
                                 allowEmptyResults: true
                             )
                         }
@@ -408,12 +410,12 @@ pipeline {
                     steps {
                         echo '=== Archivage des artefacts ==='
                         archiveArtifacts(
-                            artifacts: 'target/screenshots/**/*.png',
+                            artifacts: 'lutece-e2e-tests/target/screenshots/**/*.png',
                             allowEmptyArchive: true,
                             fingerprint: true
                         )
                         archiveArtifacts(
-                            artifacts: 'target/surefire-reports/**/*',
+                            artifacts: 'lutece-e2e-tests/target/surefire-reports/**/*',
                             allowEmptyArchive: true
                         )
                     }
