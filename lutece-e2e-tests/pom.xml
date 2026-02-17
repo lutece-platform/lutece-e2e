@@ -28,13 +28,13 @@
             <artifactId>lutece-e2e-core</artifactId>
         </dependency>
 
-        <!-- Module Agent (pour tester les Tools) -->
+        <!-- Module Agent (pour tester les Tools) 
         <dependency>
             <groupId>fr.paris.lutece.e2e</groupId>
             <artifactId>lutece-e2e-agent</artifactId>
             <scope>test</scope>
         </dependency>
-
+		-->
         <!-- JUnit 5 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
