@@ -51,6 +51,13 @@ public class ContainerSetup {
         mariadb.start();
         LOGGER.info("MariaDB démarré sur: {}:{}", mariadb.getHost(), mariadb.getMappedPort(3306));
 
+        // Récupérer l'IP du conteneur MariaDB dans le réseau partagé
+        // Bypass la résolution DNS (aardvark-dns) qui peut échouer sous Podman
+        String mariaDbIp = mariadb.getContainerInfo()
+            .getNetworkSettings().getNetworks()
+            .values().iterator().next().getIpAddress();
+        LOGGER.info("MariaDB IP dans le réseau partagé: {}", mariaDbIp);
+
         // Récupérer les paramètres de l'image
         String luteceImage = System.getProperty("lutece.image", "nexus-docker-fastdeploy.api.paris.mdp/bild/f98/site-deontologie:1.0.0-SNAPSHOT");
         String contextRoot = System.getProperty("lutece.context.root", "/lutece");
@@ -59,9 +66,10 @@ public class ContainerSetup {
         LOGGER.info("Démarrage de Lutece - Image: {}, Context: {}", luteceImage, contextRoot);
 
         // Démarrer Lutece (port 9090 dans le conteneur, port aléatoire sur l'hôte)
+        // Utilise l'IP directe au lieu de l'alias DNS pour compatibilité Podman
         lutece = new LuteceContainer(luteceImage, contextRoot)
             .withSharedNetwork(network, "lutece")
-            .withMariaDB("mariadb", 3306, "core", "lutece", dbPassword);
+            .withMariaDB(mariaDbIp, 3306, "core", "lutece", dbPassword);
 
         lutece.start();
 
