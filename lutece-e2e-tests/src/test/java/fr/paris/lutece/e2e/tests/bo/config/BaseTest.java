@@ -79,11 +79,10 @@ public abstract class BaseTest {
             .setHeadless(HEADLESS)
             .setSlowMo(HEADLESS ? 0 : SLOW_MO);
 
-        // Configurer le proxy Chromium uniquement pour les URLs externes (pas localhost)
+        // Configurer le proxy Chromium uniquement pour les URLs internes *.mdp
         // En mode conteneur (Testcontainers), BASE_URL est localhost => pas de proxy
-        // En mode externe, le proxy est necessaire pour atteindre les sites HTTPS
-        boolean isLocalTarget = BASE_URL.contains("localhost") || BASE_URL.contains("127.0.0.1");
-        if (!isLocalTarget) {
+        // En mode externe sur le reseau interne (*.mdp), le proxy est necessaire
+        if (BASE_URL.contains(".mdp")) {
             String proxyServer = getEnvOrNull("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy");
             if (proxyServer != null) {
                 Proxy proxy = new Proxy(proxyServer);
