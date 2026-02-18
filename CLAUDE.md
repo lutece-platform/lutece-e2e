@@ -246,7 +246,7 @@ lutece-e2e-tests/src/test/java/fr/paris/lutece/e2e/tests/bo/
 ├── config/
 │   └── BaseTest.java              # Cycle de vie Playwright (BeforeAll/AfterAll)
 ├── containers/
-│   └── LuteceContainer.java       # GenericContainer + health check HTTP
+│   └── LuteceContainer.java       # GenericContainer + patch JDBC MySQL + health check HTTP
 └── testsuites/
     ├── ContainerSetup.java                # Demarre MariaDB + Lutece via Testcontainers
     ├── ContainerIntegrationSuite.java     # Suite Docker (23 tests)
@@ -288,3 +288,33 @@ Cela permet de surcharger via la ligne de commande : `-Dtest.headless=true`, `-D
 - En mode conteneur, le demarrage de Lutece prend ~3-4 minutes (Liquibase + initialisation)
 - Les tests CDI et bo3 coexistent dans des packages separes sans conflit
 - Les Page Objects bo (POJOs) sont dans `lutece-e2e-core` (`fr.paris.lutece.e2e.pages.bo`) pour centraliser tout le code Playwright dans un seul module
+
+### Compatibilite Docker / Podman (JDBC)
+
+`LuteceContainer.withMariaDB()` patch le `server.xml` de Liberty au demarrage du conteneur
+pour forcer les classes MySQL sur le `<jdbcDriver>` :
+
+```xml
+<!-- Avant (dans l'image) -->
+<jdbcDriver libraryRef="jdbcLib"/>
+
+<!-- Apres (patche par sed au demarrage) -->
+<jdbcDriver libraryRef="jdbcLib"
+    javax.sql.DataSource="com.mysql.cj.jdbc.MysqlDataSource"
+    javax.sql.ConnectionPoolDataSource="com.mysql.cj.jdbc.MysqlConnectionPoolDataSource"
+    javax.sql.XADataSource="com.mysql.cj.jdbc.MysqlXADataSource"/>
+```
+
+**Pourquoi** : sous Podman, l'auto-detection JDBC de Liberty echoue car la feature
+`persistence-3.1` fournit des classes H2 qui prennent le dessus sur MySQL.
+L'erreur typique est `DSRA4000E: No implementations of org.h2.jdbcx.JdbcDataSource`.
+
+**Contraintes techniques** :
+- On NE change PAS `<properties>` en `<properties.mysql>` : cela modifie le comportement
+  de connexion (DataSource class differente) et cause `Communications link failure` sur Docker
+- On NE peut PAS utiliser `configDropins/overrides` : redeclarer un `<dataSource>` avec le meme
+  `jndiName` cree un conflit JNDI (`CWWKG0031E`) car le dataSource original n'a pas d'attribut `id`
+- On utilise `withCreateContainerCmdModifier` (override ENTRYPOINT) au lieu de `withCommand` (CMD)
+  car certaines images Liberty ont un ENTRYPOINT qui ignore le CMD
+- `BaseTest.BASE_URL` utilise `getOptionalValue().orElse(...)` pour eviter un
+  `ExceptionInInitializerError` quand la propriete n'est pas encore definie (mode conteneur)
