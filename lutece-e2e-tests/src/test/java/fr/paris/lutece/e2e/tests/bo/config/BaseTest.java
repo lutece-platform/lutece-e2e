@@ -79,17 +79,20 @@ public abstract class BaseTest {
             .setHeadless(HEADLESS)
             .setSlowMo(HEADLESS ? 0 : SLOW_MO);
 
-        // Configurer le proxy Chromium si une variable d'environnement est definie
-        // Chromium n'utilise pas automatiquement http_proxy/https_proxy
-        // Le bypass (no_proxy) permet d'exclure localhost et les URLs internes
-        String proxyServer = getEnvOrNull("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy");
-        if (proxyServer != null) {
-            Proxy proxy = new Proxy(proxyServer);
-            String bypass = getEnvOrNull("NO_PROXY", "no_proxy");
-            if (bypass != null) {
-                proxy.setBypass(bypass);
+        // Configurer le proxy Chromium uniquement pour les URLs externes (pas localhost)
+        // En mode conteneur (Testcontainers), BASE_URL est localhost => pas de proxy
+        // En mode externe, le proxy est necessaire pour atteindre les sites HTTPS
+        boolean isLocalTarget = BASE_URL.contains("localhost") || BASE_URL.contains("127.0.0.1");
+        if (!isLocalTarget) {
+            String proxyServer = getEnvOrNull("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy");
+            if (proxyServer != null) {
+                Proxy proxy = new Proxy(proxyServer);
+                String bypass = getEnvOrNull("NO_PROXY", "no_proxy");
+                if (bypass != null) {
+                    proxy.setBypass(bypass);
+                }
+                launchOptions.setProxy(proxy);
             }
-            launchOptions.setProxy(proxy);
         }
 
         browser = playwright.chromium().launch(launchOptions);
