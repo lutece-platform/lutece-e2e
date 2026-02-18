@@ -366,19 +366,26 @@ pipeline {
                             sh 'mkdir -p lutece-e2e-tests/target/screenshots'
 
                             // Exécuter les tests dans le conteneur Playwright
+                            // Propager les variables proxy pour accéder aux sites externes (HTTPS)
                             sh """
                                 podman run --rm \
                                     --network=host \
                                     --user root \
                                     -v \${WORKSPACE}:/work:Z \
                                     -w /work/lutece-e2e-tests \
+                                    -e http_proxy=\${http_proxy:-} \
+                                    -e https_proxy=\${https_proxy:-} \
+                                    -e no_proxy=\${no_proxy:-} \
+                                    -e HTTP_PROXY=\${HTTP_PROXY:-} \
+                                    -e HTTPS_PROXY=\${HTTPS_PROXY:-} \
+                                    -e NO_PROXY=\${NO_PROXY:-} \
                                     ${PLAYWRIGHT_IMAGE} \
                                     ./mvnw test -o \
                                         -Dmaven.repo.local=m2-repo \
                                         -Dtest=${testClass} \
                                         -Dlutece.base.url=${env.TARGET_URL} \
                                         -Dtest.headless=${params.HEADLESS} \
-                                        -Dtest.timeout=10000 \
+                                        -Dtest.timeout=30000 \
                                         -B \
                                         --fail-at-end
                             """

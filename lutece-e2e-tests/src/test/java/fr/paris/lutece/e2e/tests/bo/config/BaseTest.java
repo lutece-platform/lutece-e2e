@@ -1,6 +1,7 @@
 package fr.paris.lutece.e2e.tests.bo.config;
 
 import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.Proxy;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.*;
@@ -74,9 +75,37 @@ public abstract class BaseTest {
     @BeforeAll
     static void launchBrowser() {
         playwright = Playwright.create();
-        browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
+        BrowserType.LaunchOptions launchOptions = new BrowserType.LaunchOptions()
             .setHeadless(HEADLESS)
-            .setSlowMo(HEADLESS ? 0 : SLOW_MO));
+            .setSlowMo(HEADLESS ? 0 : SLOW_MO);
+
+        // Configurer le proxy Chromium si une variable d'environnement est definie
+        // Chromium n'utilise pas automatiquement http_proxy/https_proxy
+        // Le bypass (no_proxy) permet d'exclure localhost et les URLs internes
+        String proxyServer = getEnvOrNull("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy");
+        if (proxyServer != null) {
+            Proxy proxy = new Proxy(proxyServer);
+            String bypass = getEnvOrNull("NO_PROXY", "no_proxy");
+            if (bypass != null) {
+                proxy.setBypass(bypass);
+            }
+            launchOptions.setProxy(proxy);
+        }
+
+        browser = playwright.chromium().launch(launchOptions);
+    }
+
+    /**
+     * Retourne la premiere variable d'environnement non vide parmi les noms donnes, ou null.
+     */
+    private static String getEnvOrNull(String... names) {
+        for (String name : names) {
+            String value = System.getenv(name);
+            if (value != null && !value.isEmpty()) {
+                return value;
+            }
+        }
+        return null;
     }
 
     @BeforeEach
