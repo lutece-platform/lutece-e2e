@@ -323,7 +323,7 @@ pipeline {
                                         -Dlutece.context.root=${LUTECE_CONTEXT_ROOT} \
                                         -Dlutece.http.port=${LUTECE_HTTP_PORT} \
                                         -Dtest.headless=${params.HEADLESS} \
-                                        -Dtest.timeout=30000 \
+                                        -Dtest.timeout=10000 \
                                         -B \
                                         --fail-at-end
                             """
