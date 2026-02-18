@@ -154,9 +154,9 @@ pipeline {
                         echo '=== Installation des dépendances Maven ==='
                         withMaven(jdk: "${JAVA_MAVEN}", maven: "${MAVEN}", traceability: false) {
                             sh '''
-                                # Build du parent et de tous les modules (sans tests)
-                                # WORKSPACE = racine du repo (contient le pom.xml parent)
-                                mvn clean install -DskipTests -Dmaven.repo.local=${WORKSPACE}/lutece-e2e-tests/m2-repo -B -q
+                                # Build uniquement lutece-e2e-tests et ses dépendances (core + parent)
+                                # -pl : project list, -am : also make dependencies
+                                mvn clean install -DskipTests -pl lutece-e2e-tests -am -Dmaven.repo.local=${WORKSPACE}/lutece-e2e-tests/m2-repo -B -q
 
                                 # Les commandes suivantes s'exécutent depuis le module lutece-e2e-tests
                                 cd ${WORKSPACE}/lutece-e2e-tests
