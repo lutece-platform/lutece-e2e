@@ -316,7 +316,7 @@ pipeline {
                                     -e TESTCONTAINERS_RYUK_DISABLED=true \
                                     -e TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock \
                                     ${PLAYWRIGHT_IMAGE} \
-                                    ./mvnw test -o \
+                                    ./mvnw clean test -o \
                                         -Dmaven.repo.local=m2-repo \
                                         -Dtest=${testClass} \
                                         -Dlutece.image=${params.LUTECE_IMAGE} \
@@ -380,7 +380,7 @@ pipeline {
                                     -e HTTPS_PROXY=\${HTTPS_PROXY:-} \
                                     -e NO_PROXY=\${NO_PROXY:-} \
                                     ${PLAYWRIGHT_IMAGE} \
-                                    ./mvnw test -o \
+                                    ./mvnw clean test -o \
                                         -Dmaven.repo.local=m2-repo \
                                         -Dtest=${testClass} \
                                         -Dlutece.base.url=${env.TARGET_URL} \
