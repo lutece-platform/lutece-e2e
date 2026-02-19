@@ -5,6 +5,7 @@ import fr.paris.lutece.e2e.pages.bo.AdminMenuPage;
 import fr.paris.lutece.e2e.pages.bo.LoginPage;
 import com.microsoft.playwright.*;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.MariaDBContainer;
@@ -12,12 +13,15 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import fr.paris.lutece.e2e.tests.bo.config.ScreenshotOnFailureExtension;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test de connexion BO avec Testcontainers (MariaDB + Lutece).
  */
 @Testcontainers
+@ExtendWith(ScreenshotOnFailureExtension.class)
 @DisplayName("Test de connexion BO avec Testcontainers")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class LoginContainerTest {
