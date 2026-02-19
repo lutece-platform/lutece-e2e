@@ -73,14 +73,14 @@ public class ContainerSetup {
 
         lutece.start();
 
-        // Attendre que Lutece soit prêt
-        waitForApplication();
-
-        // Configurer l'URL de base pour les tests (port mappé dynamiquement par Testcontainers)
+        // Configurer l'URL de base pour les tests AVANT le health check
+        // pour que les tests suivants utilisent l'URL du conteneur même si le health check échoue
         String baseUrl = lutece.getBaseURL();
         System.setProperty("lutece.base.url", baseUrl);
-        // Mettre à jour BaseTest.BASE_URL pour les classes de test
         BaseTest.updateBaseUrl(baseUrl);
+
+        // Attendre que Lutece soit prêt
+        waitForApplication();
 
         containersStarted = true;
         LOGGER.info("=== Environnement prêt - URL: {} ===", baseUrl);
