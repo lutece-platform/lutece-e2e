@@ -5,12 +5,14 @@ import com.microsoft.playwright.options.Proxy;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
  * Classe de base pour tous les tests Playwright.
  * Gère le cycle de vie du navigateur et des contextes.
  * Utilise MicroProfile Config pour la gestion des configurations.
  */
+@ExtendWith(ScreenshotOnFailureExtension.class)
 public abstract class BaseTest {
 
     protected static Playwright playwright;
