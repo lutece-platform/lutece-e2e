@@ -80,6 +80,26 @@ pipeline {
             defaultValue: false,
             description: 'Envoyer les rapports à SonarQube'
         )
+        string(
+            name: 'COMMIT_AUTHOR',
+            defaultValue: '',
+            description: '[AUTO] Auteur du commit (transmis par la pipeline de build d\'image)'
+        )
+        string(
+            name: 'COMMIT_EMAIL',
+            defaultValue: '',
+            description: '[AUTO] Email de l\'auteur du commit'
+        )
+        string(
+            name: 'COMMIT_HASH',
+            defaultValue: '',
+            description: '[AUTO] Hash du commit'
+        )
+        string(
+            name: 'PROJECT_PATH',
+            defaultValue: '',
+            description: '[AUTO] Chemin du projet source (ex: bild/f98/site-deontologie)'
+        )
     }
 
     options {
@@ -468,6 +488,28 @@ pipeline {
             ║                    TESTS RÉUSSIS                             ║
             ╚══════════════════════════════════════════════════════════════╝
             '''
+            script {
+                if (params.COMMIT_EMAIL?.trim()) {
+                    emailext(
+                        to: params.COMMIT_EMAIL,
+                        subject: "✅ Tests E2E réussis - ${params.PROJECT_PATH ?: 'Lutece'}",
+                        body: """Bonjour ${params.COMMIT_AUTHOR ?: ''},
+
+Les tests E2E de non-régression ont réussi suite à votre push.
+
+Projet  : ${params.PROJECT_PATH ?: 'N/A'}
+Commit  : ${params.COMMIT_HASH ?: 'N/A'}
+Image   : ${params.LUTECE_IMAGE ?: 'N/A'}
+Suite   : ${params.TEST_SUITE ?: 'N/A'}
+
+Rapport : ${env.BUILD_URL}
+
+Cordialement,
+Jenkins CI""",
+                        attachLog: false
+                    )
+                }
+            }
         }
         failure {
             echo '''
@@ -475,6 +517,31 @@ pipeline {
             ║                    TESTS ÉCHOUÉS                             ║
             ╚══════════════════════════════════════════════════════════════╝
             '''
+            script {
+                if (params.COMMIT_EMAIL?.trim()) {
+                    emailext(
+                        to: params.COMMIT_EMAIL,
+                        subject: "❌ Tests E2E en échec - ${params.PROJECT_PATH ?: 'Lutece'}",
+                        body: """Bonjour ${params.COMMIT_AUTHOR ?: ''},
+
+Les tests E2E de non-régression ont échoué suite à votre push.
+
+Projet  : ${params.PROJECT_PATH ?: 'N/A'}
+Commit  : ${params.COMMIT_HASH ?: 'N/A'}
+Image   : ${params.LUTECE_IMAGE ?: 'N/A'}
+Suite   : ${params.TEST_SUITE ?: 'N/A'}
+
+Rapport complet et screenshots : ${env.BUILD_URL}
+
+Merci de vérifier les résultats.
+
+Cordialement,
+Jenkins CI""",
+                        attachLog: true,
+                        compressLog: true
+                    )
+                }
+            }
         }
         unstable {
             echo '''
@@ -482,6 +549,28 @@ pipeline {
             ║               TESTS INSTABLES (certains échecs)              ║
             ╚══════════════════════════════════════════════════════════════╝
             '''
+            script {
+                if (params.COMMIT_EMAIL?.trim()) {
+                    emailext(
+                        to: params.COMMIT_EMAIL,
+                        subject: "⚠️ Tests E2E instables - ${params.PROJECT_PATH ?: 'Lutece'}",
+                        body: """Bonjour ${params.COMMIT_AUTHOR ?: ''},
+
+Certains tests E2E de non-régression ont échoué suite à votre push.
+
+Projet  : ${params.PROJECT_PATH ?: 'N/A'}
+Commit  : ${params.COMMIT_HASH ?: 'N/A'}
+Image   : ${params.LUTECE_IMAGE ?: 'N/A'}
+Suite   : ${params.TEST_SUITE ?: 'N/A'}
+
+Rapport complet et screenshots : ${env.BUILD_URL}
+
+Cordialement,
+Jenkins CI""",
+                        attachLog: false
+                    )
+                }
+            }
         }
     }
 }
