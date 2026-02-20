@@ -81,12 +81,17 @@ public class LuteceContainer extends GenericContainer<LuteceContainer> {
         // On garde <properties> generique (pas <properties.mysql>) pour ne pas changer
         // le comportement de connexion (MysqlConnectionPoolDataSource vs DataSource generique).
         // withCommand (CMD) est ignore par certaines images Liberty, on surcharge l'ENTRYPOINT.
+        // Le patch est conditionnel : certaines images ont deja les classes JDBC specifiees,
+        // les ajouter en doublon cause une erreur XML (CWWKG0014E: AttributeNotUnique).
+        // Only patch if the image doesn't already specify JDBC driver classes
         withCreateContainerCmdModifier(cmd ->
             cmd.withEntrypoint("bash", "-c",
+                "if ! grep -q 'javax.sql.DataSource=' /config/server.xml; then " +
                 "sed -i 's|libraryRef=\"jdbcLib\"|libraryRef=\"jdbcLib\" " +
                 "javax.sql.DataSource=\"com.mysql.cj.jdbc.MysqlDataSource\" " +
                 "javax.sql.ConnectionPoolDataSource=\"com.mysql.cj.jdbc.MysqlConnectionPoolDataSource\" " +
-                "javax.sql.XADataSource=\"com.mysql.cj.jdbc.MysqlXADataSource\"|' /config/server.xml && " +
+                "javax.sql.XADataSource=\"com.mysql.cj.jdbc.MysqlXADataSource\"|' /config/server.xml; " +
+                "fi && " +
                 "exec /opt/ol/helpers/runtime/docker-server.sh /opt/ol/wlp/bin/server run defaultServer"));
 
         return this;
