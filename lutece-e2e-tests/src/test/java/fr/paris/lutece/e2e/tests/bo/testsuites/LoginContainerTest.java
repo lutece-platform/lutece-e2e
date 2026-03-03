@@ -82,7 +82,7 @@ public class LoginContainerTest {
             .setIgnoreHTTPSErrors(true));
 
         page = context.newPage();
-        page.setDefaultTimeout(30000);
+        page.setDefaultTimeout(10000);
     }
 
     private void waitForApplication() {

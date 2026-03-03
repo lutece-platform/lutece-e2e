@@ -47,6 +47,9 @@ public class LuteceContainer extends GenericContainer<LuteceContainer> {
         // Exposer les ports HTTP et HTTPS
         withExposedPorts(HTTP_PORT, HTTPS_PORT);
 
+        // Proprietes systeme Java pour OpenLiberty (via JVM_ARGS)
+        withEnv("JVM_ARGS", "-Dotel.sdk.disabled=true -Dmp.config.profile=test");
+
         // Attendre que Liberty soit prêt (message CWWKF0011I = Server ready)
         // 5 minutes pour permettre à Liquibase de terminer les migrations
         waitingFor(Wait.forLogMessage(".*CWWKF0011I.*", 1)
