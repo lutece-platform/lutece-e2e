@@ -131,15 +131,22 @@ public class FormsCreationTest extends BaseTest {
 
     private void saveFormId() {
         try {
-            String url = page.url();
-            String formId = "1"; // Default
-            if (url.contains("id_form=")) {
-                formId = url.split("id_form=")[1].split("&")[0].split("#")[0];
-            } else if (url.contains("id=")) {
-                formId = url.split("id=")[1].split("&")[0].split("#")[0];
+            // Naviguer vers la liste des formulaires
+            page.navigate(BASE_URL + "/jsp/admin/plugins/forms/ManageForms.jsp?view=manageForms");
+            page.waitForLoadState();
+
+            // Trouver le lien du formulaire par son attribut title et extraire id_form
+            var editLink = page.locator("a[href*='view=manageSteps'][title='" + formTitle + "']");
+            String href = editLink.getAttribute("href");
+            if (href != null && href.contains("id_form=")) {
+                String formId = href.split("id_form=")[1].split("&")[0].split("#")[0];
+                java.nio.file.Files.writeString(
+                    java.nio.file.Paths.get("target/test-form-id.txt"), formId);
             }
-            java.nio.file.Files.writeString(
-                java.nio.file.Paths.get("target/test-form-id.txt"), formId);
+
+            // Cliquer sur le formulaire pour naviguer vers ManageSteps
+            editLink.click();
+            page.waitForLoadState();
         } catch (Exception e) {
             // ignore
         }
@@ -149,9 +156,8 @@ public class FormsCreationTest extends BaseTest {
     @Order(3)
     @DisplayName("Ajout des etapes au formulaire")
     void testAddSteps() {
-        // Given
+        // Given - On est deja sur la page ManageSteps apres saveFormId()
         FormsEditPage editPage = new FormsEditPage(page, BASE_URL);
-        editPage.clickModifyStep();
         editPage.clickStepsTab();
 
         // When - Ajouter l'etape initiale
@@ -267,17 +273,26 @@ public class FormsCreationTest extends BaseTest {
     @Order(9)
     @DisplayName("Publication du formulaire sur le portail")
     void testPublishFormOnPortal() {
-        // Given
+        // Given - Lire l'ID du formulaire sauvegarde
+        String formId = readFormId();
+        assertNotNull(formId, "L'identifiant du formulaire devrait etre disponible");
+
         FormsEditPage editPage = new FormsEditPage(page, BASE_URL);
 
-        // When - publier via la page d'accueil
-        editPage.publishOnPortal(formTitle, "today");
+        // When - modifier les dates de disponibilite via la page modifyForm
+        editPage.publishOnPortal(formId, "today", "2033-12-31");
 
-        // Then
-        page.waitForLoadState();
-        // Retourner a la page LUTECE pour la suite
-        page.getByRole(com.microsoft.playwright.options.AriaRole.LINK,
-            new com.microsoft.playwright.Page.GetByRoleOptions().setName("LUTECE").setExact(true)).click();
-        assertTrue(true, "Le formulaire devrait etre publie");
+        // Then - apres soumission on revient sur la liste des formulaires
+        assertTrue(page.url().contains("ManageForms") || page.url().contains("manageForms"),
+            "Apres modification, la page devrait afficher la liste des formulaires");
+    }
+
+    private String readFormId() {
+        try {
+            return java.nio.file.Files.readString(
+                java.nio.file.Paths.get("target/test-form-id.txt")).trim();
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
