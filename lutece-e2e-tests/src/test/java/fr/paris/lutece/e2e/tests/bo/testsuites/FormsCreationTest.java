@@ -156,18 +156,19 @@ public class FormsCreationTest extends BaseTest {
     @Order(3)
     @DisplayName("Ajout des etapes au formulaire")
     void testAddSteps() {
-        // Given - On est deja sur la page ManageSteps apres saveFormId()
+        // Given
+        String formId = readFormId();
+        assertNotNull(formId, "L'identifiant du formulaire devrait etre disponible");
         FormsEditPage editPage = new FormsEditPage(page, BASE_URL);
-        editPage.clickStepsTab();
 
         // When - Ajouter l'etape initiale
-        editPage.addStep(STEP_INITIAL, false);
+        editPage.addStep(formId, STEP_INITIAL, false);
 
         // Then
         page.waitForLoadState();
 
         // When - Ajouter l'etape finale
-        editPage.addStep(STEP_FINAL, true);
+        editPage.addStep(formId, STEP_FINAL, true);
 
         // Then
         page.waitForLoadState();
@@ -180,9 +181,9 @@ public class FormsCreationTest extends BaseTest {
     @DisplayName("Ajout d'une question texte a l'etape initiale")
     void testAddTextQuestion() {
         // Given
+        String formId = readFormId();
         FormsEditPage editPage = new FormsEditPage(page, BASE_URL);
-        editPage.openStepEditByName(STEP_INITIAL);
-        editPage.clickQuestionsTab();
+        editPage.navigateToStepQuestions(formId, STEP_INITIAL);
 
         // When
         editPage.addTextQuestion(QUESTION_TEXT);
@@ -214,10 +215,10 @@ public class FormsCreationTest extends BaseTest {
     @Order(6)
     @DisplayName("Ajout d'une question date a l'etape initiale")
     void testAddDateQuestion() {
-        // Given - Re-naviguer vers les questions de l'etape initiale
+        // Given - Naviguer vers les questions de l'etape initiale
+        String formId = readFormId();
         FormsEditPage editPage = new FormsEditPage(page, BASE_URL);
-        editPage.openStepEditByName(STEP_INITIAL);
-        editPage.clickQuestionsTab();
+        editPage.navigateToStepQuestions(formId, STEP_INITIAL);
 
         // When
         editPage.addDateQuestion(QUESTION_DATE);
@@ -231,13 +232,10 @@ public class FormsCreationTest extends BaseTest {
     @Order(7)
     @DisplayName("Ajout d'une question commentaire a l'etape finale")
     void testAddCommentQuestion() {
-        // Given - Re-naviguer vers le formulaire puis l'etape finale
+        // Given - Naviguer vers les questions de l'etape finale
+        String formId = readFormId();
         FormsEditPage editPage = new FormsEditPage(page, BASE_URL);
-        editPage.clickShowSteps();
-        editPage.clickFormByName(formTitle);
-        editPage.clickStepsTab();
-        editPage.clickStepByName(STEP_FINAL);
-        editPage.clickQuestionsTab();
+        editPage.navigateToStepQuestions(formId, STEP_FINAL);
 
         // When
         editPage.addCommentQuestion(COMMENT_CODE, COMMENT_TEXT);
@@ -252,17 +250,12 @@ public class FormsCreationTest extends BaseTest {
     @DisplayName("Configuration de la transition entre etapes")
     void testConfigureStepTransition() {
         // Given
+        String formId = readFormId();
+        assertNotNull(formId, "L'identifiant du formulaire devrait etre disponible");
         FormsEditPage editPage = new FormsEditPage(page, BASE_URL);
 
-        // Naviguer vers l'etape initiale pour configurer la liaison
-        editPage.clickShowSteps();
-        editPage.clickFormByName(formTitle);
-        editPage.clickStepsTab();
-        editPage.clickStepByName(STEP_INITIAL);
-        editPage.clickStepParametersTab();
-
-        // When
-        editPage.configureStepTransition();
+        // When - Creer la transition sur l'etape initiale
+        editPage.configureStepTransition(formId, STEP_INITIAL);
 
         // Then
         page.waitForLoadState();

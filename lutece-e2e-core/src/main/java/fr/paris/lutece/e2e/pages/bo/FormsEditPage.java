@@ -35,20 +35,36 @@ public class FormsEditPage {
     }
 
     /**
-     * Ajoute une etape via l'iframe.
+     * Ajoute une etape via la page ManageSteps (navigation directe).
      */
-    public FormsEditPage addStep(String title, boolean isFinal) {
-        page.getByRole(AriaRole.LINK,
-            new Page.GetByRoleOptions().setName("Ajouter une étape")).click();
-        FrameLocator iframe = page.frameLocator("iframe[title=\"Ajouter une étape\"]");
-        iframe.locator("#step-title").click();
-        iframe.locator("#step-title").fill(title);
+    public FormsEditPage addStep(String formId, String title, boolean isFinal) {
+        page.navigate(baseUrl + "/jsp/admin/plugins/forms/ManageSteps.jsp?view=createStep&id_form=" + formId);
+        page.waitForLoadState();
+        page.locator("#step-title").click();
+        page.locator("#step-title").fill(title);
         if (isFinal) {
-            iframe.getByRole(AriaRole.CHECKBOX,
-                new FrameLocator.GetByRoleOptions().setName("Finale")).check();
+            page.getByRole(AriaRole.CHECKBOX,
+                new Page.GetByRoleOptions().setName("Finale")).check();
         }
-        iframe.getByRole(AriaRole.BUTTON,
-            new FrameLocator.GetByRoleOptions().setName("OK")).click();
+        page.getByRole(AriaRole.BUTTON,
+            new Page.GetByRoleOptions().setName("OK")).click();
+        return this;
+    }
+
+    /**
+     * Navigue vers la page de gestion des questions d'une etape.
+     * Extrait l'id_step depuis le lien a.searchable contenant le nom de l'etape,
+     * puis navigue vers ManageQuestions.jsp?view=manageQuestions&id_step=...
+     */
+    public FormsEditPage navigateToStepQuestions(String formId, String stepName) {
+        page.navigate(baseUrl + "/jsp/admin/plugins/forms/ManageSteps.jsp?view=manageSteps&id_form=" + formId);
+        page.waitForLoadState();
+        Locator stepLink = page.locator("a.searchable",
+            new Page.LocatorOptions().setHasText(stepName)).last();
+        String href = stepLink.getAttribute("href");
+        String stepId = href.split("id_step=")[1].split("&")[0];
+        page.navigate(baseUrl + "/jsp/admin/plugins/forms/ManageQuestions.jsp?view=manageQuestions&id_step=" + stepId);
+        page.waitForLoadState();
         return this;
     }
 
@@ -176,14 +192,21 @@ public class FormsEditPage {
     }
 
     /**
-     * Configure la transition entre etapes via l'iframe Offcanvas.
+     * Configure la transition d'une etape via navigation directe.
+     * Extrait l'id_step depuis le lien a.searchable contenant le nom de l'etape,
+     * puis navigue vers createTransition.
      */
-    public FormsEditPage configureStepTransition() {
-        page.getByRole(AriaRole.LINK,
-            new Page.GetByRoleOptions().setName("Ajouter une liaison")).click();
-        FrameLocator offcanvasIframe = page.frameLocator("iframe[title=\"Offcanvas\"]");
-        offcanvasIframe.getByRole(AriaRole.BUTTON,
-            new FrameLocator.GetByRoleOptions().setName("OK")).click();
+    public FormsEditPage configureStepTransition(String formId, String stepName) {
+        page.navigate(baseUrl + "/jsp/admin/plugins/forms/ManageSteps.jsp?view=manageSteps&id_form=" + formId);
+        page.waitForLoadState();
+        Locator stepLink = page.locator("a.searchable",
+            new Page.LocatorOptions().setHasText(stepName)).last();
+        String href = stepLink.getAttribute("href");
+        String stepId = href.split("id_step=")[1].split("&")[0];
+        page.navigate(baseUrl + "/jsp/admin/plugins/forms/ManageTransitions.jsp?view=createTransition&id_step=" + stepId);
+        page.waitForLoadState();
+        page.getByRole(AriaRole.BUTTON,
+            new Page.GetByRoleOptions().setName("OK")).click();
         return this;
     }
 
