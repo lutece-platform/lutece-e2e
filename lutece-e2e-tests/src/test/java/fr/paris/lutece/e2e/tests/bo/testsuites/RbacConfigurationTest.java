@@ -172,10 +172,43 @@ public class RbacConfigurationTest extends BaseTest {
 
         LOGGER.info("Controle {} ajoute", resourceType);
     }
-
     @Test
     @Order(4)
-    @DisplayName("4. Configuration des droits utilisateur")
+    @DisplayName("4. Configuration des groupes de fonctionnalites")
+    void testConfigureFeatureGroups() {
+        LOGGER.info("Configuration des groupes de fonctionnalites");
+
+        // Ouvrir le menu Systeme
+        page.locator("a:has-text('Système')").first().click();
+        page.waitForTimeout(500);
+
+        // Navigation vers les parametres techniques
+        page.locator("a:has-text('Paramètres techniques')").first().click();
+        page.waitForLoadState();
+
+        // Aller dans l'onglet "Affectation des fonctionnalites"
+        page.locator("a:has-text('Affectation des fonctionnalit')").first().click();
+        page.waitForLoadState();
+
+        // Configurer FORMS_MANAGEMENT dans le groupe CONTENT (si present)
+        if (page.locator("#group_name-FORMS_MANAGEMENT").count() > 0) {
+            page.locator("#group_name-FORMS_MANAGEMENT").selectOption("CONTENT");
+            page.navigate(BASE_URL + "/jsp/admin/AdminTechnicalMenu.jsp?#features_management");
+            page.waitForLoadState();
+        }
+
+        // Configurer FORMS_SEARCH_INDEXATION dans le groupe CONTENT (si present)
+        if (page.locator("#group_name-FORMS_SEARCH_INDEXATION").count() > 0) {
+            page.locator("#group_name-FORMS_SEARCH_INDEXATION").selectOption("CONTENT");
+            page.navigate(BASE_URL + "/jsp/admin/AdminTechnicalMenu.jsp?#features_management");
+            page.waitForLoadState();
+        }
+
+        LOGGER.info("Groupes de fonctionnalites configures");
+    }
+    @Test
+    @Order(5)
+    @DisplayName("5. Configuration des droits utilisateur")
     void testConfigureUserRights() {
         LOGGER.info("Configuration des droits utilisateur");
 
@@ -226,38 +259,4 @@ public class RbacConfigurationTest extends BaseTest {
         }
     }
 
-    @Test
-    @Order(5)
-    @DisplayName("5. Configuration des groupes de fonctionnalites")
-    void testConfigureFeatureGroups() {
-        LOGGER.info("Configuration des groupes de fonctionnalites");
-
-        // Ouvrir le menu Systeme
-        page.locator("a:has-text('Système')").first().click();
-        page.waitForTimeout(500);
-
-        // Navigation vers les parametres techniques
-        page.locator("a:has-text('Paramètres techniques')").first().click();
-        page.waitForLoadState();
-
-        // Aller dans l'onglet "Affectation des fonctionnalites"
-        page.locator("a:has-text('Affectation des fonctionnalit')").first().click();
-        page.waitForLoadState();
-
-        // Configurer FORMS_MANAGEMENT dans le groupe CONTENT (si present)
-        if (page.locator("#group_name-FORMS_MANAGEMENT").count() > 0) {
-            page.locator("#group_name-FORMS_MANAGEMENT").selectOption("CONTENT");
-            page.navigate(BASE_URL + "/jsp/admin/AdminTechnicalMenu.jsp?#features_management");
-            page.waitForLoadState();
-        }
-
-        // Configurer FORMS_SEARCH_INDEXATION dans le groupe CONTENT (si present)
-        if (page.locator("#group_name-FORMS_SEARCH_INDEXATION").count() > 0) {
-            page.locator("#group_name-FORMS_SEARCH_INDEXATION").selectOption("CONTENT");
-            page.navigate(BASE_URL + "/jsp/admin/AdminTechnicalMenu.jsp?#features_management");
-            page.waitForLoadState();
-        }
-
-        LOGGER.info("Groupes de fonctionnalites configures");
-    }
 }
