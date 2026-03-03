@@ -45,8 +45,7 @@ public class WorkflowEditPage {
      * Utilise le lien unique present sur la page.
      */
     public WorkflowEditPage clickModifyWorkflowLink() {
-        page.getByRole(AriaRole.LINK,
-            new Page.GetByRoleOptions().setName("Modifier le workflow")).click();
+        page.locator("a:has-text('Modifier le workflow'), a:has-text('Retour Modification du workflow')").first().click();
         return this;
     }
 

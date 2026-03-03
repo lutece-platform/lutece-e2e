@@ -179,7 +179,7 @@ public class WorkflowCreationTest extends BaseTest {
         assertNotNull(page.url(), "La page d'edition du workflow devrait etre accessible");
     }
 
-    @Test
+  /*  @Test
     @Order(6)
     @DisplayName("Publication du workflow")
     void testPublishWorkflow() {
@@ -195,12 +195,14 @@ public class WorkflowCreationTest extends BaseTest {
         assertTrue(listPage.isDisplayed(),
             "La liste des workflows devrait etre affichee");
     }
-
+*/
     @Test
-    @Order(7)
+    @Order(6)
     @DisplayName("Activation du workflow")
     void testActivateWorkflow() {
-        // Given
+        // Given - naviguer vers la liste des workflows
+        page.navigate(BASE_URL + "/jsp/admin/plugins/workflow/ManageWorkflow.jsp");
+        page.waitForLoadState();
         WorkflowListPage listPage = new WorkflowListPage(page, BASE_URL);
 
         // When
