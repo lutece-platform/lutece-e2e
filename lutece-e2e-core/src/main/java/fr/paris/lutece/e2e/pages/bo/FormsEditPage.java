@@ -188,25 +188,32 @@ public class FormsEditPage {
     }
 
     /**
-     * Publie le formulaire sur le portail via la page d'accueil LUTECE.
+     * Publie le formulaire en modifiant les dates de disponibilite
+     * sur la page modifyForm.
      */
-    public FormsEditPage publishOnPortal(String formName, String startDate) {
-        page.getByRole(AriaRole.LINK,
-            new Page.GetByRoleOptions().setName("LUTECE").setExact(true)).click();
-        page.locator(".list-group-item")
-            .filter(new Locator.FilterOptions().setHasText(formName))
-            .locator(".dropdown > .btn-action").click();
-        page.getByRole(AriaRole.LINK,
-            new Page.GetByRoleOptions().setName("Editer la publication du")).click();
-        // Definir la date de publication via flatpickr
+    public FormsEditPage publishOnPortal(String formId, String startDate, String endDate) {
+        page.navigate(baseUrl + "/jsp/admin/plugins/forms/ManageForms.jsp?view=modifyForm&id_form=" + formId);
+        page.waitForLoadState();
+
+        // Definir la date de debut via flatpickr (#availabilityStartDate)
         page.evaluate("(date) => {\n"
-            + "  const input = document.querySelector('input.flatpickr-input');\n"
+            + "  const input = document.querySelector('#availabilityStartDate');\n"
             + "  if (input && input._flatpickr) {\n"
             + "    input._flatpickr.setDate(date, true);\n"
             + "  }\n"
             + "}", startDate);
-        page.getByRole(AriaRole.BUTTON,
-            new Page.GetByRoleOptions().setName("OK")).click();
+
+        // Definir la date de fin via flatpickr (#availabilityEndDate)
+        page.evaluate("(date) => {\n"
+            + "  const input = document.querySelector('#availabilityEndDate');\n"
+            + "  if (input && input._flatpickr) {\n"
+            + "    input._flatpickr.setDate(date, true);\n"
+            + "  }\n"
+            + "}", endDate);
+
+        // Cliquer sur le bouton "Modifier le formulaire" par son name
+        page.locator("button[name='action_modifyForm']").click();
+        page.waitForLoadState();
         return this;
     }
 

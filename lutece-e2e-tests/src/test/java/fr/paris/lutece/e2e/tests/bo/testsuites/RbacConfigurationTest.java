@@ -132,19 +132,10 @@ public class RbacConfigurationTest extends BaseTest {
     void testNavigateToRoleManagement() {
         LOGGER.info("Navigation vers la gestion des roles");
 
-        // Cliquer sur le menu Gestionnaires
-        page.locator("a:has-text('Gestionnaires')").first().click();
-        page.waitForTimeout(500);
-
-        // Cliquer sur "Gestion des roles" (le second lien, pas "Gestion des roles Lutece")
-        page.locator("a:has-text('Gestion des rôles')").nth(1).click();
+        // Navigation directe vers la page d'edition du role super_admin
+        page.navigate(BASE_URL + "/jsp/admin/rbac/ViewRoleDescription.jsp?role_key=super_admin");
         page.waitForLoadState();
 
-        // Cliquer sur le bouton de modification du role (8eme element de la liste)
-        page.locator("li:nth-child(8) > .card > .card-body > .row > .col-md.d-flex.align-items-center.justify-content-end > a")
-            .first().click();
-
-        page.waitForLoadState();
         LOGGER.info("Page de gestion des roles affichee");
     }
 

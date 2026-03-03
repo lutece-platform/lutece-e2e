@@ -76,16 +76,13 @@ public class FormsSubmissionTest extends BaseTest {
     @Order(1)
     @DisplayName("Soumission du formulaire en front office")
     void testSubmitFormInFrontOffice() {
-        // Given - Acceder a la page des formulaires FO
-        String formId = readFormId();
-        String foUrl = BASE_URL + "/jsp/site/Portal.jsp?page=forms&view=formView&id_form=" + formId;
+        // Given - Acceder a la liste des formulaires FO puis cliquer sur le formulaire
+        String foUrl = BASE_URL + "/jsp/site/Portal.jsp?page=forms";
         page.navigate(foUrl);
         page.waitForLoadState();
-
-        // Attendre que le contenu soit charge
         page.waitForTimeout(2000);
 
-        // Si on est sur une page de liste de formulaires, cliquer sur le lien du formulaire
+        // Cliquer sur le lien du formulaire
         Locator formLink = page.locator("a:has-text('" + formTitle + "')");
         if (formLink.count() > 0) {
             formLink.first().click();
