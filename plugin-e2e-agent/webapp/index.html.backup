@@ -1,0 +1,2608 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lutece E2E Agent - Assistant IA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #D97757;
+            --primary-light: #E09070;
+            --primary-dark: #C4704F;
+            --secondary: #B8694B;
+            --secondary-light: #D4896E;
+            --accent: #D97757;
+            --bg-light: #FAF9F7;
+            --bg-cream: #F5F0EB;
+            --bg-card: #ffffff;
+            --bg-surface: #F5F0EB;
+            --text-primary: #2D2B2A;
+            --text-secondary: #6B6966;
+            --text-muted: #9B9894;
+            --border-color: #E5E0DB;
+            --success: #16a34a;
+            --warning: #ca8a04;
+            --error: #dc2626;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+            --shadow-glow: none;
+            --radius-sm: 0.5rem;
+            --radius-md: 0.75rem;
+            --radius-lg: 1rem;
+            --radius-xl: 1.5rem;
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* No animated background */
+        body::before {
+            display: none;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-card);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            width: 24px;
+            height: 24px;
+            color: white;
+        }
+
+        .header h1 {
+            color: var(--text-primary);
+            font-size: 1.375rem;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status {
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-xl);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: var(--transition);
+        }
+
+        .status::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.9); }
+        }
+
+        .status.online {
+            background: #f0fdf4;
+            color: var(--success);
+            border: 1px solid #bbf7d0;
+        }
+
+        .status.offline {
+            background: #fef2f2;
+            color: var(--error);
+            border: 1px solid #fecaca;
+        }
+
+        .status.offline::before {
+            animation: none;
+        }
+
+        .url-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border-radius: var(--radius-xl);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid var(--border-color);
+        }
+
+        .url-badge:hover {
+            background: var(--bg-cream);
+            border-color: var(--primary);
+        }
+
+        .url-badge.configured {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+            color: var(--success);
+        }
+
+        .url-badge.not-configured {
+            background: #fffbeb;
+            border-color: #fde68a;
+            color: var(--warning);
+        }
+
+        .url-badge .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .btn-settings {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            width: 42px;
+            height: 42px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .btn-settings:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            transform: rotate(45deg);
+        }
+
+        /* Main Container */
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 960px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 1.5rem;
+            position: relative;
+            z-index: 1;
+            height: calc(100vh - 74px);
+            overflow: hidden;
+        }
+
+        /* Chat Container */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            scroll-behavior: smooth;
+            min-height: 0;
+        }
+
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: #D5D0CB;
+            border-radius: 3px;
+        }
+
+        /* Messages */
+        .message {
+            max-width: 85%;
+            padding: 1rem 1.25rem;
+            border-radius: var(--radius-lg);
+            animation: messageSlide 0.3s ease-out;
+            position: relative;
+        }
+
+        @keyframes messageSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: #EDE8E3;
+            color: var(--text-primary);
+            border-bottom-right-radius: 4px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background: transparent;
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+            border: none;
+            box-shadow: none;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        .message.assistant::before {
+            display: none;
+        }
+
+        .message.error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+        }
+
+        .message.system {
+            align-self: center;
+            background: var(--bg-cream);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            max-width: 90%;
+            text-align: center;
+            padding: 0.75rem 1.5rem;
+        }
+
+        .message.system::before {
+            display: none;
+        }
+
+        .message.assistant ul {
+            margin: 0.75rem 0 0.75rem 1.5rem;
+        }
+
+        .message.assistant li {
+            margin: 0.35rem 0;
+            color: var(--text-secondary);
+        }
+
+        .message.assistant pre {
+            background: #F5F0EB;
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            overflow-x: auto;
+            margin: 0.75rem 0;
+            font-size: 0.875rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .message.assistant code {
+            background: #F5F0EB;
+            padding: 0.2rem 0.4rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            color: var(--primary-dark);
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 0.35rem;
+            padding: 1.25rem;
+            align-self: flex-start;
+            background: var(--bg-cream);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .typing-indicator span {
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Examples */
+        .examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            padding: 1.25rem;
+            justify-content: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .example-btn {
+            padding: 0.625rem 1.25rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .example-btn:hover {
+            background: var(--bg-cream);
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .example-btn.workflow-complete {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .example-btn.workflow-complete:hover {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+            box-shadow: var(--shadow-md);
+        }
+
+        .example-btn.form-complete {
+            background: var(--secondary);
+            color: white;
+            border-color: var(--secondary);
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .example-btn.form-complete:hover {
+            background: #A05E41;
+            border-color: #A05E41;
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Input Container */
+        .input-container {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg-card);
+            border-radius: 28px;
+            border: 1px solid var(--border-color);
+            margin-top: auto;
+            box-shadow: var(--shadow-md);
+            align-items: center;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 20px;
+            font-size: 1rem;
+            font-family: inherit;
+            background: transparent;
+            color: var(--text-primary);
+            outline: none;
+            transition: var(--transition);
+        }
+
+        #messageInput:focus {
+            border-color: transparent;
+            box-shadow: none;
+        }
+
+        #messageInput::placeholder {
+            color: var(--text-muted);
+        }
+
+        #sendButton {
+            padding: 0.75rem;
+            border: none;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            font-size: 0;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
+        }
+
+        #sendButton:hover:not(:disabled) {
+            background: var(--primary-dark);
+            box-shadow: var(--shadow-md);
+        }
+
+        #sendButton:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        #sendButton:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(45, 43, 42, 0.4);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: modalFadeIn 0.2s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            width: 90%;
+            max-width: 600px;
+            max-height: 85vh;
+            overflow-y: auto;
+            color: var(--text-primary);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-20px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .modal-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .modal-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .modal-content::-webkit-scrollbar-thumb {
+            background: #D5D0CB;
+            border-radius: 3px;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 1.5rem;
+            font-size: 1.375rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .modal-content h3 svg {
+            color: var(--primary);
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-family: inherit;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            transition: var(--transition);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.12);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-group .hint {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        /* Settings Section */
+        .settings-section {
+            margin-bottom: 1.5rem;
+            padding: 1.25rem;
+            background: var(--bg-cream);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .settings-section h4 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .settings-section h4 svg {
+            color: var(--primary);
+        }
+
+        .url-input-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .url-input-container .url-icon {
+            position: absolute;
+            left: 1rem;
+            color: var(--primary);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .url-input-container input {
+            flex: 1;
+            padding: 1rem 1rem 1rem 3rem;
+            font-size: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            transition: var(--transition);
+        }
+
+        .url-input-container input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.12);
+        }
+
+        .url-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .url-preset {
+            padding: 0.5rem 0.875rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            font-size: 0.8125rem;
+            font-family: inherit;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .url-preset:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .url-preset.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .credentials-row {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .credentials-row .form-group {
+            flex: 1;
+        }
+
+        /* Test Section */
+        .test-section {
+            margin: 1.5rem 0;
+            padding: 1.25rem;
+            background: var(--bg-cream);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-test-full {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.75rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            font-family: inherit;
+            transition: var(--transition);
+        }
+
+        .btn-test-full:hover:not(:disabled) {
+            background: var(--primary-dark);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-test-full:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-test-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .test-result {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            border-radius: var(--radius-md);
+            margin-top: 1rem;
+            font-size: 0.9375rem;
+            text-align: left;
+            animation: messageSlide 0.3s ease;
+        }
+
+        .test-result.success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: var(--success);
+        }
+
+        .test-result.error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: var(--error);
+        }
+
+        .test-result.warning {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            color: var(--warning);
+        }
+
+        .test-result .test-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .test-result .test-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .test-result .test-message {
+            font-weight: 600;
+        }
+
+        .test-result .test-details {
+            font-size: 0.8125rem;
+            opacity: 0.8;
+        }
+
+        /* Modal Buttons */
+        .modal-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            justify-content: flex-end;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn-cancel,
+        .btn-create,
+        .btn-save {
+            padding: 0.875rem 1.75rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-cancel {
+            background: var(--bg-cream);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-cancel:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-create,
+        .btn-save {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-create:hover,
+        .btn-save:hover {
+            background: var(--primary-dark);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Workflow Section */
+        .workflow-section {
+            margin: 1.25rem 0;
+            padding: 1.25rem;
+            background: var(--bg-cream);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .workflow-section h4 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .workflow-section h4 svg {
+            color: var(--primary);
+        }
+
+        /* State Section */
+        .state-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            padding: 0.875rem;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .state-section:hover {
+            border-color: var(--primary);
+        }
+
+        .state-number {
+            background: var(--primary);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.8125rem;
+            flex-shrink: 0;
+        }
+
+        .state-input {
+            flex: 1;
+            padding: 0.625rem 0.875rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 0.9375rem;
+            font-family: inherit;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            transition: var(--transition);
+        }
+
+        .state-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .state-badge {
+            padding: 0.25rem 0.625rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.6875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .state-badge.initial {
+            background: #f0fdf4;
+            color: var(--success);
+            border: 1px solid #bbf7d0;
+        }
+
+        .state-badge.final {
+            background: #fef2f2;
+            color: var(--error);
+            border: 1px solid #fecaca;
+        }
+
+        .btn-remove-state,
+        .btn-remove-action {
+            background: #fef2f2;
+            color: var(--error);
+            border: 1px solid #fecaca;
+            border-radius: var(--radius-sm);
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: var(--transition);
+        }
+
+        .btn-remove-state:hover,
+        .btn-remove-action:hover {
+            background: var(--error);
+            color: white;
+            border-color: var(--error);
+        }
+
+        .btn-add-state,
+        .btn-add-action {
+            background: transparent;
+            border: 2px dashed var(--border-color);
+            color: var(--text-muted);
+            padding: 0.75rem 1.25rem;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            font-family: inherit;
+            width: 100%;
+            margin-top: 0.75rem;
+            transition: var(--transition);
+        }
+
+        .btn-add-state:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(217, 119, 87, 0.05);
+        }
+
+        .btn-add-action:hover {
+            border-color: var(--secondary);
+            color: var(--secondary);
+            background: rgba(184, 105, 75, 0.05);
+        }
+
+        /* Action Section */
+        .action-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            padding: 0.875rem;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .action-section:hover {
+            border-color: var(--secondary);
+        }
+
+        .action-number {
+            background: var(--secondary);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.8125rem;
+            flex-shrink: 0;
+        }
+
+        .action-config {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .action-config label {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+        }
+
+        .action-input {
+            flex: 1;
+            min-width: 120px;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            font-family: inherit;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            transition: var(--transition);
+        }
+
+        .action-input:focus {
+            outline: none;
+            border-color: var(--secondary);
+        }
+
+        .action-select {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 0.8125rem;
+            font-family: inherit;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            min-width: 100px;
+            transition: var(--transition);
+        }
+
+        .action-select:focus {
+            outline: none;
+            border-color: var(--secondary);
+        }
+
+        .action-arrow {
+            color: var(--text-muted);
+            font-size: 1.25rem;
+        }
+
+        .action-checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            margin-left: 0.5rem;
+        }
+
+        .action-checkbox-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary);
+        }
+
+        .action-checkbox-group label {
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+        }
+
+        /* Step Section */
+        .step-section {
+            margin: 1rem 0;
+            padding: 1.25rem;
+            background: var(--bg-cream);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .step-number {
+            background: var(--primary);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9375rem;
+            flex-shrink: 0;
+        }
+
+        .step-name-input {
+            flex: 1;
+            padding: 0.625rem 0.875rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            transition: var(--transition);
+        }
+
+        .step-name-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .step-badges {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .step-badge {
+            padding: 0.25rem 0.625rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.6875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .step-badge.initial {
+            background: #f0fdf4;
+            color: var(--success);
+            border: 1px solid #bbf7d0;
+        }
+
+        .step-badge.final {
+            background: #fffbeb;
+            color: var(--warning);
+            border: 1px solid #fde68a;
+        }
+
+        .btn-remove-step {
+            background: #fef2f2;
+            color: var(--error);
+            border: 1px solid #fecaca;
+            border-radius: var(--radius-sm);
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: var(--transition);
+        }
+
+        .btn-remove-step:hover {
+            background: var(--error);
+            color: white;
+            border-color: var(--error);
+        }
+
+        .btn-add-step {
+            background: transparent;
+            border: 2px dashed var(--primary);
+            color: var(--primary);
+            padding: 0.875rem 1.5rem;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            font-family: inherit;
+            width: 100%;
+            margin-top: 0.75rem;
+            transition: var(--transition);
+        }
+
+        .btn-add-step:hover {
+            background: rgba(217, 119, 87, 0.06);
+        }
+
+        .step-questions {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .step-questions-title {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        /* Question Section */
+        .questions-section {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .question-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            padding: 0.625rem;
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .question-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .question-row .question-type {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 0.8125rem;
+            font-family: inherit;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            min-width: 120px;
+        }
+
+        .question-row .question-title {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            font-family: inherit;
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .btn-remove {
+            background: #fef2f2;
+            color: var(--error);
+            border: 1px solid #fecaca;
+            border-radius: 50%;
+            width: 26px;
+            height: 26px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .btn-remove:hover {
+            background: var(--error);
+            color: white;
+            border-color: var(--error);
+        }
+
+        .btn-add-question {
+            background: transparent;
+            border: 2px dashed var(--border-color);
+            color: var(--text-muted);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.8125rem;
+            font-family: inherit;
+            width: 100%;
+            margin-top: 0.5rem;
+            transition: var(--transition);
+        }
+
+        .btn-add-question:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(217, 119, 87, 0.05);
+        }
+
+        /* Toast Container */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .toast {
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius-md);
+            font-size: 0.9375rem;
+            font-weight: 500;
+            animation: toastSlide 0.3s ease;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-left: 4px solid var(--text-muted);
+        }
+
+        @keyframes toastSlide {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .toast.success {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-left-color: var(--success);
+        }
+
+        .toast.success svg {
+            color: var(--success);
+        }
+
+        .toast.error {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-left-color: var(--error);
+        }
+
+        .toast.error svg {
+            color: var(--error);
+        }
+
+        .toast.info {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-left-color: var(--primary);
+        }
+
+        .toast.info svg {
+            color: var(--primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                padding: 0.875rem 1rem;
+                flex-wrap: wrap;
+                gap: 0.75rem;
+            }
+
+            .header h1 {
+                font-size: 1.125rem;
+            }
+
+            .url-badge,
+            .status {
+                font-size: 0.75rem;
+                padding: 0.375rem 0.75rem;
+            }
+
+            .container {
+                padding: 0.75rem;
+            }
+
+            .message {
+                max-width: 92%;
+                padding: 0.875rem 1rem;
+            }
+
+            .examples {
+                flex-direction: column;
+                padding: 0.75rem;
+            }
+
+            .example-btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            .input-container {
+                flex-direction: column;
+                gap: 0.5rem;
+                padding: 1rem;
+                border-radius: var(--radius-lg);
+            }
+
+            #sendButton {
+                width: 100%;
+                border-radius: var(--radius-md);
+                font-size: 1rem;
+                height: auto;
+                padding: 0.875rem;
+            }
+
+            .modal-content {
+                width: 95%;
+                padding: 1.25rem;
+            }
+
+            .form-row,
+            .credentials-row {
+                flex-direction: column;
+            }
+
+            .action-config {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .action-arrow {
+                display: none;
+            }
+
+            .toast-container {
+                bottom: 1rem;
+                right: 1rem;
+                left: 1rem;
+            }
+
+            .modal-buttons {
+                flex-direction: column;
+            }
+
+            .btn-cancel,
+            .btn-create,
+            .btn-save {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1rem;
+            }
+
+            .logo-icon {
+                width: 36px;
+                height: 36px;
+            }
+
+            .message {
+                font-size: 0.9375rem;
+            }
+
+            .question-row {
+                flex-wrap: wrap;
+            }
+
+            .question-row .question-title {
+                flex: 1 1 100%;
+                order: 3;
+                margin-top: 0.5rem;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .container {
+                max-width: 1080px;
+            }
+
+            .modal-content {
+                max-width: 720px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <h1>Lutece E2E Agent</h1>
+            </div>
+            <div class="status" id="status">Connexion...</div>
+        </div>
+        <div class="header-right">
+            <div class="url-badge not-configured" id="urlBadge" onclick="showSettingsModal()">
+                <span class="dot"></span>
+                <span id="urlBadgeText">Non configure</span>
+            </div>
+            <button class="btn-settings" onclick="showSettingsModal()" title="Parametres">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="container">
+        <div class="chat-container" id="chatContainer">
+            <div class="message assistant">
+                <strong>Bonjour !</strong> Je suis l'assistant Lutece E2E. Je peux vous aider a :
+                <ul>
+                    <li>Vous connecter a l'administration</li>
+                    <li>Creer des workflows</li>
+                    <li>Creer et configurer des formulaires</li>
+                    <li>Gerer les etapes et questions</li>
+                </ul>
+                <p style="margin-top: 0.75rem; color: var(--primary);"><strong>Commencez par configurer l'URL</strong> en cliquant sur le badge en haut a droite.</p>
+            </div>
+        </div>
+
+        <div class="examples">
+            <button class="example-btn" onclick="sendExample('Connecte-toi a Lutece')">Se connecter</button>
+            <button class="example-btn" onclick="sendExample('Liste les workflows')">Lister workflows</button>
+            <button class="example-btn" onclick="sendExample('Liste les formulaires')">Lister formulaires</button>
+            <button class="example-btn workflow-complete" onclick="showWorkflowModal()">Workflow Complet</button>
+            <button class="example-btn form-complete" onclick="showFormModal()">Formulaire Complet</button>
+        </div>
+
+        <!-- Modal Settings -->
+        <div id="settingsModal" class="modal" style="display:none;">
+            <div class="modal-content" style="max-width: 550px;">
+                <h3>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4"></path>
+                    </svg>
+                    Parametres
+                </h3>
+
+                <div class="settings-section">
+                    <h4>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                        URL du site Lutece
+                    </h4>
+                    <div class="url-input-container">
+                        <svg class="url-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                        </svg>
+                        <input type="text" id="settingsUrl" placeholder="https://mon-site-lutece.fr/mon-application">
+                    </div>
+                    <div class="hint" id="urlHint">Entrez l'URL complete de votre site Lutece</div>
+                    <div class="url-presets">
+                        <button class="url-preset" onclick="setUrlPreset('http://localhost:9080/site-deontologie')">site-deontologie</button>
+                        <button class="url-preset" onclick="setUrlPreset('http://localhost:9080/site-forms')">site-forms</button>
+                        <button class="url-preset" onclick="setUrlPreset('http://localhost:8080/site')">localhost:8080</button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h4>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        Identifiants par defaut
+                    </h4>
+                    <div class="credentials-row">
+                        <div class="form-group">
+                            <label>Utilisateur</label>
+                            <input type="text" id="settingsUsername" value="admin">
+                        </div>
+                        <div class="form-group">
+                            <label>Mot de passe</label>
+                            <input type="password" id="settingsPassword" value="adminadmin">
+                        </div>
+                    </div>
+                    <div class="hint">Ces identifiants seront utilises par defaut pour la connexion</div>
+                </div>
+
+                <div class="test-section">
+                    <button class="btn-test-full" id="btnTest" onclick="testUrl()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <span class="btn-test-text">Tester la connexion</span>
+                        <span class="btn-test-spinner" style="display:none;"></span>
+                    </button>
+                    <div class="test-result" id="testResult" style="display:none;">
+                        <span class="test-icon"></span>
+                        <div class="test-content">
+                            <span class="test-message"></span>
+                            <span class="test-details"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-buttons">
+                    <button class="btn-cancel" onclick="hideSettingsModal()">Annuler</button>
+                    <button class="btn-save" onclick="saveSettings()">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Workflow Complet -->
+        <div id="workflowModal" class="modal" style="display:none;">
+            <div class="modal-content" style="max-width: 700px;">
+                <h3>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    Creer un Workflow Complet
+                </h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nom du workflow</label>
+                        <input type="text" id="wfName" placeholder="Ex: WF_Validation" value="WF_MonWorkflow">
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <input type="text" id="wfDesc" placeholder="Description" value="Workflow de validation">
+                    </div>
+                </div>
+
+                <div class="workflow-section">
+                    <h4>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                        </svg>
+                        Etats du workflow
+                    </h4>
+                    <div id="statesContainer"></div>
+                    <button class="btn-add-state" onclick="addState()">+ Ajouter un etat</button>
+                </div>
+
+                <div class="workflow-section">
+                    <h4>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                        Actions (transitions)
+                    </h4>
+                    <div id="actionsContainer"></div>
+                    <button class="btn-add-action" onclick="addAction()">+ Ajouter une action</button>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="wfActivate" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        Activer le workflow apres creation
+                    </label>
+                </div>
+
+                <div class="modal-buttons">
+                    <button class="btn-cancel" onclick="hideWorkflowModal()">Annuler</button>
+                    <button class="btn-create" onclick="createCompleteWorkflow()">Creer le Workflow</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Formulaire Complet -->
+        <div id="formModal" class="modal" style="display:none;">
+            <div class="modal-content" style="max-width: 700px;">
+                <h3>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    Creer un Formulaire Complet
+                </h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nom du formulaire</label>
+                        <input type="text" id="formName" placeholder="Ex: MonFormulaire" value="MonFormulaire">
+                    </div>
+                    <div class="form-group">
+                        <label>Workflow associe</label>
+                        <input type="text" id="formWorkflow" placeholder="Nom du workflow" value="">
+                    </div>
+                </div>
+
+                <div id="stepsContainer"></div>
+
+                <button class="btn-add-step" onclick="addStep()">+ Ajouter une etape</button>
+
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="formTransition" checked style="width: 18px; height: 18px; accent-color: var(--secondary);">
+                        Configurer les transitions entre les etapes
+                    </label>
+                </div>
+
+                <div class="modal-buttons">
+                    <button class="btn-cancel" onclick="hideFormModal()">Annuler</button>
+                    <button class="btn-create" onclick="createCompleteForm()">Creer le Formulaire</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-container">
+            <input type="text" id="messageInput" placeholder="Ecrivez votre message..."
+                   onkeypress="if(event.key === 'Enter') sendMessage()">
+            <button id="sendButton" onclick="sendMessage()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                Envoyer
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Detect context path dynamically for Lutece plugin-rest
+        const contextPath = window.location.pathname.substring(
+            0, window.location.pathname.indexOf('/plugins/e2e-agent/')
+        ) || '';
+
+        const chatContainer = document.getElementById('chatContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const statusEl = document.getElementById('status');
+        const urlBadge = document.getElementById('urlBadge');
+        const urlBadgeText = document.getElementById('urlBadgeText');
+
+        let currentConfig = {
+            url: '',
+            configured: false,
+            username: 'admin',
+            password: 'adminadmin'
+        };
+
+        async function loadConfig() {
+            try {
+                const response = await fetch(contextPath + '/rest/agent/config');
+                if (!response.ok) {
+                    console.error('API config error:', response.status, response.statusText);
+                    return;
+                }
+                const text = await response.text();
+                if (!text || !text.trim().startsWith('{')) {
+                    console.error('Invalid JSON response:', text.substring(0, 100));
+                    return;
+                }
+                const config = JSON.parse(text);
+                currentConfig.url = config.url || '';
+                currentConfig.configured = config.configured;
+                updateUrlBadge();
+                document.getElementById('settingsUrl').value = currentConfig.url;
+            } catch (e) {
+                console.error('Erreur chargement config:', e);
+            }
+        }
+
+        function updateUrlBadge() {
+            if (currentConfig.configured && currentConfig.url) {
+                urlBadge.className = 'url-badge configured';
+                const urlParts = currentConfig.url.split('/');
+                const siteName = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2] || 'Configure';
+                urlBadgeText.textContent = siteName;
+            } else {
+                urlBadge.className = 'url-badge not-configured';
+                urlBadgeText.textContent = 'Non configure';
+            }
+        }
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(contextPath + '/rest/agent/health');
+                if (response.ok) {
+                    statusEl.className = 'status online';
+                    statusEl.textContent = 'Agent connecte';
+                } else {
+                    throw new Error('Not OK');
+                }
+            } catch (e) {
+                statusEl.className = 'status offline';
+                statusEl.textContent = 'Agent deconnecte';
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    ${type === 'success' ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>' :
+                      type === 'error' ? '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>' :
+                      '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>'}
+                </svg>
+                ${message}
+            `;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        loadConfig();
+        checkHealth();
+        setInterval(checkHealth, 30000);
+
+        function addMessage(content, type) {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerHTML = formatMessage(content);
+            chatContainer.appendChild(div);
+            // Scroll avec un petit delai pour laisser le DOM se mettre a jour
+            requestAnimationFrame(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+        }
+
+        function formatMessage(content) {
+            return content
+                .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>');
+        }
+
+        function showTyping() {
+            const div = document.createElement('div');
+            div.className = 'typing-indicator';
+            div.id = 'typing';
+            div.innerHTML = '<span></span><span></span><span></span>';
+            chatContainer.appendChild(div);
+            requestAnimationFrame(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+        }
+
+        function hideTyping() {
+            const typing = document.getElementById('typing');
+            if (typing) typing.remove();
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, 'user');
+            messageInput.value = '';
+            sendButton.disabled = true;
+            showTyping();
+
+            try {
+                const response = await fetch(contextPath + '/rest/agent/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await response.json();
+                hideTyping();
+
+                if (data.error) {
+                    addMessage(data.response, 'assistant error');
+                } else {
+                    addMessage(data.response, 'assistant');
+                }
+            } catch (e) {
+                hideTyping();
+                addMessage('Erreur de connexion: ' + e.message, 'assistant error');
+            }
+
+            sendButton.disabled = false;
+            messageInput.focus();
+        }
+
+        function sendExample(text) {
+            if (!currentConfig.configured && !text.toLowerCase().includes('url')) {
+                const username = currentConfig.username || 'admin';
+                const password = currentConfig.password || 'adminadmin';
+                if (currentConfig.url) {
+                    text = `Configure URL ${currentConfig.url}, ${text}`;
+                } else {
+                    showToast('Configurez d\'abord l\'URL dans les parametres', 'error');
+                    showSettingsModal();
+                    return;
+                }
+            }
+            messageInput.value = text;
+            sendMessage();
+        }
+
+        function showSettingsModal() {
+            document.getElementById('settingsModal').style.display = 'flex';
+            document.getElementById('settingsUrl').value = currentConfig.url || '';
+            document.getElementById('settingsUsername').value = currentConfig.username || 'admin';
+            document.getElementById('settingsPassword').value = currentConfig.password || 'adminadmin';
+            updatePresetButtons();
+        }
+
+        function hideSettingsModal() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        function setUrlPreset(url) {
+            document.getElementById('settingsUrl').value = url;
+            updatePresetButtons();
+        }
+
+        function updatePresetButtons() {
+            const currentUrl = document.getElementById('settingsUrl').value;
+            document.querySelectorAll('.url-preset').forEach(btn => {
+                if (btn.textContent.includes(currentUrl.split('/').pop())) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        async function testUrl() {
+            const url = document.getElementById('settingsUrl').value.trim();
+            const username = document.getElementById('settingsUsername').value.trim();
+            const password = document.getElementById('settingsPassword').value;
+
+            if (!url) {
+                showTestResult('error', 'Entrez une URL', '');
+                return;
+            }
+
+            const btnTest = document.getElementById('btnTest');
+            const btnText = btnTest.querySelector('.btn-test-text');
+            const btnSpinner = btnTest.querySelector('.btn-test-spinner');
+            btnTest.disabled = true;
+            btnText.style.display = 'none';
+            btnSpinner.style.display = 'inline-block';
+            hideTestResult();
+
+            try {
+                const response = await fetch(contextPath + '/rest/agent/config/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, username, password })
+                });
+
+                const text = await response.text();
+                if (!text || !text.trim().startsWith('{')) {
+                    console.error('Invalid JSON response:', text.substring(0, 100));
+                    showTestResult('error', 'Reponse invalide du serveur', '');
+                    return;
+                }
+
+                const result = JSON.parse(text);
+                const details = result.responseTime > 0 ? `${result.responseTime}ms` : '';
+
+                if (result.success) {
+                    if (result.authSuccess) {
+                        showTestResult('success', result.message, details);
+                    } else if (result.authTested) {
+                        showTestResult('warning', result.message, details);
+                    } else {
+                        showTestResult('success', result.message, details);
+                    }
+                } else {
+                    showTestResult('error', result.message, details);
+                }
+            } catch (e) {
+                showTestResult('error', 'Erreur: ' + e.message, '');
+            } finally {
+                btnTest.disabled = false;
+                btnText.style.display = 'inline';
+                btnSpinner.style.display = 'none';
+            }
+        }
+
+        function showTestResult(type, message, details) {
+            const resultDiv = document.getElementById('testResult');
+            const iconSpan = resultDiv.querySelector('.test-icon');
+            const messageSpan = resultDiv.querySelector('.test-message');
+            const detailsSpan = resultDiv.querySelector('.test-details');
+
+            resultDiv.className = 'test-result ' + type;
+            resultDiv.style.display = 'flex';
+
+            if (type === 'success') {
+                iconSpan.textContent = '\u2714';
+            } else if (type === 'warning') {
+                iconSpan.textContent = '\u26A0';
+            } else {
+                iconSpan.textContent = '\u2718';
+            }
+
+            messageSpan.textContent = message;
+            detailsSpan.textContent = details;
+        }
+
+        function hideTestResult() {
+            document.getElementById('testResult').style.display = 'none';
+        }
+
+        async function saveSettings() {
+            const url = document.getElementById('settingsUrl').value.trim();
+            const username = document.getElementById('settingsUsername').value.trim();
+            const password = document.getElementById('settingsPassword').value;
+
+            if (!url) {
+                showToast('Veuillez entrer une URL', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(contextPath + '/rest/agent/config/url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+
+                const text = await response.text();
+                if (!text || !text.trim().startsWith('{')) {
+                    console.error('Invalid JSON response:', text.substring(0, 100));
+                    showToast('Erreur: reponse invalide du serveur', 'error');
+                    return;
+                }
+                const result = JSON.parse(text);
+                if (result.configured) {
+                    currentConfig.url = url;
+                    currentConfig.configured = true;
+                    currentConfig.username = username;
+                    currentConfig.password = password;
+                    updateUrlBadge();
+                    hideSettingsModal();
+                    showToast('Configuration enregistree', 'success');
+                    addMessage(`Configuration mise a jour: ${url}`, 'system');
+                } else {
+                    showToast(result.message || 'Erreur de configuration', 'error');
+                }
+            } catch (e) {
+                showToast('Erreur: ' + e.message, 'error');
+            }
+        }
+
+        let stateCounter = 0;
+        let actionCounter = 0;
+
+        function showWorkflowModal() {
+            if (!currentConfig.configured) {
+                showToast('Configurez d\'abord l\'URL dans les parametres', 'error');
+                showSettingsModal();
+                return;
+            }
+            document.getElementById('workflowModal').style.display = 'flex';
+
+            const statesContainer = document.getElementById('statesContainer');
+            const actionsContainer = document.getElementById('actionsContainer');
+
+            if (statesContainer.children.length === 0) {
+                addState('Brouillon');
+                addState('EnValidation');
+                addState('Valide');
+            }
+
+            if (actionsContainer.children.length === 0) {
+                setTimeout(() => {
+                    addAction('Soumettre', 0, 1, true);
+                    addAction('Valider', 1, 2, false);
+                }, 100);
+            }
+        }
+
+        function hideWorkflowModal() {
+            document.getElementById('workflowModal').style.display = 'none';
+        }
+
+        function addState(defaultName = '') {
+            stateCounter++;
+            const container = document.getElementById('statesContainer');
+            const stateIndex = container.children.length;
+            const stateId = `state_${stateCounter}`;
+
+            const stateDiv = document.createElement('div');
+            stateDiv.className = 'state-section';
+            stateDiv.id = stateId;
+            stateDiv.dataset.stateIndex = stateIndex;
+
+            const isInitial = stateIndex === 0;
+
+            stateDiv.innerHTML = `
+                <span class="state-number">${stateIndex + 1}</span>
+                <input type="text" class="state-input" placeholder="Nom de l'etat" value="${defaultName || 'Etat' + (stateIndex + 1)}">
+                <div class="state-badges-container">
+                    ${isInitial ? '<span class="state-badge initial">Initial</span>' : ''}
+                </div>
+                <button class="btn-remove-state" onclick="removeState('${stateId}')" title="Supprimer l'etat">x</button>
+            `;
+
+            container.appendChild(stateDiv);
+            updateStateBadges();
+            updateActionSelects();
+        }
+
+        function removeState(stateId) {
+            const container = document.getElementById('statesContainer');
+            if (container.children.length <= 2) {
+                showToast('Il faut au moins 2 etats', 'error');
+                return;
+            }
+            document.getElementById(stateId).remove();
+            updateStateNumbers();
+            updateStateBadges();
+            updateActionSelects();
+        }
+
+        function updateStateNumbers() {
+            const container = document.getElementById('statesContainer');
+            Array.from(container.children).forEach((state, index) => {
+                state.querySelector('.state-number').textContent = index + 1;
+                state.dataset.stateIndex = index;
+            });
+        }
+
+        function updateStateBadges() {
+            const container = document.getElementById('statesContainer');
+            const states = Array.from(container.children);
+            states.forEach((state, index) => {
+                const badgesContainer = state.querySelector('.state-badges-container');
+                let badges = '';
+                if (index === 0) {
+                    badges = '<span class="state-badge initial">Initial</span>';
+                }
+                badgesContainer.innerHTML = badges;
+            });
+        }
+
+        function getStatesList() {
+            const container = document.getElementById('statesContainer');
+            return Array.from(container.children).map((state, index) => ({
+                index: index,
+                name: state.querySelector('.state-input').value.trim() || `Etat${index + 1}`
+            }));
+        }
+
+        function addAction(defaultName = '', fromIndex = 0, toIndex = 1, hasPublish = false) {
+            actionCounter++;
+            const container = document.getElementById('actionsContainer');
+            const actionIndex = container.children.length;
+            const actionId = `action_${actionCounter}`;
+
+            const states = getStatesList();
+
+            let stateOptions = states.map((s, i) =>
+                `<option value="${i}">${s.name}</option>`
+            ).join('');
+
+            const actionDiv = document.createElement('div');
+            actionDiv.className = 'action-section';
+            actionDiv.id = actionId;
+
+            actionDiv.innerHTML = `
+                <span class="action-number">${actionIndex + 1}</span>
+                <div class="action-config">
+                    <input type="text" class="action-input" placeholder="Nom de l'action" value="${defaultName || 'Action' + (actionIndex + 1)}">
+                    <label>de</label>
+                    <select class="action-select action-from">
+                        ${stateOptions}
+                    </select>
+                    <span class="action-arrow">\u2192</span>
+                    <label>vers</label>
+                    <select class="action-select action-to">
+                        ${stateOptions}
+                    </select>
+                    <div class="action-checkbox-group">
+                        <input type="checkbox" id="publish_${actionCounter}" ${hasPublish ? 'checked' : ''}>
+                        <label for="publish_${actionCounter}">Publication</label>
+                    </div>
+                </div>
+                <button class="btn-remove-action" onclick="removeAction('${actionId}')" title="Supprimer l'action">x</button>
+            `;
+
+            container.appendChild(actionDiv);
+
+            const fromSelect = actionDiv.querySelector('.action-from');
+            const toSelect = actionDiv.querySelector('.action-to');
+            if (fromIndex < states.length) fromSelect.value = fromIndex;
+            if (toIndex < states.length) toSelect.value = toIndex;
+
+            updateActionNumbers();
+        }
+
+        function removeAction(actionId) {
+            const container = document.getElementById('actionsContainer');
+            if (container.children.length <= 1) {
+                showToast('Il faut au moins 1 action', 'error');
+                return;
+            }
+            document.getElementById(actionId).remove();
+            updateActionNumbers();
+        }
+
+        function updateActionNumbers() {
+            const container = document.getElementById('actionsContainer');
+            Array.from(container.children).forEach((action, index) => {
+                action.querySelector('.action-number').textContent = index + 1;
+            });
+        }
+
+        function updateActionSelects() {
+            const states = getStatesList();
+            const actionsContainer = document.getElementById('actionsContainer');
+
+            actionsContainer.querySelectorAll('.action-section').forEach(action => {
+                const fromSelect = action.querySelector('.action-from');
+                const toSelect = action.querySelector('.action-to');
+
+                const currentFrom = fromSelect.value;
+                const currentTo = toSelect.value;
+
+                const stateOptions = states.map((s, i) =>
+                    `<option value="${i}">${s.name}</option>`
+                ).join('');
+
+                fromSelect.innerHTML = stateOptions;
+                toSelect.innerHTML = stateOptions;
+
+                if (currentFrom < states.length) fromSelect.value = currentFrom;
+                if (currentTo < states.length) toSelect.value = currentTo;
+            });
+        }
+
+        function createCompleteWorkflow() {
+            const name = document.getElementById('wfName').value.trim();
+            const desc = document.getElementById('wfDesc').value.trim();
+            const activateWorkflow = document.getElementById('wfActivate').checked;
+
+            if (!name) {
+                showToast('Veuillez entrer un nom de workflow', 'error');
+                return;
+            }
+
+            const states = getStatesList();
+            if (states.length < 2) {
+                showToast('Il faut au moins 2 etats', 'error');
+                return;
+            }
+
+            if (states.some(s => !s.name)) {
+                showToast('Tous les etats doivent avoir un nom', 'error');
+                return;
+            }
+
+            const actionsContainer = document.getElementById('actionsContainer');
+            const actions = Array.from(actionsContainer.children).map(actionEl => {
+                const actionName = actionEl.querySelector('.action-input').value.trim();
+                const fromIndex = parseInt(actionEl.querySelector('.action-from').value);
+                const toIndex = parseInt(actionEl.querySelector('.action-to').value);
+                const hasPublish = actionEl.querySelector('input[type="checkbox"]').checked;
+                return {
+                    name: actionName || 'Action',
+                    from: states[fromIndex]?.name || states[0].name,
+                    to: states[toIndex]?.name || states[1].name,
+                    hasPublish: hasPublish
+                };
+            });
+
+            if (actions.length === 0) {
+                showToast('Il faut au moins 1 action', 'error');
+                return;
+            }
+
+            hideWorkflowModal();
+
+            let prompt = `Configure URL ${currentConfig.url}, login ${currentConfig.username}/${currentConfig.password}, `;
+            prompt += `cree un workflow nomme ${name}`;
+
+            if (desc) {
+                prompt += ` avec description ${desc}`;
+            }
+
+            prompt += `, ${states.length} etats: `;
+            prompt += states.map((s, i) => {
+                if (i === 0) return `${s.name} (initial)`;
+                return s.name;
+            }).join(', ');
+
+            prompt += `, ${actions.length} actions: `;
+            prompt += actions.map(a => `${a.name} (de ${a.from} vers ${a.to})`).join(', ');
+
+            const publishActions = actions.filter(a => a.hasPublish);
+            if (publishActions.length > 0) {
+                publishActions.forEach(a => {
+                    prompt += `, configure une tache de publication sur ${a.name}`;
+                });
+            }
+
+            if (activateWorkflow) {
+                prompt += `, puis active le workflow`;
+            }
+
+            messageInput.value = prompt;
+            sendMessage();
+        }
+
+        let stepCounter = 0;
+
+        function showFormModal() {
+            if (!currentConfig.configured) {
+                showToast('Configurez d\'abord l\'URL dans les parametres', 'error');
+                showSettingsModal();
+                return;
+            }
+            document.getElementById('formModal').style.display = 'flex';
+            const container = document.getElementById('stepsContainer');
+            if (container.children.length === 0) {
+                addStep('Saisie', [
+                    { type: 'texte', title: 'Nom' },
+                    { type: 'nombre', title: 'Age' }
+                ]);
+                addStep('Validation', [
+                    { type: 'texte', title: 'Commentaire' }
+                ]);
+            }
+        }
+
+        function hideFormModal() {
+            document.getElementById('formModal').style.display = 'none';
+        }
+
+        function addStep(defaultName = '', defaultQuestions = []) {
+            stepCounter++;
+            const container = document.getElementById('stepsContainer');
+            const stepIndex = container.children.length + 1;
+            const stepId = `step_${stepCounter}`;
+            const questionsId = `questions_${stepCounter}`;
+
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'step-section';
+            stepDiv.id = stepId;
+            stepDiv.dataset.stepIndex = stepIndex;
+
+            let questionsHtml = '';
+            if (defaultQuestions.length > 0) {
+                defaultQuestions.forEach(q => {
+                    questionsHtml += createQuestionRowHtml(q.type, q.title);
+                });
+            }
+
+            stepDiv.innerHTML = `
+                <div class="step-header">
+                    <span class="step-number">${stepIndex}</span>
+                    <input type="text" class="step-name-input" placeholder="Nom de l'etape" value="${defaultName || 'Etape' + stepIndex}">
+                    <div class="step-badges">
+                        ${stepIndex === 1 ? '<span class="step-badge initial">Initiale</span>' : ''}
+                    </div>
+                    <button class="btn-remove-step" onclick="removeStep('${stepId}')" title="Supprimer l'etape">x</button>
+                </div>
+                <div class="step-questions">
+                    <span class="step-questions-title">Questions de cette etape :</span>
+                    <div class="questions-container" id="${questionsId}">
+                        ${questionsHtml}
+                    </div>
+                    <button class="btn-add-question" onclick="addQuestion('${questionsId}')">+ Ajouter une question</button>
+                </div>
+            `;
+
+            container.appendChild(stepDiv);
+            updateStepBadges();
+        }
+
+        function createQuestionRowHtml(type = 'texte', title = '') {
+            return `
+                <div class="question-row">
+                    <input type="checkbox" checked>
+                    <select class="question-type">
+                        <option value="texte" ${type === 'texte' ? 'selected' : ''}>Texte</option>
+                        <option value="nombre" ${type === 'nombre' ? 'selected' : ''}>Nombre</option>
+                        <option value="date" ${type === 'date' ? 'selected' : ''}>Date</option>
+                        <option value="dropdown" ${type === 'dropdown' ? 'selected' : ''}>Liste deroulante</option>
+                        <option value="file" ${type === 'file' ? 'selected' : ''}>Fichier</option>
+                        <option value="mylutece" ${type === 'mylutece' ? 'selected' : ''}>Attribut Mylutece</option>
+                        <option value="geolocation" ${type === 'geolocation' ? 'selected' : ''}>Geolocalisation</option>
+                        <option value="sortable" ${type === 'sortable' ? 'selected' : ''}>Liste triable</option>
+                        <option value="textarea" ${type === 'textarea' ? 'selected' : ''}>Zone texte long</option>
+                        <option value="radio" ${type === 'radio' ? 'selected' : ''}>Bouton radio</option>
+                        <option value="checkbox" ${type === 'checkbox' ? 'selected' : ''}>Case a cocher</option>
+                        <option value="numbering" ${type === 'numbering' ? 'selected' : ''}>Numerotation</option>
+                        <option value="image" ${type === 'image' ? 'selected' : ''}>Image</option>
+                    </select>
+                    <input type="text" class="question-title" placeholder="Titre" value="${title}">
+                    <button class="btn-remove" onclick="removeQuestion(this)">x</button>
+                </div>
+            `;
+        }
+
+        function removeStep(stepId) {
+            const container = document.getElementById('stepsContainer');
+            if (container.children.length <= 1) {
+                showToast('Il faut au moins une etape', 'error');
+                return;
+            }
+            document.getElementById(stepId).remove();
+            updateStepNumbers();
+            updateStepBadges();
+        }
+
+        function updateStepNumbers() {
+            const container = document.getElementById('stepsContainer');
+            Array.from(container.children).forEach((step, index) => {
+                step.querySelector('.step-number').textContent = index + 1;
+                step.dataset.stepIndex = index + 1;
+            });
+        }
+
+        function updateStepBadges() {
+            const container = document.getElementById('stepsContainer');
+            const steps = Array.from(container.children);
+            steps.forEach((step, index) => {
+                const badgesDiv = step.querySelector('.step-badges');
+                let badges = '';
+                if (index === 0) {
+                    badges += '<span class="step-badge initial">Initiale</span>';
+                }
+                if (index === steps.length - 1) {
+                    badges += '<span class="step-badge final">Finale</span>';
+                }
+                badgesDiv.innerHTML = badges;
+            });
+        }
+
+        function addQuestion(containerId) {
+            const container = document.getElementById(containerId);
+            const row = document.createElement('div');
+            row.className = 'question-row';
+            row.innerHTML = `
+                <input type="checkbox" checked>
+                <select class="question-type">
+                    <option value="texte">Texte</option>
+                    <option value="nombre">Nombre</option>
+                    <option value="date">Date</option>
+                    <option value="dropdown">Liste deroulante</option>
+                    <option value="file">Fichier</option>
+                    <option value="mylutece">Attribut Mylutece</option>
+                    <option value="geolocation">Geolocalisation</option>
+                    <option value="sortable">Liste triable</option>
+                    <option value="textarea">Zone texte long</option>
+                    <option value="radio">Bouton radio</option>
+                    <option value="checkbox">Case a cocher</option>
+                    <option value="numbering">Numerotation</option>
+                    <option value="image">Image</option>
+                </select>
+                <input type="text" class="question-title" placeholder="Titre de la question">
+                <button class="btn-remove" onclick="removeQuestion(this)">x</button>
+            `;
+            container.appendChild(row);
+        }
+
+        function removeQuestion(btn) {
+            btn.closest('.question-row').remove();
+        }
+
+        function getQuestionsFromContainer(container) {
+            const questions = [];
+            container.querySelectorAll('.question-row').forEach(row => {
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {
+                    const type = row.querySelector('.question-type').value;
+                    const title = row.querySelector('.question-title').value.trim();
+                    if (title) {
+                        questions.push({ type, title });
+                    }
+                }
+            });
+            return questions;
+        }
+
+        function createCompleteForm() {
+            const name = document.getElementById('formName').value.trim();
+            const workflow = document.getElementById('formWorkflow').value.trim();
+            const addTransition = document.getElementById('formTransition').checked;
+
+            if (!name) {
+                showToast('Veuillez entrer un nom de formulaire', 'error');
+                return;
+            }
+
+            const container = document.getElementById('stepsContainer');
+            const stepElements = Array.from(container.children);
+
+            if (stepElements.length === 0) {
+                showToast('Ajoutez au moins une etape', 'error');
+                return;
+            }
+
+            const steps = stepElements.map((stepEl, index) => {
+                const stepName = stepEl.querySelector('.step-name-input').value.trim();
+                const questionsContainer = stepEl.querySelector('.questions-container');
+                const questions = getQuestionsFromContainer(questionsContainer);
+                return {
+                    name: stepName || `Etape${index + 1}`,
+                    isFinal: index === stepElements.length - 1,
+                    questions: questions
+                };
+            });
+
+            if (steps.some(s => !s.name)) {
+                showToast('Toutes les etapes doivent avoir un nom', 'error');
+                return;
+            }
+
+            hideFormModal();
+
+            let prompt = `Configure URL ${currentConfig.url}, login ${currentConfig.username}/${currentConfig.password}, `;
+            prompt += `cree un formulaire ${name}`;
+
+            if (workflow) {
+                prompt += ` avec workflow ${workflow}`;
+            }
+
+            steps.forEach((step, index) => {
+                if (step.isFinal) {
+                    prompt += `, ajoute une etape finale ${step.name}`;
+                } else {
+                    prompt += `, ajoute une etape ${step.name}`;
+                }
+            });
+
+            steps.forEach(step => {
+                step.questions.forEach(q => {
+                    const typeNames = {
+                        'texte': 'texte',
+                        'nombre': 'nombre',
+                        'date': 'date',
+                        'dropdown': 'liste deroulante',
+                        'file': 'fichier',
+                        'mylutece': 'attribut mylutece',
+                        'geolocation': 'geolocalisation',
+                        'sortable': 'liste triable',
+                        'textarea': 'zone de texte long',
+                        'radio': 'bouton radio',
+                        'checkbox': 'case a cocher',
+                        'numbering': 'numerotation',
+                        'image': 'image'
+                    };
+                    const typeName = typeNames[q.type] || q.type;
+                    prompt += `, ajoute une question ${typeName} ${q.title} sur ${step.name}`;
+                });
+            });
+
+            if (addTransition && steps.length > 1) {
+                for (let i = 0; i < steps.length - 1; i++) {
+                    prompt += `, decoche Finale sur ${steps[i].name}`;
+                }
+                for (let i = 0; i < steps.length - 1; i++) {
+                    prompt += `, configure la transition de ${steps[i].name} vers ${steps[i + 1].name}`;
+                }
+            }
+
+            messageInput.value = prompt;
+            sendMessage();
+        }
+
+        document.getElementById('workflowModal').addEventListener('click', function(e) {
+            if (e.target === this) hideWorkflowModal();
+        });
+        document.getElementById('formModal').addEventListener('click', function(e) {
+            if (e.target === this) hideFormModal();
+        });
+        document.getElementById('settingsModal').addEventListener('click', function(e) {
+            if (e.target === this) hideSettingsModal();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                hideWorkflowModal();
+                hideFormModal();
+                hideSettingsModal();
+            }
+        });
+
+        messageInput.focus();
+    </script>
+</body>
+</html>

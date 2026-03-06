@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plug-in>
+    <name>e2e-agent</name>
+    <class>fr.paris.lutece.portal.service.plugin.PluginDefaultImplementation</class>
+    <version>1.0.0-SNAPSHOT</version>
+    <description>Agent IA E2E avec Playwright et LangChain4j</description>
+    <provider>Ville de Paris</provider>
+    <icon-url>images/admin/skin/plugins/e2e-agent/plugin_icon.png</icon-url>
+    <copyright>Copyright (c) 2024 Ville de Paris</copyright>
+    <core-version-dependency>
+        <min-core-version>8.0.0</min-core-version>
+    </core-version-dependency>
+    <db-pool-required>0</db-pool-required>
+</plug-in>
