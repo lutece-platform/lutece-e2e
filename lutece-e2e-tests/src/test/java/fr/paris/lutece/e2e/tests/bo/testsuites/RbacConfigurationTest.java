@@ -6,8 +6,8 @@ import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class RbacConfigurationTest extends BaseTest {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RbacConfigurationTest.class);
+    private static final Logger LOGGER = LogManager.getLogger(RbacConfigurationTest.class);
 
     private String runSuffix;
 
