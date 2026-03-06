@@ -97,7 +97,7 @@ public class ContainerSetup {
                 LOGGER.info("Lutece prêt après {} secondes", i * 5);
                 return;
             }
-            LOGGER.debug("Lutece pas encore prêt, tentative {}/{}", i + 1, maxWait / 5);
+            LOGGER.info("Lutece pas encore prêt, tentative {}/{}", i + 1, maxWait / 5);
             try {
                 Thread.sleep(5000);
             } catch (InterruptedException e) {
