@@ -3,8 +3,8 @@ package fr.paris.lutece.e2e.tests.bo.config;
 import com.microsoft.playwright.Page;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestExecutionExceptionHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.lang.reflect.Field;
 import java.nio.file.Files;
@@ -26,7 +26,7 @@ import java.nio.file.Paths;
  */
 public class ScreenshotOnFailureExtension implements TestExecutionExceptionHandler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger( ScreenshotOnFailureExtension.class );
+    private static final Logger LOGGER = LogManager.getLogger( ScreenshotOnFailureExtension.class );
     private static final Path FAILURES_DIR = Paths.get( "target/screenshots/failures" );
 
     @Override

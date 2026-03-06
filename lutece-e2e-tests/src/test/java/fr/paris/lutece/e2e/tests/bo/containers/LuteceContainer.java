@@ -1,6 +1,7 @@
 package fr.paris.lutece.e2e.tests.bo.containers;
 
-import org.slf4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
@@ -16,7 +17,7 @@ import java.time.Duration;
  */
 public class LuteceContainer extends GenericContainer<LuteceContainer> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LuteceContainer.class);
+    private static final Logger LOGGER = LogManager.getLogger(LuteceContainer.class);
 
     public static final int HTTP_PORT = 9090;
     public static final int HTTPS_PORT = 9443;
@@ -56,7 +57,8 @@ public class LuteceContainer extends GenericContainer<LuteceContainer> {
             .withStartupTimeout(Duration.ofMinutes(5)));
 
         // Ajouter les logs du conteneur aux logs de test
-        withLogConsumer(new Slf4jLogConsumer(LOGGER).withPrefix("lutece"));
+        // Slf4jLogConsumer requiert un logger SLF4J, le pont log4j-slf4j2-impl route vers Log4j2
+        withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger(LuteceContainer.class)).withPrefix("lutece"));
     }
 
     /**

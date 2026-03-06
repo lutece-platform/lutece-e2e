@@ -3,8 +3,8 @@ package fr.paris.lutece.e2e.tests.bo.testsuites;
 import fr.paris.lutece.e2e.tests.bo.config.BaseTest;
 import fr.paris.lutece.e2e.tests.bo.containers.LuteceContainer;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.MariaDBContainer;
 import org.testcontainers.containers.Network;
 
@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class ContainerSetup {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ContainerSetup.class);
+    private static final Logger LOGGER = LogManager.getLogger(ContainerSetup.class);
 
     // Conteneurs partagés (statiques pour être accessibles par d'autres tests si nécessaire)
     private static Network network;
