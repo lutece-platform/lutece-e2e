@@ -16,7 +16,7 @@ pipeline {
     environment {
         // Java / Maven
         JAVA_MAVEN = 'temurin-17-jdk'
-        MAVEN = 'Maven 3.8.5'
+        MAVEN = 'maven-3.9.12'
         MAVEN_OPTS = '-Dmaven.repo.local=m2-repo'
         MAVEN_USER_HOME = '.m2'  // Pour que le wrapper télécharge Maven dans le workspace
 
