@@ -188,13 +188,13 @@ public class LuteceContainer extends GenericContainer<LuteceContainer> {
                         }
                     }
                 }
-                LOGGER.debug("Page retournée mais pas de formulaire de login");
+                LOGGER.info("Page retournée (200) mais pas de formulaire de login");
                 return false;
             }
-            LOGGER.debug("Health check {} returned {}", healthUrl, responseCode);
+            LOGGER.info("Health check {} returned {}", healthUrl, responseCode);
             return false;
         } catch (Exception e) {
-            LOGGER.debug("Health check failed: {}", e.getMessage());
+            LOGGER.info("Health check failed: {}", e.getMessage());
             return false;
         }
     }
