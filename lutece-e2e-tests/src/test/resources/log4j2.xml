@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level [%logger{36}] %msg%n"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <!-- Logs du conteneur Lutece (via Slf4jLogConsumer) -->
+        <Logger name="fr.paris.lutece.e2e.tests.bo.containers.LuteceContainer" level="INFO"/>
+        <!-- Logs des tests E2E -->
+        <Logger name="fr.paris.lutece.e2e" level="INFO"/>
+        <!-- Testcontainers -->
+        <Logger name="org.testcontainers" level="WARN"/>
+        <Logger name="com.github.dockerjava" level="WARN"/>
+        <Root level="WARN">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>
