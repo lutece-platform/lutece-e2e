@@ -12,6 +12,7 @@ Tests E2E pour Lutece 8 avec Playwright.
 - **Weld SE 5.1** - Implementation CDI pour les tests
 - **JUnit 5** + **Testcontainers** - Tests
 - **Maven** - Build multi-modules
+- **Parent POM** : `lutece-global-pom:8.0.1-SNAPSHOT`
 
 ## Architecture multi-modules
 
@@ -42,38 +43,38 @@ lutece-e2e/                 (parent POM)
 
 ## Patterns et conventions
 
-### Page Objects CDI (`lutece-e2e-core/pages/`)
+### Page Objects CDI (`lutece-e2e-core/src/java/.../pages/`)
 - Scope CDI : `@Dependent` (nouvelle instance par injection)
 - Etendent `BasePage` qui fournit acces a `Page` Playwright via `BrowserManager`
 - Methodes chainees (fluent API) : `myPage.navigateTo().fillForm(value)`
 - Selecteurs CSS/XPath pour les elements Lutece (Bootstrap 5, offcanvas)
 
-### Page Objects POJO (`lutece-e2e-core/pages/bo/`)
+### Page Objects POJO (`lutece-e2e-core/src/java/.../pages/bo/`)
 - POJOs instancies via `new LoginPage(page, baseUrl)` (pas de CDI)
 - Recoivent directement `Page` Playwright et `baseUrl` dans le constructeur
 - Methodes chainees (fluent API) identique aux pages CDI
 - Utilises par les tests bo3 (Playwright direct, sans conteneur CDI)
 - 11 pages : LoginPage, AdminMenuPage, SitePropertiesPage, WorkflowListPage, WorkflowCreationFormPage, WorkflowEditPage, FormsListPage, FormsCreationPage, FormsEditPage, FormsFrontOfficePage, FormsResponsesPage
 
-### Actions (`lutece-e2e-core/actions/`)
+### Actions (`lutece-e2e-core/src/java/.../actions/`)
 - Scope CDI : `@ApplicationScoped`
 - Injectent les Page Objects et le `BrowserManager`
 - Retournent `ActionResult<T>` (succes/echec avec message)
 
-### BrowserManager (`lutece-e2e-core/core/BrowserManager.java`)
+### BrowserManager (`lutece-e2e-core/src/java/.../core/BrowserManager.java`)
 - `@ApplicationScoped` - singleton gerant le cycle de vie Playwright
 - `@PostConstruct` : initialise Playwright + Chromium + contexte
 - `@PreDestroy` : cleanup navigateur
 - Gestion de l'etat d'authentification (sauvegarde/restauration)
 - URL de base configurable dynamiquement via `setBaseUrl()`
 
-### PlaywrightDriverResolver (`lutece-e2e-core/core/PlaywrightDriverResolver.java`)
+### PlaywrightDriverResolver (`lutece-e2e-core/src/java/.../core/PlaywrightDriverResolver.java`)
 - Classe utilitaire statique pour la resolution du driver Playwright
-- Ordre de resolution : env `PLAYWRIGHT_DRIVER_PATH` → property `playwright.driver.path` → `$HOME/.playwright/driver/playwright.sh`
+- Ordre de resolution : env `PLAYWRIGHT_DRIVER_PATH` -> property `playwright.driver.path` -> `$HOME/.playwright/driver/playwright.sh`
 - Configure via system properties uniquement (pas de hack reflection)
 - Appelee dans le bloc `static {}` de `BrowserManager`
 
-### PreextractedDriver (`lutece-e2e-core/core/PreextractedDriver.java`)
+### PreextractedDriver (`lutece-e2e-core/src/java/.../core/PreextractedDriver.java`)
 - Implementation custom de `Driver` Playwright utilisant un driver pre-extrait
 - Lit le chemin via `PlaywrightDriverResolver.getConfiguredDriverPath()`
 - Contourne l'incompatibilite du filesystem `wsjar://` d'OpenLiberty
@@ -172,7 +173,7 @@ mvn test -pl lutece-e2e-tests \
 
 # --- Mode Testcontainers (CI/Docker) ---
 
-# Suite complete avec conteneurs (23 tests) - Docker requis, aucune instance prealable
+# Suite complete avec conteneurs (22 tests) - Docker requis, aucune instance prealable
 mvn verify -pl lutece-e2e-tests -Pcontainer-tests \
   -Dlutece.image=nexus-docker-fastdeploy.api.paris.mdp/bild/f98/site-deontologie:1.0.0-SNAPSHOT \
   -Dtest.headless=true
@@ -186,7 +187,7 @@ mvn test -pl lutece-e2e-tests \
 ### Structure des tests bo3
 
 ```
-lutece-e2e-core/src/main/java/fr/paris/lutece/e2e/pages/
+lutece-e2e-core/src/java/fr/paris/lutece/e2e/pages/
 ├── BasePage.java              # Base CDI (existant)
 ├── LoginPage.java             # CDI (existant)
 ├── AdminMenuPage.java         # CDI (existant)
@@ -212,10 +213,10 @@ lutece-e2e-tests/src/test/java/fr/paris/lutece/e2e/tests/bo/
 │   └── LuteceContainer.java       # GenericContainer + patch JDBC MySQL + health check HTTP
 └── testsuites/
     ├── ContainerSetup.java                # Demarre MariaDB + Lutece via Testcontainers
-    ├── ContainerIntegrationSuite.java     # Suite Docker (23 tests)
+    ├── ContainerIntegrationSuite.java     # Suite Docker (22 tests)
     ├── WorkflowFormsIntegrationSuite.java # Suite externe (22 tests)
     ├── RbacConfigurationTest.java         # 5 tests - droits utilisateur
-    ├── WorkflowCreationTest.java          # 7 tests - workflow + etats + actions
+    ├── WorkflowCreationTest.java          # 6 tests - workflow + etats + actions
     ├── FormsCreationTest.java             # 9 tests - formulaires + questions
     ├── FormsSubmissionTest.java           # 1 test  - soumission front-office
     ├── LoginTest.java                     # 4 tests - authentification
@@ -235,8 +236,8 @@ Cela permet de surcharger via la ligne de commande : `-Dtest.headless=true`, `-D
 
 ## Ajouter une nouvelle fonctionnalite
 
-1. **Page Object** dans `lutece-e2e-core/src/main/java/.../pages/MyPage.java` (`@Dependent`)
-2. **Action** dans `lutece-e2e-core/src/main/java/.../actions/MyActions.java` (`@ApplicationScoped`)
+1. **Page Object** dans `lutece-e2e-core/src/java/.../pages/MyPage.java` (`@Dependent`)
+2. **Action** dans `lutece-e2e-core/src/java/.../actions/MyActions.java` (`@ApplicationScoped`)
 3. **Test** dans `lutece-e2e-tests/src/test/java/.../tests/bo/testsuites/MyTest.java`
 
 ## Points d'attention
@@ -244,11 +245,12 @@ Cela permet de surcharger via la ligne de commande : `-Dtest.headless=true`, `-D
 - Le driver Playwright est pre-extrait dans `playwright-driver/` pour contourner l'incompatibilite wsjar d'OpenLiberty
 - `PreextractedDriver` est une implementation custom referencee via `playwright.driver.impl`
 - `PlaywrightDriverResolver` resout le chemin du driver via env var / property / `$HOME` (pas de chemin en dur)
-- Les selecteurs Lutece 8 utilisent Bootstrap 5 (offcanvas, modals) - attention aux changements de version
+- Les selecteurs Lutece 8 utilisent Bootstrap 5 + Tabler Icons (`.ti-*`) - attention aux changements de version
 - Les tests bo3 utilisent `setFullPage(true)` pour les screenshots debug - necessite un timeout suffisant (30s)
 - En mode conteneur, le demarrage de Lutece prend ~3-4 minutes (Liquibase + initialisation)
 - Les tests CDI et bo3 coexistent dans des packages separes sans conflit
 - Les Page Objects bo (POJOs) sont dans `lutece-e2e-core` (`fr.paris.lutece.e2e.pages.bo`) pour centraliser tout le code Playwright dans un seul module
+- Les sources Java sont dans `src/java/` (convention Lutece global POM), pas `src/main/java/`
 
 ### Compatibilite Docker / Podman (JDBC)
 
