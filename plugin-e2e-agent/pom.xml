@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>fr.paris.lutece.tools</groupId>
+        <artifactId>lutece-global-pom</artifactId>
+        <version>8.0.1-SNAPSHOT</version>
+    </parent>
+
+    <groupId>fr.paris.lutece.plugins</groupId>
+    <artifactId>plugin-e2e-agent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>lutece-plugin</packaging>
+    <name>Lutece E2E Agent Plugin</name>
+    <description>Agent IA E2E avec Playwright et LangChain4j pour Lutece 8</description>
+
+    <properties>
+        <langchain4j.version>1.9.1</langchain4j.version>
+        <langchain4j-cdi.version>1.0.0</langchain4j-cdi.version>
+    </properties>
+
+    <repositories>
+       <repository>
+            <id>luteceSnapshot</id>
+            <name>luteceSnapshot</name>
+            <url>https://dev.lutece.paris.fr/snapshot_repository</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>lutece</id>
+            <name>luteceRepository</name>
+            <url>https://dev.lutece.paris.fr/maven_repository</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+         <!-- Repository pour les snapshots de langchain4j-cdi -->
+        <repository>
+            <id>ossrh-snapshots</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+    <dependencies>
+        <!-- Plugin REST (fournit LuteceRestApplication et @ApplicationPath("/rest/")) -->
+        <dependency>
+            <groupId>fr.paris.lutece.plugins</groupId>
+            <artifactId>plugin-rest</artifactId>
+            <version>4.0.1-SNAPSHOT</version>
+            <type>lutece-plugin</type>
+        </dependency>
+		<dependency>
+            <groupId>fr.paris.lutece.e2e</groupId>
+            <artifactId>lutece-e2e-core</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.smallrye.config</groupId>
+                    <artifactId>smallrye-config</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Module Agent (contient les Tools et LuteceAiService) -->
+       
+        <!-- LangChain4j CDI -->
+        <dependency>
+            <groupId>dev.langchain4j.cdi</groupId>
+            <artifactId>langchain4j-cdi-portable-ext</artifactId>
+            <version>${langchain4j-cdi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j.cdi.mp</groupId>
+            <artifactId>langchain4j-cdi-config</artifactId>
+            <version>${langchain4j-cdi.version}</version>
+        </dependency>
+
+        <!-- LangChain4j Azure OpenAI -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-azure-open-ai</artifactId>
+            <version>${langchain4j.version}</version>
+        </dependency>
+
+        <!-- LangChain4j (main library) -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>${langchain4j.version}</version>
+        </dependency>
+    </dependencies>
+</project>
