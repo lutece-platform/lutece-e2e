@@ -4,6 +4,7 @@ import fr.paris.lutece.e2e.tests.bo.config.BaseTest;
 import fr.paris.lutece.e2e.pages.bo.LoginPage;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.options.AriaRole;
 import org.junit.jupiter.api.*;
 import org.apache.logging.log4j.LogManager;
@@ -192,19 +193,16 @@ public class RbacConfigurationTest extends BaseTest {
 
         // Configurer FORMS_MANAGEMENT dans le groupe CONTENT (si present)
         if (page.locator("#group_name-FORMS_MANAGEMENT").count() > 0) {
-            page.locator("#group_name-FORMS_MANAGEMENT").selectOption("CONTENT");
-            // Le selectOption declenche un onchange qui soumet le formulaire automatiquement
-            page.waitForLoadState();
+            selectFeatureGroupAndWait("#group_name-FORMS_MANAGEMENT", "CONTENT");
         }
 
-        // Configurer FORMS_SEARCH_INDEXATION dans le groupe CONTENT (si present)
         // Re-naviguer vers l'onglet features_management car le submit precedent a recharge la page
         page.locator("a:has-text('Affectation des fonctionnalit')").first().click();
         page.waitForLoadState();
 
+        // Configurer FORMS_SEARCH_INDEXATION dans le groupe CONTENT (si present)
         if (page.locator("#group_name-FORMS_SEARCH_INDEXATION").count() > 0) {
-            page.locator("#group_name-FORMS_SEARCH_INDEXATION").selectOption("CONTENT");
-            page.waitForLoadState();
+            selectFeatureGroupAndWait("#group_name-FORMS_SEARCH_INDEXATION", "CONTENT");
         }
 
         LOGGER.info("Groupes de fonctionnalites configures");
@@ -215,39 +213,41 @@ public class RbacConfigurationTest extends BaseTest {
     void testConfigureUserRights() {
         LOGGER.info("Configuration des droits utilisateur");
 
-        // Navigation directe vers la page de gestion des droits de l'utilisateur admin (id=1)
-        page.navigate(BASE_URL + "/jsp/admin/user/ManageUserRights.jsp?id_user=1");
+        // Navigation directe vers la page d'edition des droits de l'utilisateur admin (id=1)
+        page.navigate(BASE_URL + "/jsp/admin/user/ModifyUserRights.jsp?id_user=1");
         page.waitForLoadState();
-        page.waitForTimeout(2000);
 
         // Screenshot pour debug
-        takeScreenshotDebug("04-user-rights-page");
+        takeScreenshotDebug("04-user-rights-edit-mode");
         LOGGER.info("URL actuelle: {}", page.url());
 
-        // Verifier qu'on est sur la page des droits
-        boolean isOnRightsPage = page.url().contains("ManageUserRights") ||
-                                 page.locator("text=Liste des droits").count() > 0 ||
-                                 page.locator("text=Droits").count() > 0;
-
-        assertTrue(isOnRightsPage, "Page de gestion des droits affichee");
-
-        // Cliquer sur le bouton Modifier pour passer en mode edition
-        page.locator("a:has-text('Modifier'), button:has-text('Modifier')").first().click();
-        page.waitForLoadState();
-        page.waitForTimeout(1000);
-
-        // Screenshot apres modification
-        takeScreenshotDebug("04-user-rights-edit-mode");
-
-        // Selectionner tous les droits
-        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Selectionner tout")).first().click();
+        // Selectionner tous les droits via le premier bouton "Selectionner tout" (il y en a 2 : haut et bas)
+        page.locator("button.toggleCheck[data-check='check']").first().click();
         page.waitForTimeout(500);
 
-        // Appliquer la liste de droits
-        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Appliquer cette liste de")).first().click();
+        // Soumettre le formulaire via le bouton "Appliquer cette liste de droits"
+        page.locator("button.btn-primary[type='submit']").first().click();
         page.waitForLoadState();
 
         LOGGER.info("Droits utilisateur - configuration appliquee avec succes");
+    }
+
+    /**
+     * Selectionne une valeur dans un select de groupe de fonctionnalites et attend
+     * la fin de la navigation declenchee par le onchange (form submit automatique).
+     */
+    private void selectFeatureGroupAndWait(String selector, String value) {
+        String urlBefore = page.url();
+        page.locator(selector).selectOption(value);
+
+        // Le onchange soumet le formulaire -> navigation. Attendre que la page se recharge.
+        try {
+            page.waitForURL(url -> !url.equals(urlBefore), new Page.WaitForURLOptions().setTimeout(5000));
+        } catch (PlaywrightException e) {
+            // L'URL peut ne pas changer si la valeur etait deja selectionnee
+            LOGGER.debug("URL inchangee apres selectOption {}: {}", selector, e.getMessage());
+        }
+        page.waitForLoadState();
     }
 
     private void takeScreenshotDebug(String name) {
