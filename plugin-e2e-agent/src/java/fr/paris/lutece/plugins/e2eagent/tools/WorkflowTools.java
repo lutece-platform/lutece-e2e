@@ -122,80 +122,97 @@ public class WorkflowTools {
         return result.toToolMessage();
     }
 
-    @Tool("Cree un workflow complet avec 3 etats et 2 actions. " +
+    @Tool("Cree un workflow complet avec N etats et N actions. " +
           "Configure automatiquement une tache de publication sur la premiere action et active le workflow. " +
-          "Ideal pour creer rapidement un workflow de validation standard.")
+          "Supporte un nombre variable d'etats et d'actions.")
     public String createCompleteWorkflow(
             @P("Nom du workflow") String workflowName,
             @P("Description du workflow") String description,
-            @P("Nom du premier etat (etat initial)") String state1,
-            @P("Nom du deuxieme etat (intermediaire)") String state2,
-            @P("Nom du troisieme etat (final)") String state3,
-            @P("Nom de la premiere action (state1 -> state2)") String action1,
-            @P("Nom de la deuxieme action (state2 -> state3)") String action2) {
+            @P("Liste des etats separes par des virgules. Le premier etat est l'etat initial. " +
+               "Exemple: Brouillon, EnValidation, Valide, Archive") String states,
+            @P("Liste des actions au format 'NomAction:EtatSource:EtatCible' separes par des virgules. " +
+               "Exemple: Soumettre:Brouillon:EnValidation, Valider:EnValidation:Valide") String actions) {
 
         if (!authActions.isLoggedIn()) {
             return "ERREUR: Vous devez d'abord vous connecter avec login()";
         }
 
+        // Parser les etats
+        String[] stateNames = states.split(",");
+        if (stateNames.length < 2) {
+            return "ERREUR: Il faut au moins 2 etats (separes par des virgules)";
+        }
+        for (int i = 0; i < stateNames.length; i++) {
+            stateNames[i] = stateNames[i].trim();
+        }
+
+        // Parser les actions
+        String[] actionDefs = actions.split(",");
+        if (actionDefs.length < 1) {
+            return "ERREUR: Il faut au moins 1 action (format 'Nom:EtatSource:EtatCible')";
+        }
+
         StringBuilder result = new StringBuilder();
         result.append("Creation du workflow complet '").append(workflowName).append("'...\n\n");
+        int step = 1;
 
         // 1. Creer le workflow
         var createResult = workflowActions.createWorkflow(workflowName, description);
         if (!createResult.isSuccess()) {
             return "ERREUR lors de la creation du workflow: " + createResult.getMessage();
         }
-        result.append("1. Workflow cree (ID: ").append(createResult.getData().id()).append(")\n");
+        result.append(step++).append(". Workflow cree (ID: ").append(createResult.getData().id()).append(")\n");
 
-        // 2. Ajouter le premier etat (initial)
-        var state1Result = workflowActions.addState(state1, "Etat initial", true);
-        if (!state1Result.isSuccess()) {
-            return "ERREUR lors de l'ajout de l'etat initial: " + state1Result.getMessage();
+        // 2. Ajouter les etats
+        for (int i = 0; i < stateNames.length; i++) {
+            boolean isInitial = (i == 0);
+            String desc = isInitial ? "Etat initial" : "Etat " + (i + 1);
+            var stateResult = workflowActions.addState(stateNames[i], desc, isInitial);
+            if (!stateResult.isSuccess()) {
+                return "ERREUR lors de l'ajout de l'etat '" + stateNames[i] + "': " + stateResult.getMessage();
+            }
+            result.append(step++).append(". Etat '").append(stateNames[i]).append("' ajoute")
+                  .append(isInitial ? " (initial)" : "").append("\n");
         }
-        result.append("2. Etat '").append(state1).append("' ajoute (initial)\n");
 
-        // 3. Ajouter le deuxieme etat
-        var state2Result = workflowActions.addState(state2, "Etat intermediaire", false);
-        if (!state2Result.isSuccess()) {
-            return "ERREUR lors de l'ajout de l'etat intermediaire: " + state2Result.getMessage();
+        // 3. Ajouter les actions
+        String firstActionName = null;
+        for (int i = 0; i < actionDefs.length; i++) {
+            String[] parts = actionDefs[i].trim().split(":");
+            if (parts.length != 3) {
+                return "ERREUR: Format d'action invalide '" + actionDefs[i].trim() +
+                       "'. Attendu: 'NomAction:EtatSource:EtatCible'";
+            }
+            String actionName = parts[0].trim();
+            String fromState = parts[1].trim();
+            String toState = parts[2].trim();
+
+            if (i == 0) {
+                firstActionName = actionName;
+            }
+
+            var actionResult = workflowActions.addAction(actionName,
+                    "Transition de " + fromState + " vers " + toState, fromState, toState);
+            if (!actionResult.isSuccess()) {
+                return "ERREUR lors de l'ajout de l'action '" + actionName + "': " + actionResult.getMessage();
+            }
+            result.append(step++).append(". Action '").append(actionName)
+                  .append("' ajoutee (").append(fromState).append(" -> ").append(toState).append(")\n");
         }
-        result.append("3. Etat '").append(state2).append("' ajoute\n");
 
-        // 4. Ajouter le troisieme etat
-        var state3Result = workflowActions.addState(state3, "Etat final", false);
-        if (!state3Result.isSuccess()) {
-            return "ERREUR lors de l'ajout de l'etat final: " + state3Result.getMessage();
-        }
-        result.append("4. Etat '").append(state3).append("' ajoute\n");
-
-        // 5. Ajouter la premiere action
-        var action1Result = workflowActions.addAction(action1, "Transition de " + state1 + " vers " + state2, state1, state2);
-        if (!action1Result.isSuccess()) {
-            return "ERREUR lors de l'ajout de l'action 1: " + action1Result.getMessage();
-        }
-        result.append("5. Action '").append(action1).append("' ajoutee (").append(state1).append(" -> ").append(state2).append(")\n");
-
-        // 6. Ajouter la deuxieme action
-        var action2Result = workflowActions.addAction(action2, "Transition de " + state2 + " vers " + state3, state2, state3);
-        if (!action2Result.isSuccess()) {
-            return "ERREUR lors de l'ajout de l'action 2: " + action2Result.getMessage();
-        }
-        result.append("6. Action '").append(action2).append("' ajoutee (").append(state2).append(" -> ").append(state3).append(")\n");
-
-        // 7. Configurer la tache de publication sur la premiere action
-        var taskResult = workflowActions.configurePublicationStatusTask(action1, true);
+        // 4. Configurer la tache de publication sur la premiere action
+        var taskResult = workflowActions.configurePublicationStatusTask(firstActionName, true);
         if (!taskResult.isSuccess()) {
             return "ERREUR lors de la configuration de la tache: " + taskResult.getMessage();
         }
-        result.append("7. Tache de publication configuree sur '").append(action1).append("'\n");
+        result.append(step++).append(". Tache de publication configuree sur '").append(firstActionName).append("'\n");
 
-        // 8. Activer le workflow
+        // 5. Activer le workflow
         var activateResult = workflowActions.activateWorkflow(workflowName);
         if (!activateResult.isSuccess()) {
             return "ERREUR lors de l'activation: " + activateResult.getMessage();
         }
-        result.append("8. Workflow '").append(workflowName).append("' active\n");
+        result.append(step).append(". Workflow '").append(workflowName).append("' active\n");
 
         result.append("\n✓ Workflow complet cree et active avec succes!");
         return result.toString();

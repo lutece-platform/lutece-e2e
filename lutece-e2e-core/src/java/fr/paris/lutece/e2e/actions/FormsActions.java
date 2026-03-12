@@ -207,6 +207,27 @@ public class FormsActions {
     }
 
     /**
+     * Ajoute une question par type (dispatcher).
+     * Types supportes: text, number, date, textarea, dropdown, file, radio, checkbox, numbering, image
+     */
+    public ActionResult<QuestionInfo> addQuestionByType(String stepName, String questionTitle, String type) {
+        return switch (type.toLowerCase().trim()) {
+            case "text" -> addTextQuestion(stepName, questionTitle);
+            case "number" -> addNumberQuestion(stepName, questionTitle);
+            case "date" -> addDateQuestion(stepName, questionTitle);
+            case "textarea" -> addTextareaQuestion(stepName, questionTitle);
+            case "dropdown" -> addDropdownQuestion(stepName, questionTitle);
+            case "file" -> addFileQuestion(stepName, questionTitle);
+            case "radio" -> addRadioButtonQuestion(stepName, questionTitle);
+            case "checkbox" -> addCheckboxQuestion(stepName, questionTitle);
+            case "numbering" -> addNumberingQuestion(stepName, questionTitle);
+            case "image" -> addImageQuestion(stepName, questionTitle);
+            default -> ActionResult.failure("Type de question inconnu: '" + type
+                    + "'. Types supportes: text, number, date, textarea, dropdown, file, radio, checkbox, numbering, image");
+        };
+    }
+
+    /**
      * Decoche Finale sur une etape (navigation directe par URL).
      */
     public ActionResult<Void> uncheckStepFinaleByName(String stepName) {
