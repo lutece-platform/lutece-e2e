@@ -4,7 +4,7 @@ import com.microsoft.playwright.FrameLocator;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.SelectOption;
-import fr.paris.lutece.e2e.core.BrowserManager;
+import fr.paris.lutece.e2e.core.BrowserSession;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 
@@ -15,7 +15,7 @@ import jakarta.inject.Inject;
 public class FormsPage extends BasePage {
 
     @Inject
-    public FormsPage(BrowserManager browser) {
+    public FormsPage(BrowserSession browser) {
         super(browser);
     }
 
@@ -179,24 +179,11 @@ public class FormsPage extends BasePage {
     }
 
     /**
-     * Navigue vers la page d'édition d'un formulaire par son ID.
-     * Utilise le même chemin que le script Playwright de l'utilisateur.
+     * Navigue vers la page d'édition des étapes d'un formulaire par son ID.
+     * Navigation directe par URL pour fiabilité.
      */
     public FormsPage navigateToFormEdit(int formId) {
-        // Naviguer vers la liste des formulaires
-        navigateToList();
-        waitForLoad();
-
-        // Cliquer sur "Modifier l'étape" pour le formulaire avec l'ID donné
-        // Basé sur le script: page.locator("#form_1").getByRole(AriaRole.LINK, ...).click()
-        var formRow = page().locator("#form_" + formId + ", [data-form-id='" + formId + "'], tr:has(a[href*='id_form=" + formId + "'])").first();
-        if (formRow.isVisible()) {
-            formRow.getByRole(AriaRole.LINK,
-                    new Locator.GetByRoleOptions().setName("Modifier l'étape")).click();
-        } else {
-            // Fallback: naviguer directement
-            navigate("/jsp/admin/plugins/forms/ManageSteps.jsp?view=manageSteps&id_form=" + formId);
-        }
+        navigate("/jsp/admin/plugins/forms/ManageSteps.jsp?view=manageSteps&id_form=" + formId);
         waitForLoad();
         return this;
     }
@@ -254,88 +241,104 @@ public class FormsPage extends BasePage {
         return this;
     }
 
-    // === Etapes ===
+    // === Etapes (navigation directe par URL — comme les tests pipeline) ===
 
     /**
-     * Clique sur l'onglet "Etapes" dans la page d'édition du formulaire.
-     * Basé sur le script Playwright enregistré par l'utilisateur.
+     * Ajoute une etape au formulaire via navigation directe (pas d'iframe).
+     * Inspiré du POJO FormsEditPage.addStep() qui fonctionne dans les tests pipeline.
      */
+    public FormsPage addStepDirect(int formId, String title, boolean isFinal) {
+        navigate("/jsp/admin/plugins/forms/ManageSteps.jsp?view=createStep&id_form=" + formId);
+        waitForLoad();
+
+        // Verifier qu'on n'a pas ete redirige vers la page de login
+        String url = page().url();
+        if (url.contains("AdminLogin")) {
+            throw new RuntimeException("Session expiree: redirige vers la page de login. URL: " + url);
+        }
+
+        // Verifier que le champ step-title existe (on est bien sur la page createStep)
+        var stepTitleField = page().locator("#step-title");
+        if (!stepTitleField.isVisible()) {
+            throw new RuntimeException("Champ #step-title non trouve sur la page. URL actuelle: " + url
+                    + " | Titre page: " + page().title());
+        }
+
+        stepTitleField.click();
+        stepTitleField.fill(title);
+        if (isFinal) {
+            page().getByRole(AriaRole.CHECKBOX,
+                    new com.microsoft.playwright.Page.GetByRoleOptions().setName("Finale")).check();
+        }
+        page().getByRole(AriaRole.BUTTON,
+                new com.microsoft.playwright.Page.GetByRoleOptions().setName("OK")).click();
+        waitForLoad();
+        return this;
+    }
+
+    /**
+     * Extrait l'ID d'une etape par son nom depuis la page de gestion des etapes.
+     * Inspiré du POJO FormsEditPage.navigateToStepQuestions().
+     */
+    public int extractStepId(int formId, String stepName) {
+        navigate("/jsp/admin/plugins/forms/ManageSteps.jsp?view=manageSteps&id_form=" + formId);
+        waitForLoad();
+        Locator stepLink = page().locator("a.searchable",
+                new com.microsoft.playwright.Page.LocatorOptions().setHasText(stepName)).last();
+        String href = stepLink.getAttribute("href");
+        return Integer.parseInt(href.split("id_step=")[1].split("&")[0]);
+    }
+
+    /**
+     * Navigue vers la page de gestion des questions d'une etape (navigation directe).
+     * Inspiré du POJO FormsEditPage.navigateToStepQuestions().
+     */
+    public FormsPage navigateToStepQuestions(int formId, String stepName) {
+        int stepId = extractStepId(formId, stepName);
+        navigate("/jsp/admin/plugins/forms/ManageQuestions.jsp?view=manageQuestions&id_step=" + stepId);
+        waitForLoad();
+        return this;
+    }
+
+    /**
+     * Configure la transition d'une etape via navigation directe.
+     * Inspiré du POJO FormsEditPage.configureStepTransition().
+     */
+    public FormsPage configureStepTransitionDirect(int formId, String stepName) {
+        int stepId = extractStepId(formId, stepName);
+        navigate("/jsp/admin/plugins/forms/ManageTransitions.jsp?view=createTransition&id_step=" + stepId);
+        waitForLoad();
+        page().getByRole(AriaRole.BUTTON,
+                new com.microsoft.playwright.Page.GetByRoleOptions().setName("OK")).click();
+        waitForLoad();
+        return this;
+    }
+
+    /**
+     * Decoche "Finale" sur une etape via navigation directe.
+     */
+    public FormsPage uncheckStepFinaleDirect(int formId, String stepName) {
+        int stepId = extractStepId(formId, stepName);
+        navigate("/jsp/admin/plugins/forms/ManageQuestions.jsp?view=manageQuestions&id_step=" + stepId);
+        waitForLoad();
+        // Onglet "Parametres de l'etape"
+        page().getByRole(AriaRole.TAB,
+                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Paramètres de l'étape")).click();
+        waitForLoad();
+        page().getByRole(AriaRole.CHECKBOX,
+                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Finale")).uncheck();
+        page().getByRole(AriaRole.BUTTON,
+                new com.microsoft.playwright.Page.GetByRoleOptions().setName("OK")).click();
+        waitForLoad();
+        return this;
+    }
+
+    // === Etapes (anciennes methodes via UI — conservees pour compatibilite) ===
+
     public FormsPage clickStepsTab() {
         waitForLoad();
         page().getByRole(AriaRole.TAB,
                 new com.microsoft.playwright.Page.GetByRoleOptions().setName("Etapes")).click();
-        waitForLoad();
-        return this;
-    }
-
-    /**
-     * Ajoute une étape au formulaire.
-     * Basé sur le script Playwright enregistré par l'utilisateur.
-     * @param title Titre de l'étape
-     * @param isFinal true si c'est une étape finale, false sinon
-     */
-    public FormsPage addStep(String title, boolean isFinal) {
-        waitForLoad();
-
-        // Cliquer sur "Ajouter une étape"
-        page().getByRole(AriaRole.LINK,
-                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Ajouter une étape")).click();
-        waitForLoad();
-
-        // Remplir le formulaire dans l'iframe
-        FrameLocator iframe = page().frameLocator("iframe[title=\"Ajouter une étape\"]");
-
-        // Remplir le titre
-        iframe.locator("#step-title").click();
-        iframe.locator("#step-title").fill(title);
-
-        // Gérer la checkbox "Finale"
-        if (isFinal) {
-            iframe.getByRole(AriaRole.CHECKBOX,
-                    new FrameLocator.GetByRoleOptions().setName("Finale")).check();
-        } else {
-            // DECOCHER "Finale" pour une étape non finale
-            // (elle peut être cochée par défaut pour la première étape)
-            iframe.getByRole(AriaRole.CHECKBOX,
-                    new FrameLocator.GetByRoleOptions().setName("Finale")).uncheck();
-        }
-
-        // Cliquer sur OK
-        iframe.getByRole(AriaRole.BUTTON,
-                new FrameLocator.GetByRoleOptions().setName("OK")).click();
-
-        waitForLoad();
-        return this;
-    }
-
-    /**
-     * Ajoute une étape initiale (première étape non finale) au formulaire.
-     * Par défaut, les deux checkboxes "Initiale" et "Finale" sont cochées.
-     * On doit DECOCHER "Finale" pour que l'étape ne soit pas finale.
-     */
-    public FormsPage addInitialStep(String title) {
-        waitForLoad();
-
-        // Cliquer sur "Ajouter une étape"
-        page().getByRole(AriaRole.LINK,
-                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Ajouter une étape")).click();
-        waitForLoad();
-
-        // Remplir le formulaire dans l'iframe
-        FrameLocator iframe = page().frameLocator("iframe[title=\"Ajouter une étape\"]");
-
-        // Remplir le titre
-        iframe.locator("#step-title").click();
-        iframe.locator("#step-title").fill(title);
-
-        // DECOCHER "Finale" car par défaut les deux sont cochées pour la première étape
-        iframe.getByRole(AriaRole.CHECKBOX,
-                new FrameLocator.GetByRoleOptions().setName("Finale")).uncheck();
-
-        // Cliquer sur OK
-        iframe.getByRole(AriaRole.BUTTON,
-                new FrameLocator.GetByRoleOptions().setName("OK")).click();
-
         waitForLoad();
         return this;
     }
@@ -911,13 +914,6 @@ public class FormsPage extends BasePage {
 
         addTransitionLink.waitFor(new Locator.WaitForOptions().setTimeout(10000));
         addTransitionLink.click();
-
-        // Attendre que le panneau de configuration s'affiche
-        try {
-            Thread.sleep(1000); // Petit délai pour le chargement de l'offcanvas/modal
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
         waitForLoad();
 
         // Essayer plusieurs sélecteurs pour l'iframe ou le modal de transition
@@ -984,19 +980,29 @@ public class FormsPage extends BasePage {
     // === Publication ===
 
     public FormsPage publishOnPortal(String formName, String startDate) {
-        page().getByRole(AriaRole.LINK,
-                new com.microsoft.playwright.Page.GetByRoleOptions().setName("LUTECE").setExact(true)).click();
-        page().locator(".list-group-item")
+        // Navigate to the forms list
+        navigateToList();
+        waitForLoad();
+
+        // Find the form card by name and open its Actions dropdown
+        // In Lutece 8, forms are .card elements with a .form-actions area containing a .dropdown-toggle button
+        page().locator(".card")
                 .filter(new Locator.FilterOptions().setHasText(formName))
-                .locator(".dropdown > .btn-action").click();
+                .locator(".form-actions .btn.dropdown-toggle").click();
+
+        // Click "Editer la publication du formulaire" in the dropdown
         page().getByRole(AriaRole.LINK,
                 new com.microsoft.playwright.Page.GetByRoleOptions().setName("Editer la publication du")).click();
+        waitForLoad();
+
+        // Set start date via flatpickr on #availabilityStartDate
         page().evaluate("(date) => {\n"
-                + "  const input = document.querySelector('input.flatpickr-input');\n"
+                + "  const input = document.querySelector('#availabilityStartDate');\n"
                 + "  if (input && input._flatpickr) {\n"
                 + "    input._flatpickr.setDate(date, true);\n"
                 + "  }\n"
                 + "}", startDate);
+
         page().getByRole(AriaRole.BUTTON,
                 new com.microsoft.playwright.Page.GetByRoleOptions().setName("OK")).click();
         waitForLoad();
@@ -1032,6 +1038,162 @@ public class FormsPage extends BasePage {
             return Integer.parseInt(url.split("id_form=")[1].split("&")[0].split("#")[0]);
         } else if (url.contains("id=")) {
             return Integer.parseInt(url.split("id=")[1].split("&")[0].split("#")[0]);
+        }
+        return -1;
+    }
+
+    /**
+     * Extrait l'ID d'un formulaire depuis la liste en cherchant par titre.
+     * Utilise quand l'URL apres creation ne contient pas id_form (redirection vers la liste).
+     */
+    // === Front Office ===
+
+    /**
+     * Navigue vers la liste des formulaires FO et clique sur le formulaire.
+     */
+    public FormsPage navigateToFrontOffice(String formTitle) {
+        navigate("/jsp/site/Portal.jsp?page=forms");
+        waitForLoad();
+        page().waitForTimeout(2000);
+
+        var formLink = page().locator("a:has-text('" + formTitle + "')");
+        if (formLink.count() > 0) {
+            formLink.first().click();
+            waitForLoad();
+            page().waitForTimeout(1000);
+        }
+
+        // Fermer l'offcanvas s'il est present
+        var backdrop = page().locator(".offcanvas-backdrop");
+        if (backdrop.count() > 0) {
+            page().keyboard().press("Escape");
+            backdrop.waitFor(new Locator.WaitForOptions()
+                .setState(com.microsoft.playwright.options.WaitForSelectorState.HIDDEN));
+        }
+
+        return this;
+    }
+
+    /**
+     * Remplit un champ texte FO par son label.
+     */
+    public FormsPage fillTextFieldFO(String label, String value) {
+        page().waitForLoadState();
+        var byRole = page().getByRole(AriaRole.TEXTBOX,
+            new com.microsoft.playwright.Page.GetByRoleOptions().setName(label));
+        if (byRole.count() > 0) {
+            byRole.first().click();
+            byRole.first().fill(value);
+            return this;
+        }
+        var byLabel = page().getByLabel(label);
+        if (byLabel.count() > 0) {
+            byLabel.first().click();
+            byLabel.first().fill(value);
+            return this;
+        }
+        // Fallback: premier champ texte visible
+        var allTextInputs = page().locator("input[type='text']");
+        for (int i = 0; i < allTextInputs.count(); i++) {
+            var input = allTextInputs.nth(i);
+            if (input.isVisible()) {
+                input.click();
+                input.fill(value);
+                return this;
+            }
+        }
+        throw new RuntimeException("Aucun champ texte trouve pour le label: " + label);
+    }
+
+    /**
+     * Remplit un champ nombre FO par son label.
+     */
+    public FormsPage fillNumberFieldFO(String label, String value) {
+        page().waitForLoadState();
+        var byRole = page().getByRole(AriaRole.SPINBUTTON,
+            new com.microsoft.playwright.Page.GetByRoleOptions().setName(label));
+        if (byRole.count() > 0) {
+            byRole.first().click();
+            byRole.first().fill(value);
+            return this;
+        }
+        var byLabel = page().getByLabel(label);
+        if (byLabel.count() > 0) {
+            byLabel.first().click();
+            byLabel.first().fill(value);
+            return this;
+        }
+        var allNumberInputs = page().locator("input[type='number']");
+        for (int i = 0; i < allNumberInputs.count(); i++) {
+            var input = allNumberInputs.nth(i);
+            if (input.isVisible()) {
+                input.click();
+                input.fill(value);
+                return this;
+            }
+        }
+        throw new RuntimeException("Aucun champ nombre trouve pour le label: " + label);
+    }
+
+    /**
+     * Remplit un champ date FO (flatpickr) via JavaScript.
+     */
+    public FormsPage fillDateFieldFO(String value) {
+        var input = page().locator("input.flatpickr-input");
+        if (input.count() > 0) {
+            input.first().evaluate(
+                "(el, date) => { if (el._flatpickr) { el._flatpickr.setDate(date, true); } else { el.value = date; el.dispatchEvent(new Event('change')); } }",
+                value);
+        }
+        return this;
+    }
+
+    /**
+     * Clique sur "Etape suivante" en FO.
+     */
+    public FormsPage clickNextStepFO() {
+        page().getByRole(AriaRole.BUTTON,
+            new com.microsoft.playwright.Page.GetByRoleOptions().setName("Etape suivante")).click();
+        return this;
+    }
+
+    /**
+     * Clique sur "Voir le recapitulatif" en FO.
+     */
+    public FormsPage clickViewSummaryFO() {
+        page().getByRole(AriaRole.BUTTON,
+            new com.microsoft.playwright.Page.GetByRoleOptions().setName("Voir le récapitulatif")).click();
+        return this;
+    }
+
+    /**
+     * Clique sur "Valider le recapitulatif" en FO.
+     */
+    public FormsPage clickValidateSummaryFO() {
+        page().getByRole(AriaRole.BUTTON,
+            new com.microsoft.playwright.Page.GetByRoleOptions().setName("Valider le récapitulatif")).click();
+        page().waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE);
+        return this;
+    }
+
+    public int extractFormIdFromList(String formTitle) {
+        // S'assurer qu'on est sur la page de liste
+        if (!page().url().contains("ManageForms")) {
+            navigateToList();
+        }
+        waitForLoad();
+
+        // Chercher le lien du formulaire par son titre (href contient id_form=X)
+        var formLinks = page().locator("a[href*='id_form=']").all();
+        for (var link : formLinks) {
+            String text = link.textContent().trim();
+            if (text.contains(formTitle)) {
+                String href = link.getAttribute("href");
+                if (href != null && href.contains("id_form=")) {
+                    String idStr = href.split("id_form=")[1].split("&")[0].split("#")[0];
+                    return Integer.parseInt(idStr);
+                }
+            }
         }
         return -1;
     }

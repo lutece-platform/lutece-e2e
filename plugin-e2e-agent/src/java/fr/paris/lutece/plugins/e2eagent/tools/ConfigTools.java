@@ -2,18 +2,19 @@ package fr.paris.lutece.plugins.e2eagent.tools;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
-import fr.paris.lutece.e2e.core.BrowserManager;
+import fr.paris.lutece.e2e.core.BrowserSession;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 /**
  * Tools LangChain4j pour la configuration de l'environnement.
+ * Injecte BrowserSession (proxy @RequestScoped) pour isoler l'URL par session utilisateur.
  */
 @ApplicationScoped
 public class ConfigTools {
 
     @Inject
-    BrowserManager browserManager;
+    BrowserSession browserSession;
 
     @Tool("Configure l'URL du site Lutece cible. " +
           "IMPORTANT: Cette action DOIT etre executee en premier si l'URL n'est pas configuree. " +
@@ -31,21 +32,21 @@ public class ConfigTools {
                    "Exemple: http://localhost:9080/site-deontologie";
         }
 
-        browserManager.setBaseUrl(url.trim());
-        return "URL configuree avec succes: " + browserManager.getBaseUrl() +
+        browserSession.setBaseUrl(url.trim());
+        return "URL configuree avec succes: " + browserSession.getBaseUrl() +
                ". Vous pouvez maintenant effectuer des actions sur le site Lutece.";
     }
 
     @Tool("Verifie si l'URL du site Lutece est configuree. " +
           "Si false, demander l'URL a l'utilisateur avant toute autre action.")
     public boolean isLuteceUrlConfigured() {
-        return browserManager.isBaseUrlConfigured();
+        return browserSession.isBaseUrlConfigured();
     }
 
     @Tool("Retourne l'URL actuelle du site Lutece configure.")
     public String getLuteceUrl() {
-        if (browserManager.isBaseUrlConfigured()) {
-            return "URL actuelle: " + browserManager.getBaseUrl();
+        if (browserSession.isBaseUrlConfigured()) {
+            return "URL actuelle: " + browserSession.getBaseUrl();
         } else {
             return "ATTENTION: Aucune URL configuree. " +
                    "Veuillez d'abord configurer l'URL avec setLuteceUrl().";

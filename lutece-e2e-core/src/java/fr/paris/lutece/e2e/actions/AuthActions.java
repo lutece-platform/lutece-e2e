@@ -1,11 +1,12 @@
 package fr.paris.lutece.e2e.actions;
 
 import fr.paris.lutece.e2e.core.ActionResult;
-import fr.paris.lutece.e2e.core.BrowserManager;
+import fr.paris.lutece.e2e.core.BrowserSession;
 import fr.paris.lutece.e2e.pages.AdminMenuPage;
 import fr.paris.lutece.e2e.pages.LoginPage;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.nio.file.Path;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -19,7 +20,7 @@ public class AuthActions {
     private static final Logger LOG = LogManager.getLogger(AuthActions.class);
 
     @Inject
-    BrowserManager browser;
+    BrowserSession browser;
 
     @Inject
     LoginPage loginPage;
@@ -74,7 +75,7 @@ public class AuthActions {
                     LOG.warn("Echec de connexion: {}", error);
                     currentUser = null;
                     return ActionResult.failure("Echec de connexion: " + error,
-                            browser.screenshot("login-failed"));
+                            safeScreenshot("login-failed"));
                 }
             }
 
@@ -82,7 +83,7 @@ public class AuthActions {
             if (currentUrl.contains("AdminLogin")) {
                 currentUser = null;
                 return ActionResult.failure("Echec de connexion - identifiants incorrects",
-                        browser.screenshot("login-failed"));
+                        safeScreenshot("login-failed"));
             }
 
             // Naviguer vers AdminMenu pour vérifier que le login a réussi
@@ -93,18 +94,37 @@ public class AuthActions {
                 currentUser = username;
                 LOG.info("Connexion réussie pour {}", username);
                 return ActionResult.success(username, "Connexion réussie",
-                        browser.screenshot("login-success"));
+                        safeScreenshot("login-success"));
             }
 
             currentUser = null;
             return ActionResult.failure("Echec de connexion - impossible d'accéder au menu admin",
-                    browser.screenshot("login-unexpected"));
+                    safeScreenshot("login-unexpected"));
 
         } catch (Exception e) {
             LOG.error("Erreur lors de la connexion", e);
             currentUser = null;
-            return ActionResult.failure("Erreur: " + e.getMessage(),
-                    browser.screenshot("login-error"));
+
+            // Si la page/contexte est fermé, recréer le contexte au lieu de tenter un screenshot
+            if (isTargetClosed(e)) {
+                LOG.warn("Page ou contexte fermé, recreation du contexte navigateur");
+                try {
+                    browser.createNewContext();
+                } catch (Exception ignored) {
+                    LOG.error("Impossible de recreer le contexte", ignored);
+                }
+                return ActionResult.failure("Erreur de navigation: la page a été fermée. " +
+                        "Verifiez que l'URL est accessible et que le certificat SSL est valide. " +
+                        "Cause: " + e.getMessage());
+            }
+
+            try {
+                return ActionResult.failure("Erreur: " + e.getMessage(),
+                        browser.screenshot("login-error"));
+            } catch (Exception screenshotError) {
+                LOG.warn("Impossible de prendre un screenshot: {}", screenshotError.getMessage());
+                return ActionResult.failure("Erreur: " + e.getMessage());
+            }
         }
     }
 
@@ -212,6 +232,41 @@ public class AuthActions {
         }
         currentUser = null;
         return ActionResult.success(null, "Pas de session active");
+    }
+
+    /**
+     * Prend un screenshot de manière sûre, retourne null si impossible.
+     */
+    private Path safeScreenshot(String name) {
+        try {
+            return browser.screenshot(name);
+        } catch (Exception e) {
+            LOG.warn("Impossible de prendre un screenshot '{}': {}", name, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Vérifie si l'exception est due à une page/contexte fermé (TargetClosedError).
+     */
+    private boolean isTargetClosed(Exception e) {
+        String message = e.getMessage();
+        if (message != null && (message.contains("Target closed") || message.contains("target page")
+                || message.contains("context or browser has been closed"))) {
+            return true;
+        }
+        // Vérifier aussi la chaîne de causes
+        Throwable cause = e.getCause();
+        while (cause != null) {
+            String causeMsg = cause.getMessage();
+            if (causeMsg != null && (causeMsg.contains("Target closed")
+                    || causeMsg.contains("target page")
+                    || causeMsg.contains("context or browser has been closed"))) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return e.getClass().getSimpleName().contains("TargetClosedError");
     }
 
     /**

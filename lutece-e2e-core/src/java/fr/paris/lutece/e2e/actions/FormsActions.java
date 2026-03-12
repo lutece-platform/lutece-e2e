@@ -1,7 +1,7 @@
 package fr.paris.lutece.e2e.actions;
 
 import fr.paris.lutece.e2e.core.ActionResult;
-import fr.paris.lutece.e2e.core.BrowserManager;
+import fr.paris.lutece.e2e.core.BrowserSession;
 import fr.paris.lutece.e2e.pages.FormsPage;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -10,7 +10,7 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * Actions de gestion des formulaires.
- * Utilisable par les tests JUnit et les tools LangChain4j.
+ * Utilise la navigation directe par URL (comme les tests pipeline).
  */
 @ApplicationScoped
 public class FormsActions {
@@ -18,24 +18,16 @@ public class FormsActions {
     private static final Logger LOG = LogManager.getLogger(FormsActions.class);
 
     @Inject
-    BrowserManager browser;
+    BrowserSession browser;
 
     @Inject
     FormsPage formsPage;
 
-    /**
-     * Informations sur un formulaire cree.
-     */
     public record FormInfo(int id, String title, String workflowName) {}
-
-    // Stocke l'ID et nom du formulaire en cours d'édition
-    private int currentFormId = -1;
-    private String currentFormName = null;
-
-    /**
-     * Informations sur une question.
-     */
     public record QuestionInfo(String title, String type) {}
+
+    // ID du formulaire en cours d'edition
+    private int currentFormId = -1;
 
     /**
      * Cree un nouveau formulaire.
@@ -56,356 +48,203 @@ public class FormsActions {
 
             formsPage.clickCreateForm();
 
-            String currentUrl = browser.getCurrentUrl();
-            LOG.info("URL apres creation: {}", currentUrl);
             int formId = formsPage.extractFormIdFromUrl();
+            if (formId <= 0) {
+                // Apres creation, Lutece redirige vers la liste (ManageForms) sans id_form dans l'URL.
+                // Fallback: chercher le formulaire par son titre dans la liste.
+                LOG.info("id_form absent de l'URL ({}), recherche par titre dans la liste...", getCurrentUrl());
+                formId = formsPage.extractFormIdFromList(title);
+            }
             if (formId > 0) {
                 currentFormId = formId;
-                currentFormName = title;
                 LOG.info("Formulaire cree avec ID: {}", formId);
                 return ActionResult.success(
                         new FormInfo(formId, title, workflowName),
                         "Formulaire '" + title + "' cree avec succes (ID: " + formId + ")",
-                        browser.screenshot("form-created-" + formId));
+                        safeScreenshot("form-created-" + formId));
             }
 
-            // Même si l'ID n'est pas dans l'URL, on garde le nom pour retrouver le formulaire
-            currentFormName = title;
-            LOG.warn("Formulaire cree mais ID non trouve dans l'URL: {}", currentUrl);
-            return ActionResult.success(
-                    new FormInfo(-1, title, workflowName),
-                    "Formulaire '" + title + "' cree (ID non recupere). URL: " + currentUrl,
-                    browser.screenshot("form-created-no-id"));
+            currentFormId = -1;
+            LOG.warn("Formulaire cree mais ID non trouve (URL: {}, titre: {})", getCurrentUrl(), title);
+            return ActionResult.failure("Formulaire cree mais ID non recupere - verifiez manuellement",
+                    safeScreenshot("form-created-no-id"));
 
         } catch (Exception e) {
             LOG.error("Erreur lors de la creation du formulaire", e);
-            // IMPORTANT: Reset le contexte en cas d'erreur pour éviter d'agir sur un autre formulaire
             currentFormId = -1;
-            currentFormName = null;
-            currentStepName = null;
-            return ActionResult.failure("Erreur: " + e.getMessage(),
-                    browser.screenshot("form-creation-error"));
+            return ActionResult.failure("Erreur creation formulaire: " + e.getMessage(),
+                    safeScreenshot("form-creation-error"));
         }
     }
 
-    /**
-     * Cree un formulaire simple (dates par defaut).
-     */
     public ActionResult<FormInfo> createForm(String title, String workflowName) {
         return createForm(title, workflowName, "today", "2033-12-31");
     }
 
     /**
-     * Ajoute une etape au formulaire.
-     * TOUJOURS utilise openFormByName pour naviguer vers le formulaire le plus récent.
+     * Ajoute une etape au formulaire (navigation directe par URL).
      */
     public ActionResult<String> addStep(String stepTitle, boolean isFinal) {
-        LOG.info("Ajout de l'etape: {} (finale: {})", stepTitle, isFinal);
+        LOG.info("Ajout de l'etape: {} (finale: {}) au formulaire ID={}", stepTitle, isFinal, currentFormId);
 
         try {
-            if (currentFormName == null) {
-                return ActionResult.failure(
-                        "Aucun formulaire en cours d'edition. Creez d'abord un formulaire.",
-                        browser.screenshot("no-form-context"));
+            if (currentFormId <= 0) {
+                return ActionResult.failure("Aucun formulaire en cours d'edition (currentFormId=" + currentFormId + ").");
             }
 
-            // TOUJOURS naviguer via openFormByName (premier formulaire de la liste = le plus récent)
-            LOG.info("Ouverture du formulaire '{}' depuis la liste", currentFormName);
-            formsPage.openFormByName(currentFormName);
-
-            LOG.info("URL après navigation: {}", browser.getCurrentUrl());
-
-            formsPage.clickStepsTab()
-                    .addStep(stepTitle, isFinal);
-
-            LOG.info("Etape '{}' ajoutee", stepTitle);
+            formsPage.addStepDirect(currentFormId, stepTitle, isFinal);
+            LOG.info("Etape '{}' ajoutee au formulaire ID={}", stepTitle, currentFormId);
             return ActionResult.success(stepTitle,
                     "Etape '" + stepTitle + "' ajoutee" + (isFinal ? " (finale)" : ""),
-                    browser.screenshot("step-added-" + stepTitle.replace(" ", "-")));
+                    safeScreenshot("step-added"));
 
         } catch (Exception e) {
-            LOG.error("Erreur lors de l'ajout de l'etape", e);
-            return ActionResult.failure("Erreur: " + e.getMessage(),
-                    browser.screenshot("step-add-error"));
+            LOG.error("Erreur lors de l'ajout de l'etape '{}' au formulaire ID={}", stepTitle, currentFormId, e);
+            return ActionResult.failure(
+                    "Erreur ajout etape '" + stepTitle + "' (formId=" + currentFormId + "): " + e.getMessage(),
+                    safeScreenshot("step-add-error"));
         }
     }
 
     /**
-     * Ajoute une etape initiale au formulaire.
-     * TOUJOURS utilise openFormByName pour naviguer vers le formulaire le plus récent.
+     * Ajoute une etape initiale (non finale).
      */
     public ActionResult<String> addInitialStep(String stepTitle) {
-        LOG.info("Ajout de l'etape initiale: {}", stepTitle);
-
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure(
-                        "Aucun formulaire en cours d'edition. Creez d'abord un formulaire.",
-                        browser.screenshot("no-form-context"));
-            }
-
-            // TOUJOURS naviguer via openFormByName
-            LOG.info("Ouverture du formulaire '{}' depuis la liste", currentFormName);
-            formsPage.openFormByName(currentFormName);
-
-            // Cliquer sur l'onglet Etapes et ajouter l'étape initiale
-            formsPage.clickStepsTab()
-                    .addInitialStep(stepTitle);
-
-            LOG.info("Etape initiale '{}' ajoutee", stepTitle);
-            return ActionResult.success(stepTitle,
-                    "Etape initiale '" + stepTitle + "' ajoutee",
-                    browser.screenshot("step-initial-added"));
-
-        } catch (Exception e) {
-            LOG.error("Erreur lors de l'ajout de l'etape initiale: {}", e.getMessage(), e);
-            return ActionResult.failure("Erreur: " + e.getMessage(),
-                    browser.screenshot("step-add-error"));
-        }
-    }
-
-    // Mémorise si on est déjà dans l'onglet Questions d'une étape
-    private String currentStepName = null;
-
-    /**
-     * Navigue vers l'onglet Questions d'une étape.
-     * Appelée une seule fois avant d'ajouter plusieurs questions.
-     */
-    public ActionResult<Void> navigateToStepQuestions(String stepName) {
-        LOG.info("Navigation vers l'onglet Questions de l'étape '{}'", stepName);
-
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure(
-                        "Aucun formulaire en cours d'edition. Creez d'abord un formulaire.",
-                        browser.screenshot("no-form-context"));
-            }
-
-            formsPage.openFormByName(currentFormName);
-            formsPage.clickStepsTab();
-            formsPage.clickModifyStepByName(stepName);
-            formsPage.clickQuestionsTab();
-
-            LOG.info("Navigation vers l'onglet Questions de '{}' réussie", stepName);
-            return ActionResult.success(null, "Navigation vers Questions de '" + stepName + "' réussie");
-
-        } catch (Exception e) {
-            LOG.error("Erreur lors de la navigation vers Questions", e);
-            return ActionResult.failure("Erreur: " + e.getMessage(),
-                    browser.screenshot("navigation-error"));
-        }
+        return addStep(stepTitle, false);
     }
 
     /**
-     * Ajoute une question texte court a l'etape.
-     * Navigue TOUJOURS vers le formulaire/étape car la page peut avoir changé après la dernière action.
+     * Ajoute une question a une etape (navigation directe par URL).
+     * @param stepName Nom de l'etape
+     * @param questionTitle Titre de la question
+     * @param questionType Type de question (TEXT, NUMBER, DATE, etc.)
      */
-    public ActionResult<QuestionInfo> addTextQuestion(String stepName, String questionTitle) {
-        LOG.info("Ajout question texte '{}' a l'etape '{}'", questionTitle, stepName);
+    private ActionResult<QuestionInfo> addQuestion(String stepName, String questionTitle, String questionType,
+                                                    QuestionAdder adder) {
+        LOG.info("Ajout question {} '{}' a l'etape '{}'", questionType, questionTitle, stepName);
 
         try {
-            if (currentFormName == null) {
-                return ActionResult.failure(
-                        "Aucun formulaire en cours d'edition. Creez d'abord un formulaire.",
-                        browser.screenshot("no-form-context"));
+            if (currentFormId <= 0) {
+                return ActionResult.failure("Aucun formulaire en cours d'edition. Creez d'abord un formulaire.");
             }
 
-            // TOUJOURS naviguer car la page peut avoir changé après la dernière action
-            formsPage.openFormByName(currentFormName);
-            formsPage.clickStepsTab();
-            formsPage.clickModifyStepByName(stepName);
-            formsPage.clickQuestionsTab();
+            // Navigation directe vers la page des questions de l'etape
+            formsPage.navigateToStepQuestions(currentFormId, stepName);
 
             // Ajouter la question
-            formsPage.addTextQuestion(questionTitle);
-            LOG.info("Question texte '{}' ajoutée à l'étape '{}'", questionTitle, stepName);
+            adder.add(questionTitle);
 
+            LOG.info("Question {} '{}' ajoutee a l'etape '{}'", questionType, questionTitle, stepName);
             return ActionResult.success(
-                    new QuestionInfo(questionTitle, "TEXT"),
-                    "Question texte '" + questionTitle + "' ajoutee a l'etape '" + stepName + "'",
-                    browser.screenshot("question-text-added"));
+                    new QuestionInfo(questionTitle, questionType),
+                    "Question " + questionType + " '" + questionTitle + "' ajoutee a l'etape '" + stepName + "'",
+                    browser.screenshot("question-added"));
 
         } catch (Exception e) {
-            LOG.error("Erreur lors de l'ajout de la question texte", e);
-            return ActionResult.failure("Erreur: " + e.getMessage(),
-                    browser.screenshot("question-add-error"));
+            LOG.error("Erreur lors de l'ajout de la question {} '{}' a l'etape '{}'",
+                    questionType, questionTitle, stepName, e);
+            return ActionResult.failure("Erreur ajout question " + questionType + " '" + questionTitle
+                    + "' sur '" + stepName + "': " + e.getMessage(),
+                    safeScreenshot("question-add-error"));
         }
     }
 
-    /**
-     * Ajoute une question nombre a l'etape.
-     * Navigue TOUJOURS vers le formulaire/étape car la page peut avoir changé après la dernière action.
-     */
+    @FunctionalInterface
+    private interface QuestionAdder {
+        void add(String title);
+    }
+
+    public ActionResult<QuestionInfo> addTextQuestion(String stepName, String questionTitle) {
+        return addQuestion(stepName, questionTitle, "TEXT", formsPage::addTextQuestion);
+    }
+
     public ActionResult<QuestionInfo> addNumberQuestion(String stepName, String questionTitle) {
-        LOG.info("Ajout question nombre '{}' a l'etape '{}'", questionTitle, stepName);
-
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure(
-                        "Aucun formulaire en cours d'edition. Creez d'abord un formulaire.",
-                        browser.screenshot("no-form-context"));
-            }
-
-            // TOUJOURS naviguer car la page peut avoir changé après la dernière action
-            formsPage.openFormByName(currentFormName);
-            formsPage.clickStepsTab();
-            formsPage.clickModifyStepByName(stepName);
-            formsPage.clickQuestionsTab();
-
-            // Ajouter la question nombre
-            formsPage.addNumberQuestion(questionTitle);
-            LOG.info("Question nombre '{}' ajoutée à l'étape '{}'", questionTitle, stepName);
-
-            return ActionResult.success(
-                    new QuestionInfo(questionTitle, "NUMBER"),
-                    "Question nombre '" + questionTitle + "' ajoutee a l'etape '" + stepName + "'",
-                    browser.screenshot("question-number-added"));
-
-        } catch (Exception e) {
-            LOG.error("Erreur lors de l'ajout de la question nombre", e);
-            return ActionResult.failure("Erreur: " + e.getMessage(),
-                    browser.screenshot("question-add-error"));
-        }
+        return addQuestion(stepName, questionTitle, "NUMBER", formsPage::addNumberQuestion);
     }
 
-    /**
-     * Ajoute une question date a l'etape.
-     * Navigue TOUJOURS vers le formulaire/étape car la page peut avoir changé après la dernière action.
-     */
     public ActionResult<QuestionInfo> addDateQuestion(String stepName, String questionTitle) {
-        LOG.info("Ajout question date '{}' a l'etape '{}'", questionTitle, stepName);
+        return addQuestion(stepName, questionTitle, "DATE", formsPage::addDateQuestion);
+    }
 
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure(
-                        "Aucun formulaire en cours d'edition. Creez d'abord un formulaire.",
-                        browser.screenshot("no-form-context"));
-            }
+    public ActionResult<QuestionInfo> addDropdownQuestion(String stepName, String questionTitle) {
+        return addQuestion(stepName, questionTitle, "DROPDOWN", formsPage::addDropdownQuestion);
+    }
 
-            // TOUJOURS naviguer car la page peut avoir changé après la dernière action
-            formsPage.openFormByName(currentFormName);
-            formsPage.clickStepsTab();
-            formsPage.clickModifyStepByName(stepName);
-            formsPage.clickQuestionsTab();
+    public ActionResult<QuestionInfo> addFileQuestion(String stepName, String questionTitle) {
+        return addQuestion(stepName, questionTitle, "FILE", formsPage::addFileQuestion);
+    }
 
-            // Ajouter la question date
-            formsPage.addDateQuestion(questionTitle);
-            LOG.info("Question date '{}' ajoutée à l'étape '{}'", questionTitle, stepName);
+    public ActionResult<QuestionInfo> addMylutecAttributeQuestion(String stepName, String questionTitle) {
+        return addQuestion(stepName, questionTitle, "MYLUTECE_ATTRIBUTE", formsPage::addMylutecAttributeQuestion);
+    }
 
-            return ActionResult.success(
-                    new QuestionInfo(questionTitle, "DATE"),
-                    "Question date '" + questionTitle + "' ajoutee a l'etape '" + stepName + "'",
-                    browser.screenshot("question-date-added"));
+    public ActionResult<QuestionInfo> addGeolocationQuestion(String stepName, String questionTitle) {
+        return addQuestion(stepName, questionTitle, "GEOLOCATION", formsPage::addGeolocationQuestion);
+    }
 
-        } catch (Exception e) {
-            LOG.error("Erreur lors de l'ajout de la question date", e);
-            return ActionResult.failure("Erreur: " + e.getMessage(),
-                    browser.screenshot("question-add-error"));
-        }
+    public ActionResult<QuestionInfo> addSortableListQuestion(String stepName, String questionTitle) {
+        return addQuestion(stepName, questionTitle, "SORTABLE_LIST", formsPage::addSortableListQuestion);
+    }
+
+    public ActionResult<QuestionInfo> addTextareaQuestion(String stepName, String questionTitle) {
+        return addQuestion(stepName, questionTitle, "TEXTAREA", formsPage::addTextareaQuestion);
+    }
+
+    public ActionResult<QuestionInfo> addRadioButtonQuestion(String stepName, String questionTitle) {
+        return addQuestion(stepName, questionTitle, "RADIO", formsPage::addRadioButtonQuestion);
+    }
+
+    public ActionResult<QuestionInfo> addCheckboxQuestion(String stepName, String questionTitle) {
+        return addQuestion(stepName, questionTitle, "CHECKBOX", formsPage::addCheckboxQuestion);
+    }
+
+    public ActionResult<QuestionInfo> addNumberingQuestion(String stepName, String questionTitle) {
+        return addQuestion(stepName, questionTitle, "NUMBERING", formsPage::addNumberingQuestion);
+    }
+
+    public ActionResult<QuestionInfo> addImageQuestion(String stepName, String questionTitle) {
+        return addQuestion(stepName, questionTitle, "IMAGE", formsPage::addImageQuestion);
     }
 
     /**
-     * Modifie une etape existante pour decocher "Finale" par index.
-     * Cela permet d'ajouter une transition depuis cette etape.
-     * @deprecated Utiliser uncheckStepFinaleByName() à la place
-     */
-    public ActionResult<Void> uncheckStepFinale(int stepIndex) {
-        LOG.info("Décochage de 'Finale' pour l'étape {}", stepIndex);
-
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure(
-                        "Aucun formulaire en cours d'edition. Creez d'abord un formulaire.",
-                        browser.screenshot("no-form-context"));
-            }
-
-            // TOUJOURS naviguer via openFormByName
-            LOG.info("Ouverture du formulaire '{}' depuis la liste", currentFormName);
-            formsPage.openFormByName(currentFormName);
-
-            // Décocher "Finale" pour l'étape
-            formsPage.uncheckStepFinale(stepIndex);
-
-            LOG.info("Étape {} modifiée (Finale décochée)", stepIndex);
-            return ActionResult.success(null,
-                    "Etape " + stepIndex + " modifiee (Finale decochee)",
-                    browser.screenshot("step-finale-unchecked"));
-
-        } catch (Exception e) {
-            LOG.error("Erreur lors de la modification de l'étape", e);
-            return ActionResult.failure("Erreur: " + e.getMessage(),
-                    browser.screenshot("step-modify-error"));
-        }
-    }
-
-    /**
-     * Modifie une etape existante pour decocher "Finale" par nom.
-     * Cela permet d'ajouter une transition depuis cette etape.
+     * Decoche Finale sur une etape (navigation directe par URL).
      */
     public ActionResult<Void> uncheckStepFinaleByName(String stepName) {
-        LOG.info("Décochage de 'Finale' pour l'étape '{}'", stepName);
+        LOG.info("Decochage de 'Finale' pour l'etape '{}'", stepName);
 
         try {
-            if (currentFormName == null) {
-                return ActionResult.failure(
-                        "Aucun formulaire en cours d'edition. Creez d'abord un formulaire.",
-                        browser.screenshot("no-form-context"));
+            if (currentFormId <= 0) {
+                return ActionResult.failure("Aucun formulaire en cours d'edition.");
             }
 
-            // TOUJOURS naviguer via openFormByName
-            LOG.info("Ouverture du formulaire '{}' depuis la liste", currentFormName);
-            formsPage.openFormByName(currentFormName);
+            formsPage.uncheckStepFinaleDirect(currentFormId, stepName);
 
-            // Décocher "Finale" pour l'étape par nom
-            formsPage.uncheckStepFinaleByName(stepName);
-
-            LOG.info("Étape '{}' modifiée (Finale décochée)", stepName);
+            LOG.info("Etape '{}' modifiee (Finale decochee)", stepName);
             return ActionResult.success(null,
                     "Etape '" + stepName + "' modifiee (Finale decochee)",
                     browser.screenshot("step-finale-unchecked"));
 
         } catch (Exception e) {
-            LOG.error("Erreur lors de la modification de l'étape '{}'", stepName, e);
+            LOG.error("Erreur lors de la modification de l'etape", e);
             return ActionResult.failure("Erreur: " + e.getMessage(),
                     browser.screenshot("step-modify-error"));
         }
     }
 
     /**
-     * Configure la transition entre deux etapes.
-     * Basé sur le script Playwright de l'utilisateur:
-     * 1. Naviguer vers le formulaire
-     * 2. Cliquer sur onglet Etapes
-     * 3. Cliquer sur "Modifier l'étape" pour l'étape source
-     * 4. Cliquer sur "Ajouter une liaison"
-     * 5. Confirmer dans l'Offcanvas
+     * Configure la transition depuis une etape (navigation directe par URL).
      */
     public ActionResult<Void> configureStepTransition(String fromStep) {
         LOG.info("Configuration de la transition depuis l'etape '{}'", fromStep);
 
         try {
-            if (currentFormName == null) {
-                return ActionResult.failure(
-                        "Aucun formulaire en cours d'edition. Creez d'abord un formulaire.",
-                        browser.screenshot("no-form-context"));
+            if (currentFormId <= 0) {
+                return ActionResult.failure("Aucun formulaire en cours d'edition.");
             }
 
-            // TOUJOURS naviguer via openFormByName
-            LOG.info("Ouverture du formulaire '{}' depuis la liste", currentFormName);
-            formsPage.openFormByName(currentFormName);
+            formsPage.configureStepTransitionDirect(currentFormId, fromStep);
 
-            // Cliquer sur l'onglet Etapes
-            formsPage.clickStepsTab();
-            LOG.info("Onglet Etapes cliqué");
-
-            // Cliquer sur "Modifier l'étape" pour l'étape source par son nom
-            formsPage.clickModifyStepByName(fromStep);
-            LOG.info("Modification de l'étape '{}' ouverte", fromStep);
-
-            // Ajouter la liaison
-            formsPage.addStepTransition();
-            LOG.info("Liaison ajoutée depuis '{}'", fromStep);
-
+            LOG.info("Transition configuree depuis '{}'", fromStep);
             return ActionResult.success(null,
                     "Transition configuree depuis '" + fromStep + "'",
                     browser.screenshot("transition-configured"));
@@ -438,267 +277,7 @@ public class FormsActions {
     }
 
     /**
-     * Ajoute une question liste déroulante à l'étape.
-     */
-    public ActionResult<QuestionInfo> addDropdownQuestion(String stepName, String questionTitle) {
-        LOG.info("Ajout question liste déroulante '{}' à l'étape '{}'", questionTitle, stepName);
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure("Aucun formulaire en cours d'édition.", browser.screenshot("no-form-context"));
-            }
-            // Navigation obligatoire
-            {
-                formsPage.openFormByName(currentFormName);
-                formsPage.clickStepsTab();
-                formsPage.clickModifyStepByName(stepName);
-                formsPage.clickQuestionsTab();
-            }
-            formsPage.addDropdownQuestion(questionTitle);
-            LOG.info("Question liste déroulante '{}' ajoutée", questionTitle);
-            return ActionResult.success(new QuestionInfo(questionTitle, "DROPDOWN"), "Question ajoutée", browser.screenshot("question-added"));
-        } catch (Exception e) {
-            LOG.error("Erreur ajout question", e);
-            currentStepName = null;
-            return ActionResult.failure("Erreur: " + e.getMessage(), browser.screenshot("error"));
-        }
-    }
-
-    /**
-     * Ajoute une question fichier à l'étape.
-     */
-    public ActionResult<QuestionInfo> addFileQuestion(String stepName, String questionTitle) {
-        LOG.info("Ajout question fichier '{}' à l'étape '{}'", questionTitle, stepName);
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure("Aucun formulaire en cours d'édition.", browser.screenshot("no-form-context"));
-            }
-            // Navigation obligatoire
-            {
-                formsPage.openFormByName(currentFormName);
-                formsPage.clickStepsTab();
-                formsPage.clickModifyStepByName(stepName);
-                formsPage.clickQuestionsTab();
-            }
-            formsPage.addFileQuestion(questionTitle);
-            LOG.info("Question fichier '{}' ajoutée", questionTitle);
-            return ActionResult.success(new QuestionInfo(questionTitle, "FILE"), "Question ajoutée", browser.screenshot("question-added"));
-        } catch (Exception e) {
-            LOG.error("Erreur ajout question", e);
-            currentStepName = null;
-            return ActionResult.failure("Erreur: " + e.getMessage(), browser.screenshot("error"));
-        }
-    }
-
-    /**
-     * Ajoute une question attribut Mylutece à l'étape.
-     */
-    public ActionResult<QuestionInfo> addMylutecAttributeQuestion(String stepName, String questionTitle) {
-        LOG.info("Ajout question attribut Mylutece '{}' à l'étape '{}'", questionTitle, stepName);
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure("Aucun formulaire en cours d'édition.", browser.screenshot("no-form-context"));
-            }
-            // Navigation obligatoire
-            {
-                formsPage.openFormByName(currentFormName);
-                formsPage.clickStepsTab();
-                formsPage.clickModifyStepByName(stepName);
-                formsPage.clickQuestionsTab();
-            }
-            formsPage.addMylutecAttributeQuestion(questionTitle);
-            LOG.info("Question attribut Mylutece '{}' ajoutée", questionTitle);
-            return ActionResult.success(new QuestionInfo(questionTitle, "MYLUTECE_ATTRIBUTE"), "Question ajoutée", browser.screenshot("question-added"));
-        } catch (Exception e) {
-            LOG.error("Erreur ajout question", e);
-            currentStepName = null;
-            return ActionResult.failure("Erreur: " + e.getMessage(), browser.screenshot("error"));
-        }
-    }
-
-    /**
-     * Ajoute une question géolocalisation à l'étape.
-     */
-    public ActionResult<QuestionInfo> addGeolocationQuestion(String stepName, String questionTitle) {
-        LOG.info("Ajout question géolocalisation '{}' à l'étape '{}'", questionTitle, stepName);
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure("Aucun formulaire en cours d'édition.", browser.screenshot("no-form-context"));
-            }
-            // Navigation obligatoire
-            {
-                formsPage.openFormByName(currentFormName);
-                formsPage.clickStepsTab();
-                formsPage.clickModifyStepByName(stepName);
-                formsPage.clickQuestionsTab();
-            }
-            formsPage.addGeolocationQuestion(questionTitle);
-            LOG.info("Question géolocalisation '{}' ajoutée", questionTitle);
-            return ActionResult.success(new QuestionInfo(questionTitle, "GEOLOCATION"), "Question ajoutée", browser.screenshot("question-added"));
-        } catch (Exception e) {
-            LOG.error("Erreur ajout question", e);
-            currentStepName = null;
-            return ActionResult.failure("Erreur: " + e.getMessage(), browser.screenshot("error"));
-        }
-    }
-
-    /**
-     * Ajoute une question liste triable à l'étape.
-     */
-    public ActionResult<QuestionInfo> addSortableListQuestion(String stepName, String questionTitle) {
-        LOG.info("Ajout question liste triable '{}' à l'étape '{}'", questionTitle, stepName);
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure("Aucun formulaire en cours d'édition.", browser.screenshot("no-form-context"));
-            }
-            // Navigation obligatoire
-            {
-                formsPage.openFormByName(currentFormName);
-                formsPage.clickStepsTab();
-                formsPage.clickModifyStepByName(stepName);
-                formsPage.clickQuestionsTab();
-            }
-            formsPage.addSortableListQuestion(questionTitle);
-            LOG.info("Question liste triable '{}' ajoutée", questionTitle);
-            return ActionResult.success(new QuestionInfo(questionTitle, "SORTABLE_LIST"), "Question ajoutée", browser.screenshot("question-added"));
-        } catch (Exception e) {
-            LOG.error("Erreur ajout question", e);
-            currentStepName = null;
-            return ActionResult.failure("Erreur: " + e.getMessage(), browser.screenshot("error"));
-        }
-    }
-
-    /**
-     * Ajoute une question zone de texte long à l'étape.
-     */
-    public ActionResult<QuestionInfo> addTextareaQuestion(String stepName, String questionTitle) {
-        LOG.info("Ajout question zone de texte long '{}' à l'étape '{}'", questionTitle, stepName);
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure("Aucun formulaire en cours d'édition.", browser.screenshot("no-form-context"));
-            }
-            // Navigation obligatoire
-            {
-                formsPage.openFormByName(currentFormName);
-                formsPage.clickStepsTab();
-                formsPage.clickModifyStepByName(stepName);
-                formsPage.clickQuestionsTab();
-            }
-            formsPage.addTextareaQuestion(questionTitle);
-            LOG.info("Question zone de texte long '{}' ajoutée", questionTitle);
-            return ActionResult.success(new QuestionInfo(questionTitle, "TEXTAREA"), "Question ajoutée", browser.screenshot("question-added"));
-        } catch (Exception e) {
-            LOG.error("Erreur ajout question", e);
-            currentStepName = null;
-            return ActionResult.failure("Erreur: " + e.getMessage(), browser.screenshot("error"));
-        }
-    }
-
-    /**
-     * Ajoute une question bouton radio à l'étape.
-     */
-    public ActionResult<QuestionInfo> addRadioButtonQuestion(String stepName, String questionTitle) {
-        LOG.info("Ajout question bouton radio '{}' à l'étape '{}'", questionTitle, stepName);
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure("Aucun formulaire en cours d'édition.", browser.screenshot("no-form-context"));
-            }
-            // Navigation obligatoire
-            {
-                formsPage.openFormByName(currentFormName);
-                formsPage.clickStepsTab();
-                formsPage.clickModifyStepByName(stepName);
-                formsPage.clickQuestionsTab();
-            }
-            formsPage.addRadioButtonQuestion(questionTitle);
-            LOG.info("Question bouton radio '{}' ajoutée", questionTitle);
-            return ActionResult.success(new QuestionInfo(questionTitle, "RADIO"), "Question ajoutée", browser.screenshot("question-added"));
-        } catch (Exception e) {
-            LOG.error("Erreur ajout question", e);
-            currentStepName = null;
-            return ActionResult.failure("Erreur: " + e.getMessage(), browser.screenshot("error"));
-        }
-    }
-
-    /**
-     * Ajoute une question case à cocher à l'étape.
-     */
-    public ActionResult<QuestionInfo> addCheckboxQuestion(String stepName, String questionTitle) {
-        LOG.info("Ajout question case à cocher '{}' à l'étape '{}'", questionTitle, stepName);
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure("Aucun formulaire en cours d'édition.", browser.screenshot("no-form-context"));
-            }
-            // Navigation obligatoire
-            {
-                formsPage.openFormByName(currentFormName);
-                formsPage.clickStepsTab();
-                formsPage.clickModifyStepByName(stepName);
-                formsPage.clickQuestionsTab();
-            }
-            formsPage.addCheckboxQuestion(questionTitle);
-            LOG.info("Question case à cocher '{}' ajoutée", questionTitle);
-            return ActionResult.success(new QuestionInfo(questionTitle, "CHECKBOX"), "Question ajoutée", browser.screenshot("question-added"));
-        } catch (Exception e) {
-            LOG.error("Erreur ajout question", e);
-            currentStepName = null;
-            return ActionResult.failure("Erreur: " + e.getMessage(), browser.screenshot("error"));
-        }
-    }
-
-    /**
-     * Ajoute une question numérotation à l'étape.
-     */
-    public ActionResult<QuestionInfo> addNumberingQuestion(String stepName, String questionTitle) {
-        LOG.info("Ajout question numérotation '{}' à l'étape '{}'", questionTitle, stepName);
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure("Aucun formulaire en cours d'édition.", browser.screenshot("no-form-context"));
-            }
-            // Navigation obligatoire
-            {
-                formsPage.openFormByName(currentFormName);
-                formsPage.clickStepsTab();
-                formsPage.clickModifyStepByName(stepName);
-                formsPage.clickQuestionsTab();
-            }
-            formsPage.addNumberingQuestion(questionTitle);
-            LOG.info("Question numérotation '{}' ajoutée", questionTitle);
-            return ActionResult.success(new QuestionInfo(questionTitle, "NUMBERING"), "Question ajoutée", browser.screenshot("question-added"));
-        } catch (Exception e) {
-            LOG.error("Erreur ajout question", e);
-            currentStepName = null;
-            return ActionResult.failure("Erreur: " + e.getMessage(), browser.screenshot("error"));
-        }
-    }
-
-    /**
-     * Ajoute une question image à l'étape.
-     */
-    public ActionResult<QuestionInfo> addImageQuestion(String stepName, String questionTitle) {
-        LOG.info("Ajout question image '{}' à l'étape '{}'", questionTitle, stepName);
-        try {
-            if (currentFormName == null) {
-                return ActionResult.failure("Aucun formulaire en cours d'édition.", browser.screenshot("no-form-context"));
-            }
-            // Navigation obligatoire
-            {
-                formsPage.openFormByName(currentFormName);
-                formsPage.clickStepsTab();
-                formsPage.clickModifyStepByName(stepName);
-                formsPage.clickQuestionsTab();
-            }
-            formsPage.addImageQuestion(questionTitle);
-            LOG.info("Question image '{}' ajoutée", questionTitle);
-            return ActionResult.success(new QuestionInfo(questionTitle, "IMAGE"), "Question ajoutée", browser.screenshot("question-added"));
-        } catch (Exception e) {
-            LOG.error("Erreur ajout question", e);
-            currentStepName = null;
-            return ActionResult.failure("Erreur: " + e.getMessage(), browser.screenshot("error"));
-        }
-    }
-
-    /**
-     * Navigue vers la liste des formulaires et retourne la liste.
+     * Navigue vers la liste des formulaires.
      */
     public ActionResult<String> navigateToList() {
         try {
@@ -706,8 +285,7 @@ public class FormsActions {
             if (formsPage.isListDisplayed()) {
                 var forms = formsPage.getFormsList();
                 if (forms.isEmpty()) {
-                    return ActionResult.success("Aucun formulaire trouvé",
-                            "Aucun formulaire dans la liste");
+                    return ActionResult.success("Aucun formulaire trouve", "Aucun formulaire dans la liste");
                 }
 
                 StringBuilder sb = new StringBuilder();
@@ -722,6 +300,65 @@ public class FormsActions {
         } catch (Exception e) {
             LOG.error("Erreur lors de la navigation vers la liste", e);
             return ActionResult.failure("Erreur: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Soumet un formulaire en front office.
+     */
+    public ActionResult<Void> submitFormFrontOffice(String formTitle, String textLabel, String textValue,
+                                                     String numberLabel, String numberValue, String dateValue) {
+        LOG.info("Soumission FO du formulaire '{}'", formTitle);
+
+        try {
+            formsPage.navigateToFrontOffice(formTitle);
+
+            // Verifier que les champs du formulaire sont presents
+            boolean hasFormFields = browser.getPage().locator("input[type='text']").count() > 0 ||
+                                    browser.getPage().locator("input[type='number']").count() > 0 ||
+                                    browser.getPage().locator("textarea").count() > 0;
+
+            if (!hasFormFields) {
+                return ActionResult.failure("Les champs du formulaire ne sont pas disponibles en front office. URL: "
+                        + getCurrentUrl(), safeScreenshot("fo-form-not-found"));
+            }
+
+            formsPage.fillTextFieldFO(textLabel, textValue);
+            formsPage.fillNumberFieldFO(numberLabel, numberValue);
+            formsPage.fillDateFieldFO(dateValue);
+            formsPage.clickNextStepFO();
+            formsPage.clickViewSummaryFO();
+            formsPage.clickValidateSummaryFO();
+
+            LOG.info("Formulaire '{}' soumis en front office", formTitle);
+            return ActionResult.success(null,
+                    "Formulaire '" + formTitle + "' soumis avec succes en front office",
+                    safeScreenshot("fo-submission-success"));
+
+        } catch (Exception e) {
+            LOG.error("Erreur lors de la soumission FO du formulaire '{}'", formTitle, e);
+            return ActionResult.failure("Erreur soumission FO: " + e.getMessage(),
+                    safeScreenshot("fo-submission-error"));
+        }
+    }
+
+    /**
+     * Retourne l'URL courante du navigateur (pour debug).
+     */
+    public String getCurrentUrl() {
+        try {
+            return browser.getCurrentUrl();
+        } catch (Exception e) {
+            return "URL inconnue: " + e.getMessage();
+        }
+    }
+
+    private java.nio.file.Path safeScreenshot(String name) {
+        try {
+            return browser.screenshot(name);
+        } catch (Exception e) {
+            LOG.warn("Impossible de prendre screenshot '{}': {}", name, e.getMessage());
+            return null;
         }
     }
 }

@@ -1,16 +1,16 @@
 package fr.paris.lutece.e2e.pages;
 
 import com.microsoft.playwright.Page;
-import fr.paris.lutece.e2e.core.BrowserManager;
+import fr.paris.lutece.e2e.core.BrowserSession;
 
 /**
  * Classe de base pour tous les Page Objects.
  */
 public abstract class BasePage {
 
-    protected final BrowserManager browser;
+    protected final BrowserSession browser;
 
-    protected BasePage(BrowserManager browser) {
+    protected BasePage(BrowserSession browser) {
         this.browser = browser;
     }
 

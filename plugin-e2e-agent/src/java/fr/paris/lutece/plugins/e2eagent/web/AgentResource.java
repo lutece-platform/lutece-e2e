@@ -1,10 +1,15 @@
 package fr.paris.lutece.plugins.e2eagent.web;
 
 import fr.paris.lutece.plugins.e2eagent.agent.LuteceAiService;
+import fr.paris.lutece.plugins.e2eagent.agent.UserChatMemoryProvider;
 import fr.paris.lutece.e2e.core.BrowserManager;
+import fr.paris.lutece.e2e.core.BrowserSession;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.BufferedReader;
@@ -26,11 +31,19 @@ public class AgentResource {
 
     private static final Logger LOGGER = LogManager.getLogger(AgentResource.class);
 
+    private static final String SESSION_ID_HEADER = "X-Session-Id";
+
     @Inject
     private LuteceAiService aiService;
 
     @Inject
     private BrowserManager browserManager;
+
+    @Inject
+    private BrowserSession browserSession;
+
+    @Inject
+    private UserChatMemoryProvider chatMemoryProvider;
 
     /**
      * Endpoint de chat avec l'agent.
@@ -39,11 +52,13 @@ public class AgentResource {
     @Path("/chat")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response chat(ChatRequest request) {
-        LOGGER.info("Requete recue: {}", request.getMessage());
+    public Response chat(ChatRequest request, @Context HttpHeaders headers,
+                         @Context HttpServletRequest httpRequest) {
+        String sessionId = initSessionId(headers, httpRequest);
+        LOGGER.info("Requete recue (session {}): {}", sessionId, request.getMessage());
 
         try {
-            String response = aiService.chat(request.getMessage());
+            String response = aiService.chat(sessionId, request.getMessage());
             LOGGER.info("Reponse: {}", response);
             return Response.ok(new ChatResponse(response, false)).build();
         } catch (Exception e) {
@@ -64,16 +79,31 @@ public class AgentResource {
     }
 
     /**
+     * Verifie si une session de chat est active cote serveur.
+     * Retourne {@code {"active": true}} si le X-Session-Id a une ChatMemory,
+     * {@code {"active": false}} sinon (session expiree ou inconnue).
+     */
+    @GET
+    @Path("/session/active")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response isSessionActive(@Context HttpHeaders headers) {
+        String sessionId = headers.getHeaderString(SESSION_ID_HEADER);
+        boolean active = sessionId != null && chatMemoryProvider.hasMemory(sessionId);
+        return Response.ok("{\"active\":" + active + "}").build();
+    }
+
+    /**
      * Obtenir la configuration actuelle.
      */
     @GET
     @Path("/config")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getConfig() {
+    public Response getConfig(@Context HttpHeaders headers, @Context HttpServletRequest httpRequest) {
+        initSessionId(headers, httpRequest);
         try {
             ConfigResponse config = new ConfigResponse();
-            config.setUrl(browserManager.getBaseUrl());
-            config.setConfigured(browserManager.isBaseUrlConfigured());
+            config.setUrl(browserSession.getBaseUrl());
+            config.setConfigured(browserSession.isBaseUrlConfigured());
             return Response.ok(config).build();
         } catch (Exception e) {
             LOGGER.error("Erreur getConfig", e);
@@ -88,9 +118,11 @@ public class AgentResource {
     @Path("/config/url")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response setUrl(UrlRequest request) {
+    public Response setUrl(UrlRequest request, @Context HttpHeaders headers,
+                           @Context HttpServletRequest httpRequest) {
+        initSessionId(headers, httpRequest);
         try {
-            LOGGER.info("Configuration URL: {}", request.getUrl());
+            LOGGER.info("Configuration URL (session {}): {}", browserSession.getSessionId(), request.getUrl());
 
             if (request.getUrl() == null || request.getUrl().trim().isEmpty()) {
                 return Response.ok(new ConfigResponse(null, false, "L'URL ne peut pas etre vide")).build();
@@ -101,8 +133,8 @@ public class AgentResource {
                 return Response.ok(new ConfigResponse(null, false, "L'URL doit commencer par http:// ou https://")).build();
             }
 
-            browserManager.setBaseUrl(url);
-            return Response.ok(new ConfigResponse(browserManager.getBaseUrl(), true, "URL configuree avec succes")).build();
+            browserSession.setBaseUrl(url);
+            return Response.ok(new ConfigResponse(browserSession.getBaseUrl(), true, "URL configuree avec succes")).build();
         } catch (Exception e) {
             LOGGER.error("Erreur setUrl", e);
             return Response.ok(new ConfigResponse(null, false, "Erreur: " + e.getMessage())).build();
@@ -116,7 +148,9 @@ public class AgentResource {
     @Path("/config/test")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response testConnection(UrlRequest request) {
+    public Response testConnection(UrlRequest request, @Context HttpHeaders headers,
+                                    @Context HttpServletRequest httpRequest) {
+        initSessionId(headers, httpRequest);
         try {
             LOGGER.info("Test connexion URL: {}", request.getUrl());
 
@@ -183,6 +217,23 @@ public class AgentResource {
             LOGGER.error("Erreur test connexion", e);
             return Response.ok(new TestResponse(false, 0, 0, "Erreur: " + e.getMessage(), false, false)).build();
         }
+    }
+
+    /**
+     * Extrait le header X-Session-Id, le propage a BrowserSession,
+     * et l'enregistre dans le HttpSession pour le nettoyage automatique
+     * de la ChatMemory a l'expiration de la session.
+     *
+     * @return le sessionId utilise comme @MemoryId
+     */
+    private String initSessionId(HttpHeaders headers, HttpServletRequest httpRequest) {
+        String sessionId = headers.getHeaderString(SESSION_ID_HEADER);
+        if (sessionId != null && !sessionId.isEmpty()) {
+            browserSession.setSessionId(sessionId);
+            // Enregistrer le X-Session-Id dans le HttpSession pour cleanup a l'expiration
+            ChatMemorySessionListener.registerSessionId(httpRequest.getSession(true), sessionId);
+        }
+        return sessionId;
     }
 
     /**

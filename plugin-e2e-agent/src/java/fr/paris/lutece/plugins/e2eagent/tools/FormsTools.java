@@ -9,6 +9,8 @@ import jakarta.inject.Inject;
 
 /**
  * Tools LangChain4j pour la gestion des formulaires.
+ * IMPORTANT: Utiliser createCompleteForm pour creer un formulaire complet en une seule operation.
+ * NE PAS retenter si une operation echoue — retourner l'erreur a l'utilisateur.
  */
 @ApplicationScoped
 public class FormsTools {
@@ -19,14 +21,115 @@ public class FormsTools {
     @Inject
     AuthActions authActions;
 
-    @Tool("Cree un nouveau formulaire dans Lutece. " +
-          "Necessite d'etre connecte. " +
-          "Retourne l'ID du formulaire cree.")
+    @Tool("Cree un formulaire complet avec etapes, questions et transition en UNE SEULE operation. " +
+          "C'est l'outil OBLIGATOIRE pour creer un formulaire. " +
+          "Cree le formulaire, ajoute 2 etapes, ajoute les questions, decoche Finale sur l'etape 1, et configure la transition. " +
+          "NE PAS retenter si ca echoue — retourner l'erreur a l'utilisateur.")
+    public String createCompleteForm(
+            @P("Nom du formulaire, par exemple 'MonFormulaire'") String formName,
+            @P("Nom du workflow a associer, par exemple 'WF_RAF'") String workflowName,
+            @P("Nom de la premiere etape (non finale), par exemple 'Saisie'") String step1Name,
+            @P("Nom de la deuxieme etape (finale), par exemple 'Validation'") String step2Name,
+            @P("Titre de la question texte sur l'etape 1, par exemple 'Nom'") String textQuestionTitle,
+            @P("Titre de la question nombre sur l'etape 1, par exemple 'Age'") String numberQuestionTitle,
+            @P("Titre de la question texte sur l'etape 2, par exemple 'Commentaire'") String step2QuestionTitle) {
+
+        if (!authActions.isLoggedIn()) {
+            return "ERREUR: Vous devez d'abord vous connecter avec login()";
+        }
+
+        StringBuilder results = new StringBuilder();
+
+        // 1. Creer le formulaire
+        var formResult = formsActions.createForm(formName, workflowName);
+        if (!formResult.isSuccess()) {
+            return "ECHEC creation formulaire: " + formResult.getMessage()
+                    + " | URL: " + safeGetUrl();
+        }
+        int formId = formResult.getData().id();
+        results.append("1. Formulaire '").append(formName).append("' cree (ID: ")
+                .append(formId).append(")\n");
+
+        // 2. Ajouter l'etape 1 (non finale)
+        var step1Result = formsActions.addStep(step1Name, false);
+        if (!step1Result.isSuccess()) {
+            return results + "ECHEC ajout etape 1: " + step1Result.getMessage()
+                    + " | URL: " + safeGetUrl() + " | formId=" + formId;
+        }
+        results.append("2. Etape '").append(step1Name).append("' ajoutee\n");
+
+        // 3. Ajouter l'etape 2 (finale)
+        var step2Result = formsActions.addStep(step2Name, true);
+        if (!step2Result.isSuccess()) {
+            return results + "ECHEC ajout etape 2: " + step2Result.getMessage()
+                    + " | URL: " + safeGetUrl() + " | formId=" + formId;
+        }
+        results.append("3. Etape finale '").append(step2Name).append("' ajoutee\n");
+
+        // 4. Ajouter question texte sur etape 1
+        var textResult = formsActions.addTextQuestion(step1Name, textQuestionTitle);
+        if (!textResult.isSuccess()) {
+            return results + "ECHEC ajout question texte: " + textResult.getMessage()
+                    + " | URL: " + safeGetUrl();
+        }
+        results.append("4. Question texte '").append(textQuestionTitle).append("' ajoutee sur '")
+                .append(step1Name).append("'\n");
+
+        // 5. Ajouter question nombre sur etape 1
+        var numberResult = formsActions.addNumberQuestion(step1Name, numberQuestionTitle);
+        if (!numberResult.isSuccess()) {
+            return results + "ECHEC ajout question nombre: " + numberResult.getMessage()
+                    + " | URL: " + safeGetUrl();
+        }
+        results.append("5. Question nombre '").append(numberQuestionTitle).append("' ajoutee sur '")
+                .append(step1Name).append("'\n");
+
+        // 6. Ajouter question texte sur etape 2
+        var step2QResult = formsActions.addTextQuestion(step2Name, step2QuestionTitle);
+        if (!step2QResult.isSuccess()) {
+            return results + "ECHEC ajout question etape 2: " + step2QResult.getMessage()
+                    + " | URL: " + safeGetUrl();
+        }
+        results.append("6. Question texte '").append(step2QuestionTitle).append("' ajoutee sur '")
+                .append(step2Name).append("'\n");
+
+        // 7. Decocher Finale sur l'etape 1
+        var uncheckResult = formsActions.uncheckStepFinaleByName(step1Name);
+        if (!uncheckResult.isSuccess()) {
+            return results + "ECHEC decochage Finale: " + uncheckResult.getMessage()
+                    + " | URL: " + safeGetUrl();
+        }
+        results.append("7. Etape '").append(step1Name).append("' modifiee (non finale)\n");
+
+        // 8. Configurer la transition
+        var transitionResult = formsActions.configureStepTransition(step1Name);
+        if (!transitionResult.isSuccess()) {
+            return results + "ECHEC configuration transition: " + transitionResult.getMessage()
+                    + " | URL: " + safeGetUrl();
+        }
+        results.append("8. Transition ").append(step1Name).append(" -> ").append(step2Name)
+                .append(" configuree\n");
+
+        results.append("\nFormulaire complet cree avec succes!");
+        return results.toString();
+    }
+
+    private String safeGetUrl() {
+        try {
+            return formsActions.getCurrentUrl();
+        } catch (Exception e) {
+            return "URL inconnue";
+        }
+    }
+
+    @Tool("Cree un nouveau formulaire vide (sans etapes ni questions). " +
+          "Utiliser UNIQUEMENT si le formulaire ne correspond pas au schema de createCompleteForm. " +
+          "Si ca echoue, NE PAS retenter — retourner l'erreur a l'utilisateur.")
     public String createForm(
             @P("Titre du formulaire") String title,
-            @P("Nom du workflow a associer (optionnel, laisser vide si aucun)") String workflowName,
-            @P("Date de debut de disponibilite (format: YYYY-MM-DD ou 'today')") String startDate,
-            @P("Date de fin de disponibilite (format: YYYY-MM-DD)") String endDate) {
+            @P("Nom du workflow a associer (laisser vide si aucun)") String workflowName,
+            @P("Date de debut (format: YYYY-MM-DD ou 'today')") String startDate,
+            @P("Date de fin (format: YYYY-MM-DD)") String endDate) {
 
         if (!authActions.isLoggedIn()) {
             return "ERREUR: Vous devez d'abord vous connecter avec login()";
@@ -36,12 +139,12 @@ public class FormsTools {
         return result.toToolMessage();
     }
 
-    @Tool("Ajoute une etape au formulaire. " +
-          "Le premier parametre est le titre de l'etape (String). " +
-          "Le second parametre indique si c'est la derniere etape du formulaire (Boolean: true ou false).")
+    @Tool("Ajoute une etape au formulaire en cours d'edition. " +
+          "Le formulaire doit avoir ete cree avant avec createForm ou createCompleteForm. " +
+          "NE PAS retenter si ca echoue.")
     public String addStep(
-            @P("title") String title,
-            @P("isLastStep") boolean isLastStep) {
+            @P("Titre de l'etape, par exemple 'Saisie' ou 'Validation'") String title,
+            @P("true si c'est la derniere etape du formulaire, false sinon") boolean isLastStep) {
 
         if (!authActions.isLoggedIn()) {
             return "ERREUR: Vous devez d'abord vous connecter avec login()";
@@ -51,46 +154,8 @@ public class FormsTools {
         return result.toToolMessage();
     }
 
-    @Tool("Ajoute une etape non finale au formulaire (raccourci). " +
-          "Utilise cette methode pour ajouter rapidement une etape intermediaire.")
-    public String addIntermediateStep(
-            @P("title") String title) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        var result = formsActions.addStep(title, false);
-        return result.toToolMessage();
-    }
-
-    @Tool("Ajoute une etape initiale au formulaire. " +
-          "Utilise cette methode pour la premiere etape du formulaire (coche 'Initiale').")
-    public String addInitialStep(
-            @P("title") String title) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        var result = formsActions.addInitialStep(title);
-        return result.toToolMessage();
-    }
-
-    @Tool("Ajoute une etape finale au formulaire (raccourci). " +
-          "Utilise cette methode pour ajouter la derniere etape du formulaire.")
-    public String addFinalStep(
-            @P("title") String title) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        var result = formsActions.addStep(title, true);
-        return result.toToolMessage();
-    }
-
-    @Tool("Ajoute une question de type texte court a une etape.")
+    @Tool("Ajoute une question de type texte court a une etape du formulaire en cours d'edition. " +
+          "NE PAS retenter si ca echoue.")
     public String addTextQuestion(
             @P("Nom de l'etape ou ajouter la question") String stepName,
             @P("Titre de la question") String questionTitle) {
@@ -105,7 +170,7 @@ public class FormsTools {
 
     @Tool("Ajoute une question de type nombre a une etape.")
     public String addNumberQuestion(
-            @P("Nom de l'etape ou ajouter la question") String stepName,
+            @P("Nom de l'etape") String stepName,
             @P("Titre de la question") String questionTitle) {
 
         if (!authActions.isLoggedIn()) {
@@ -118,7 +183,7 @@ public class FormsTools {
 
     @Tool("Ajoute une question de type date a une etape.")
     public String addDateQuestion(
-            @P("Nom de l'etape ou ajouter la question") String stepName,
+            @P("Nom de l'etape") String stepName,
             @P("Titre de la question") String questionTitle) {
 
         if (!authActions.isLoggedIn()) {
@@ -129,8 +194,7 @@ public class FormsTools {
         return result.toToolMessage();
     }
 
-    @Tool("Modifie une etape existante pour decocher 'Finale' par son nom. " +
-          "Cela permet d'ajouter une transition depuis cette etape.")
+    @Tool("Modifie une etape pour decocher 'Finale', permettant d'ajouter une transition.")
     public String uncheckStepFinale(
             @P("Nom de l'etape dont il faut decocher 'Finale'") String stepName) {
 
@@ -144,7 +208,7 @@ public class FormsTools {
 
     @Tool("Configure la transition entre deux etapes du formulaire.")
     public String configureTransition(
-            @P("Nom de l'etape source") String fromStep) {
+            @P("Nom de l'etape source de la transition") String fromStep) {
 
         if (!authActions.isLoggedIn()) {
             return "ERREUR: Vous devez d'abord vous connecter avec login()";
@@ -154,7 +218,7 @@ public class FormsTools {
         return result.toToolMessage();
     }
 
-    @Tool("Publie un formulaire sur le portail pour qu'il soit accessible aux utilisateurs.")
+    @Tool("Publie un formulaire sur le portail.")
     public String publishForm(
             @P("Titre du formulaire a publier") String formTitle,
             @P("Date de debut de publication (format: YYYY-MM-DD ou 'today')") String startDate) {
@@ -179,210 +243,57 @@ public class FormsTools {
 
     @Tool("Ajoute une question de type liste deroulante a une etape.")
     public String addDropdownQuestion(
-            @P("Nom de l'etape ou ajouter la question") String stepName,
+            @P("Nom de l'etape") String stepName,
             @P("Titre de la question") String questionTitle) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        var result = formsActions.addDropdownQuestion(stepName, questionTitle);
-        return result.toToolMessage();
+        if (!authActions.isLoggedIn()) return "ERREUR: Connectez-vous d'abord";
+        return formsActions.addDropdownQuestion(stepName, questionTitle).toToolMessage();
     }
 
-    @Tool("Ajoute une question de type fichier a une etape. Permet de telecharger des fichiers.")
+    @Tool("Ajoute une question de type fichier a une etape.")
     public String addFileQuestion(
-            @P("Nom de l'etape ou ajouter la question") String stepName,
+            @P("Nom de l'etape") String stepName,
             @P("Titre de la question") String questionTitle) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        var result = formsActions.addFileQuestion(stepName, questionTitle);
-        return result.toToolMessage();
-    }
-
-    @Tool("Ajoute une question de type attribut Mylutece a une etape.")
-    public String addMylutecAttributeQuestion(
-            @P("Nom de l'etape ou ajouter la question") String stepName,
-            @P("Titre de la question") String questionTitle) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        var result = formsActions.addMylutecAttributeQuestion(stepName, questionTitle);
-        return result.toToolMessage();
-    }
-
-    @Tool("Ajoute une question de type geolocalisation a une etape.")
-    public String addGeolocationQuestion(
-            @P("Nom de l'etape ou ajouter la question") String stepName,
-            @P("Titre de la question") String questionTitle) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        var result = formsActions.addGeolocationQuestion(stepName, questionTitle);
-        return result.toToolMessage();
-    }
-
-    @Tool("Ajoute une question de type liste triable a une etape.")
-    public String addSortableListQuestion(
-            @P("Nom de l'etape ou ajouter la question") String stepName,
-            @P("Titre de la question") String questionTitle) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        var result = formsActions.addSortableListQuestion(stepName, questionTitle);
-        return result.toToolMessage();
+        if (!authActions.isLoggedIn()) return "ERREUR: Connectez-vous d'abord";
+        return formsActions.addFileQuestion(stepName, questionTitle).toToolMessage();
     }
 
     @Tool("Ajoute une question de type zone de texte long a une etape.")
     public String addTextareaQuestion(
-            @P("Nom de l'etape ou ajouter la question") String stepName,
+            @P("Nom de l'etape") String stepName,
             @P("Titre de la question") String questionTitle) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        var result = formsActions.addTextareaQuestion(stepName, questionTitle);
-        return result.toToolMessage();
+        if (!authActions.isLoggedIn()) return "ERREUR: Connectez-vous d'abord";
+        return formsActions.addTextareaQuestion(stepName, questionTitle).toToolMessage();
     }
 
     @Tool("Ajoute une question de type bouton radio a une etape.")
     public String addRadioButtonQuestion(
-            @P("Nom de l'etape ou ajouter la question") String stepName,
+            @P("Nom de l'etape") String stepName,
             @P("Titre de la question") String questionTitle) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        var result = formsActions.addRadioButtonQuestion(stepName, questionTitle);
-        return result.toToolMessage();
+        if (!authActions.isLoggedIn()) return "ERREUR: Connectez-vous d'abord";
+        return formsActions.addRadioButtonQuestion(stepName, questionTitle).toToolMessage();
     }
 
     @Tool("Ajoute une question de type case a cocher a une etape.")
     public String addCheckboxQuestion(
-            @P("Nom de l'etape ou ajouter la question") String stepName,
+            @P("Nom de l'etape") String stepName,
             @P("Titre de la question") String questionTitle) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        var result = formsActions.addCheckboxQuestion(stepName, questionTitle);
-        return result.toToolMessage();
+        if (!authActions.isLoggedIn()) return "ERREUR: Connectez-vous d'abord";
+        return formsActions.addCheckboxQuestion(stepName, questionTitle).toToolMessage();
     }
 
     @Tool("Ajoute une question de type numerotation a une etape.")
     public String addNumberingQuestion(
-            @P("Nom de l'etape ou ajouter la question") String stepName,
+            @P("Nom de l'etape") String stepName,
             @P("Titre de la question") String questionTitle) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        var result = formsActions.addNumberingQuestion(stepName, questionTitle);
-        return result.toToolMessage();
+        if (!authActions.isLoggedIn()) return "ERREUR: Connectez-vous d'abord";
+        return formsActions.addNumberingQuestion(stepName, questionTitle).toToolMessage();
     }
 
-    @Tool("Ajoute une question de type image a une etape. Permet de telecharger des images.")
+    @Tool("Ajoute une question de type image a une etape.")
     public String addImageQuestion(
-            @P("Nom de l'etape ou ajouter la question") String stepName,
+            @P("Nom de l'etape") String stepName,
             @P("Titre de la question") String questionTitle) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        var result = formsActions.addImageQuestion(stepName, questionTitle);
-        return result.toToolMessage();
-    }
-
-    @Tool("Cree un formulaire complet avec 2 etapes, 3 questions et une transition. " +
-          "Etape1 contient les questions texte, nombre et date. " +
-          "Etape2 est l'etape finale. " +
-          "Une transition est configuree de Etape1 vers Etape2.")
-    public String createCompleteForm(
-            @P("Nom du formulaire") String formName,
-            @P("Nom du workflow a associer") String workflowName,
-            @P("Nom de la premiere etape") String step1Name,
-            @P("Nom de la deuxieme etape (finale)") String step2Name,
-            @P("Titre de la question texte") String textQuestionTitle,
-            @P("Titre de la question nombre") String numberQuestionTitle,
-            @P("Titre de la question date") String dateQuestionTitle) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        StringBuilder results = new StringBuilder();
-
-        // 1. Créer le formulaire
-        var formResult = formsActions.createForm(formName, workflowName);
-        if (!formResult.isSuccess()) {
-            return "ERREUR création formulaire: " + formResult.getMessage();
-        }
-        results.append("✓ Formulaire '").append(formName).append("' créé\n");
-
-        // 2. Ajouter l'étape 1 (non finale)
-        var step1Result = formsActions.addStep(step1Name, false);
-        if (!step1Result.isSuccess()) {
-            return results + "ERREUR ajout étape 1: " + step1Result.getMessage();
-        }
-        results.append("✓ Étape '").append(step1Name).append("' ajoutée\n");
-
-        // 3. Ajouter l'étape 2 (finale)
-        var step2Result = formsActions.addStep(step2Name, true);
-        if (!step2Result.isSuccess()) {
-            return results + "ERREUR ajout étape 2: " + step2Result.getMessage();
-        }
-        results.append("✓ Étape finale '").append(step2Name).append("' ajoutée\n");
-
-        // 4. Ajouter la question texte
-        var textResult = formsActions.addTextQuestion(step1Name, textQuestionTitle);
-        if (!textResult.isSuccess()) {
-            return results + "ERREUR ajout question texte: " + textResult.getMessage();
-        }
-        results.append("✓ Question texte '").append(textQuestionTitle).append("' ajoutée\n");
-
-        // 5. Ajouter la question nombre
-        var numberResult = formsActions.addNumberQuestion(step1Name, numberQuestionTitle);
-        if (!numberResult.isSuccess()) {
-            return results + "ERREUR ajout question nombre: " + numberResult.getMessage();
-        }
-        results.append("✓ Question nombre '").append(numberQuestionTitle).append("' ajoutée\n");
-
-        // 6. Ajouter la question date
-        var dateResult = formsActions.addDateQuestion(step1Name, dateQuestionTitle);
-        if (!dateResult.isSuccess()) {
-            return results + "ERREUR ajout question date: " + dateResult.getMessage();
-        }
-        results.append("✓ Question date '").append(dateQuestionTitle).append("' ajoutée\n");
-
-        // 7. Décocher Finale sur l'étape 1 (par son nom)
-        var uncheckResult = formsActions.uncheckStepFinaleByName(step1Name);
-        if (!uncheckResult.isSuccess()) {
-            return results + "ERREUR décochage Finale: " + uncheckResult.getMessage();
-        }
-        results.append("✓ Étape '").append(step1Name).append("' modifiée (non finale)\n");
-
-        // 8. Configurer la transition
-        var transitionResult = formsActions.configureStepTransition(step1Name);
-        if (!transitionResult.isSuccess()) {
-            return results + "ERREUR configuration transition: " + transitionResult.getMessage();
-        }
-        results.append("✓ Transition ").append(step1Name).append(" → ").append(step2Name).append(" configurée\n");
-
-        results.append("\n🎉 Formulaire complet créé avec succès!");
-        return results.toString();
+        if (!authActions.isLoggedIn()) return "ERREUR: Connectez-vous d'abord";
+        return formsActions.addImageQuestion(stepName, questionTitle).toToolMessage();
     }
 }

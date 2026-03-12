@@ -88,27 +88,6 @@ public class WorkflowTools {
         return result.toToolMessage();
     }
 
-    @Tool("(Deprecated) Configure une tache de mise a jour de statut. " +
-          "Utilisez configurePublicationTask a la place.")
-    public String configureStatusTask(
-            @P("Nom du workflow contenant l'action") String workflowName,
-            @P("Nom de l'action a configurer") String actionName,
-            @P("Valeur ignoree - cette tache gere la publication, pas l'etat workflow") String targetState) {
-
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        // Sélectionner le workflow si spécifié
-        if (workflowName != null && !workflowName.isEmpty()) {
-            workflowActions.selectWorkflow(workflowName);
-        }
-
-        // Par defaut, on publie
-        var result = workflowActions.configurePublicationStatusTask(actionName, true);
-        return result.toToolMessage();
-    }
-
     @Tool("Active un workflow pour qu'il soit utilisable par les formulaires.")
     public String activateWorkflow(
             @P("Nom du workflow a activer") String workflowName) {
@@ -222,18 +201,4 @@ public class WorkflowTools {
         return result.toString();
     }
 
-    @Tool("Diagnostic: analyse la page de gestion des workflows. " +
-          "Retourne les elements cliquables disponibles sur la page.")
-    public String diagnoseWorkflowPage() {
-        if (!authActions.isLoggedIn()) {
-            return "ERREUR: Vous devez d'abord vous connecter avec login()";
-        }
-
-        return workflowActions.diagnoseCurrentPage();
-    }
-
-    @Tool("Clique sur le bouton OK si present sur la page AdminMessage.")
-    public String clickOkButton() {
-        return workflowActions.clickOkIfPresent();
-    }
 }

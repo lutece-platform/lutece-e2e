@@ -7,10 +7,20 @@ import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 /**
  * Classe de base pour tous les tests Playwright.
  * Gère le cycle de vie du navigateur et des contextes.
  * Utilise MicroProfile Config pour la gestion des configurations.
+ *
+ * Fonctionnalités:
+ * - Playwright Tracing: chaque test est tracé, la trace est sauvegardée uniquement en cas d'échec
+ * - Allure Report: screenshots et traces sont attachés automatiquement aux rapports
+ *
+ * Note: les tests PER_CLASS qui gèrent leur propre contexte (override createContextAndPage)
+ * doivent appeler startTracing() après avoir créé le contexte pour bénéficier du tracing.
  */
 @ExtendWith(ScreenshotOnFailureExtension.class)
 public abstract class BaseTest {
@@ -19,6 +29,9 @@ public abstract class BaseTest {
     protected static Browser browser;
     protected BrowserContext context;
     protected Page page;
+
+    // Flag pour savoir si le tracing a ete demarre sur le contexte courant
+    private boolean tracingStarted = false;
 
     // Configuration MicroProfile
     protected static final Config config = ConfigProvider.getConfig();
@@ -43,8 +56,10 @@ public abstract class BaseTest {
     protected static final String LOCALE = config.getValue("test.locale", String.class);
     protected static final String SCREENSHOTS_PATH = config.getValue("test.screenshots.path", String.class);
 
-    private static final java.nio.file.Path AUTH_STATE_PATH =
-        java.nio.file.Paths.get("target/auth-state.json");
+    private static final Path AUTH_STATE_PATH =
+        Paths.get("target/auth-state.json");
+
+    private static final Path TRACES_DIR = Paths.get("target/traces");
 
     /**
      * Sauvegarde l'etat d'authentification (cookies, localStorage) apres login.
@@ -119,14 +134,67 @@ public abstract class BaseTest {
             .setLocale(LOCALE)
             .setIgnoreHTTPSErrors(true));
 
+        startTracing();
+
         page = context.newPage();
         page.setDefaultTimeout(TIMEOUT);
+    }
+
+    /**
+     * Demarre le tracing Playwright sur le contexte courant.
+     * Appele automatiquement par createContextAndPage().
+     * Les tests PER_CLASS qui gerent leur propre contexte doivent appeler
+     * cette methode apres avoir cree le contexte.
+     */
+    protected void startTracing() {
+        if (context != null && !tracingStarted) {
+            context.tracing().start(new Tracing.StartOptions()
+                .setScreenshots(true)
+                .setSnapshots(true)
+                .setSources(false));
+            tracingStarted = true;
+        }
     }
 
     @AfterEach
     protected void closeContext() {
         if (context != null) {
+            stopTracing();
             context.close();
+        }
+    }
+
+    /**
+     * Arrete le tracing proprement. Ne fait rien si le tracing n'a pas ete demarre.
+     */
+    private void stopTracing() {
+        if (tracingStarted) {
+            try {
+                context.tracing().stop();
+            } catch (Exception e) {
+                // Ignorer si le tracing est deja arrete (ex: sauvegarde par l'extension)
+            }
+            tracingStarted = false;
+        }
+    }
+
+    /**
+     * Sauvegarde la trace Playwright pour le test en cours.
+     * Appelee par ScreenshotOnFailureExtension en cas d'echec.
+     */
+    protected Path saveTrace(String testName) {
+        if (!tracingStarted) {
+            return null;
+        }
+        try {
+            java.nio.file.Files.createDirectories(TRACES_DIR);
+            Path tracePath = TRACES_DIR.resolve(testName + ".zip");
+            context.tracing().stop(new Tracing.StopOptions().setPath(tracePath));
+            tracingStarted = false;
+            return tracePath;
+        } catch (Exception e) {
+            System.err.println("[WARN] Failed to save trace for test '" + testName + "': " + e.getMessage());
+            return null;
         }
     }
 
@@ -145,7 +213,7 @@ public abstract class BaseTest {
      */
     protected void takeScreenshot(String name) {
         page.screenshot(new Page.ScreenshotOptions()
-            .setPath(java.nio.file.Paths.get(SCREENSHOTS_PATH + "/" + name + ".png"))
+            .setPath(Paths.get(SCREENSHOTS_PATH + "/" + name + ".png"))
             .setFullPage(true));
     }
 }
