@@ -21,94 +21,113 @@ public class FormsTools {
     @Inject
     AuthActions authActions;
 
-    @Tool("Cree un formulaire complet avec etapes, questions et transition en UNE SEULE operation. " +
+    @Tool("Cree un formulaire complet avec N etapes et N questions en UNE SEULE operation. " +
           "C'est l'outil OBLIGATOIRE pour creer un formulaire. " +
-          "Cree le formulaire, ajoute 2 etapes, ajoute les questions, decoche Finale sur l'etape 1, et configure la transition. " +
+          "Cree le formulaire, ajoute les etapes, ajoute les questions sur chaque etape, " +
+          "decoche Finale sur les etapes non-finales, et configure les transitions entre etapes consecutives. " +
           "NE PAS retenter si ca echoue — retourner l'erreur a l'utilisateur.")
     public String createCompleteForm(
             @P("Nom du formulaire, par exemple 'MonFormulaire'") String formName,
-            @P("Nom du workflow a associer, par exemple 'WF_RAF'") String workflowName,
-            @P("Nom de la premiere etape (non finale), par exemple 'Saisie'") String step1Name,
-            @P("Nom de la deuxieme etape (finale), par exemple 'Validation'") String step2Name,
-            @P("Titre de la question texte sur l'etape 1, par exemple 'Nom'") String textQuestionTitle,
-            @P("Titre de la question nombre sur l'etape 1, par exemple 'Age'") String numberQuestionTitle,
-            @P("Titre de la question texte sur l'etape 2, par exemple 'Commentaire'") String step2QuestionTitle) {
+            @P("Nom du workflow a associer, par exemple 'WF_RAF'. Laisser vide si aucun.") String workflowName,
+            @P("Liste des etapes separees par des virgules. La derniere etape est la finale. " +
+               "Exemple: Saisie, Verification, Validation") String steps,
+            @P("Liste des questions au format 'NomEtape>type:Titre' separees par des virgules. " +
+               "Types supportes: text, number, date, textarea, dropdown, file, radio, checkbox, numbering, image. " +
+               "Exemple: Saisie>text:Nom, Saisie>number:Age, Saisie>date:DateNaissance, Verification>textarea:Commentaire, Validation>text:Signature") String questions) {
 
         if (!authActions.isLoggedIn()) {
             return "ERREUR: Vous devez d'abord vous connecter avec login()";
         }
 
+        // Parser les etapes
+        String[] stepNames = steps.split(",");
+        if (stepNames.length < 1) {
+            return "ERREUR: Il faut au moins 1 etape";
+        }
+        for (int i = 0; i < stepNames.length; i++) {
+            stepNames[i] = stepNames[i].trim();
+        }
+
+        // Parser les questions
+        String[] questionDefs = questions.split(",");
+
         StringBuilder results = new StringBuilder();
+        results.append("Creation du formulaire '").append(formName).append("'...\n\n");
+        int step = 1;
 
         // 1. Creer le formulaire
-        var formResult = formsActions.createForm(formName, workflowName);
+        var formResult = formsActions.createForm(formName,
+                (workflowName != null && !workflowName.isBlank()) ? workflowName : null);
         if (!formResult.isSuccess()) {
-            return "ECHEC creation formulaire: " + formResult.getMessage()
-                    + " | URL: " + safeGetUrl();
+            return "ECHEC creation formulaire: " + formResult.getMessage() + " | URL: " + safeGetUrl();
         }
         int formId = formResult.getData().id();
-        results.append("1. Formulaire '").append(formName).append("' cree (ID: ")
-                .append(formId).append(")\n");
+        results.append(step++).append(". Formulaire '").append(formName)
+               .append("' cree (ID: ").append(formId).append(")\n");
 
-        // 2. Ajouter l'etape 1 (non finale)
-        var step1Result = formsActions.addStep(step1Name, false);
-        if (!step1Result.isSuccess()) {
-            return results + "ECHEC ajout etape 1: " + step1Result.getMessage()
-                    + " | URL: " + safeGetUrl() + " | formId=" + formId;
+        // 2. Ajouter les etapes (derniere = finale)
+        for (int i = 0; i < stepNames.length; i++) {
+            boolean isFinal = (i == stepNames.length - 1);
+            var stepResult = formsActions.addStep(stepNames[i], isFinal);
+            if (!stepResult.isSuccess()) {
+                return results + "ECHEC ajout etape '" + stepNames[i] + "': " + stepResult.getMessage()
+                        + " | URL: " + safeGetUrl();
+            }
+            results.append(step++).append(". Etape '").append(stepNames[i]).append("' ajoutee")
+                   .append(isFinal ? " (finale)" : "").append("\n");
         }
-        results.append("2. Etape '").append(step1Name).append("' ajoutee\n");
 
-        // 3. Ajouter l'etape 2 (finale)
-        var step2Result = formsActions.addStep(step2Name, true);
-        if (!step2Result.isSuccess()) {
-            return results + "ECHEC ajout etape 2: " + step2Result.getMessage()
-                    + " | URL: " + safeGetUrl() + " | formId=" + formId;
-        }
-        results.append("3. Etape finale '").append(step2Name).append("' ajoutee\n");
+        // 3. Ajouter les questions sur chaque etape
+        for (String qDef : questionDefs) {
+            String trimmed = qDef.trim();
+            if (trimmed.isEmpty()) continue;
 
-        // 4. Ajouter question texte sur etape 1
-        var textResult = formsActions.addTextQuestion(step1Name, textQuestionTitle);
-        if (!textResult.isSuccess()) {
-            return results + "ECHEC ajout question texte: " + textResult.getMessage()
-                    + " | URL: " + safeGetUrl();
-        }
-        results.append("4. Question texte '").append(textQuestionTitle).append("' ajoutee sur '")
-                .append(step1Name).append("'\n");
+            // Format: "StepName>type:Title"
+            int separatorIdx = trimmed.indexOf('>');
+            if (separatorIdx < 0) {
+                return results + "ERREUR: Format de question invalide '" + trimmed
+                        + "'. Attendu: 'NomEtape>type:Titre'";
+            }
+            String qStepName = trimmed.substring(0, separatorIdx).trim();
+            String typeAndTitle = trimmed.substring(separatorIdx + 1).trim();
 
-        // 5. Ajouter question nombre sur etape 1
-        var numberResult = formsActions.addNumberQuestion(step1Name, numberQuestionTitle);
-        if (!numberResult.isSuccess()) {
-            return results + "ECHEC ajout question nombre: " + numberResult.getMessage()
-                    + " | URL: " + safeGetUrl();
-        }
-        results.append("5. Question nombre '").append(numberQuestionTitle).append("' ajoutee sur '")
-                .append(step1Name).append("'\n");
+            int colonIdx = typeAndTitle.indexOf(':');
+            if (colonIdx < 0) {
+                return results + "ERREUR: Format de question invalide '" + trimmed
+                        + "'. Attendu: 'NomEtape>type:Titre'";
+            }
+            String qType = typeAndTitle.substring(0, colonIdx).trim();
+            String qTitle = typeAndTitle.substring(colonIdx + 1).trim();
 
-        // 6. Ajouter question texte sur etape 2
-        var step2QResult = formsActions.addTextQuestion(step2Name, step2QuestionTitle);
-        if (!step2QResult.isSuccess()) {
-            return results + "ECHEC ajout question etape 2: " + step2QResult.getMessage()
-                    + " | URL: " + safeGetUrl();
+            var qResult = formsActions.addQuestionByType(qStepName, qTitle, qType);
+            if (!qResult.isSuccess()) {
+                return results + "ECHEC ajout question '" + qTitle + "' (" + qType + ") sur '"
+                        + qStepName + "': " + qResult.getMessage() + " | URL: " + safeGetUrl();
+            }
+            results.append(step++).append(". Question ").append(qType).append(" '").append(qTitle)
+                   .append("' ajoutee sur '").append(qStepName).append("'\n");
         }
-        results.append("6. Question texte '").append(step2QuestionTitle).append("' ajoutee sur '")
-                .append(step2Name).append("'\n");
 
-        // 7. Decocher Finale sur l'etape 1
-        var uncheckResult = formsActions.uncheckStepFinaleByName(step1Name);
-        if (!uncheckResult.isSuccess()) {
-            return results + "ECHEC decochage Finale: " + uncheckResult.getMessage()
-                    + " | URL: " + safeGetUrl();
-        }
-        results.append("7. Etape '").append(step1Name).append("' modifiee (non finale)\n");
+        // 4. Decocher Finale et configurer les transitions pour les etapes non-finales
+        if (stepNames.length > 1) {
+            for (int i = 0; i < stepNames.length - 1; i++) {
+                var uncheckResult = formsActions.uncheckStepFinaleByName(stepNames[i]);
+                if (!uncheckResult.isSuccess()) {
+                    return results + "ECHEC decochage Finale sur '" + stepNames[i] + "': "
+                            + uncheckResult.getMessage() + " | URL: " + safeGetUrl();
+                }
+                results.append(step++).append(". Etape '").append(stepNames[i])
+                       .append("' modifiee (non finale)\n");
 
-        // 8. Configurer la transition
-        var transitionResult = formsActions.configureStepTransition(step1Name);
-        if (!transitionResult.isSuccess()) {
-            return results + "ECHEC configuration transition: " + transitionResult.getMessage()
-                    + " | URL: " + safeGetUrl();
+                var transResult = formsActions.configureStepTransition(stepNames[i]);
+                if (!transResult.isSuccess()) {
+                    return results + "ECHEC transition '" + stepNames[i] + "' -> '"
+                            + stepNames[i + 1] + "': " + transResult.getMessage() + " | URL: " + safeGetUrl();
+                }
+                results.append(step++).append(". Transition '").append(stepNames[i])
+                       .append("' -> '").append(stepNames[i + 1]).append("' configuree\n");
+            }
         }
-        results.append("8. Transition ").append(step1Name).append(" -> ").append(step2Name)
-                .append(" configuree\n");
 
         results.append("\nFormulaire complet cree avec succes!");
         return results.toString();

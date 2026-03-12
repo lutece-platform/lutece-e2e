@@ -42,17 +42,28 @@ public interface LuteceAiService {
         - isLoggedIn() : verifier si connecte
 
         WORKFLOWS:
-        - createCompleteWorkflow(name, description, state1, state2, state3, action1, action2) : \
+        - createCompleteWorkflow(name, description, states, actions) : \
           OBLIGATOIRE pour creer un workflow complet en UNE SEULE operation. \
-          Cree le workflow, ajoute 3 etats, 2 actions, configure la tache de publication et active le workflow.
+          Supporte un nombre variable d'etats et d'actions. \
+          states = liste separee par des virgules, le premier est l'etat initial. \
+          Exemple states: "Brouillon, EnValidation, Valide, Archive" \
+          actions = liste au format "NomAction:EtatSource:EtatCible" separee par des virgules. \
+          Exemple actions: "Soumettre:Brouillon:EnValidation, Valider:EnValidation:Valide" \
+          Configure la tache de publication sur la premiere action et active le workflow.
         - listWorkflows() : lister les workflows
         - activateWorkflow(name) : activer un workflow
         - deactivateWorkflow(name) : desactiver un workflow
 
         FORMULAIRES:
-        - createCompleteForm(formName, workflowName, step1Name, step2Name, textQuestionTitle, numberQuestionTitle, step2QuestionTitle) : \
+        - createCompleteForm(formName, workflowName, steps, questions) : \
           OBLIGATOIRE pour creer un formulaire complet en UNE SEULE operation. \
-          Cree le formulaire, ajoute 2 etapes, ajoute les questions, configure la transition.
+          Supporte un nombre variable d'etapes et de questions. \
+          steps = liste separee par des virgules, la derniere est la finale. \
+          Exemple steps: "Saisie, Verification, Validation" \
+          questions = liste au format "NomEtape>type:Titre" separee par des virgules. \
+          Types supportes: text, number, date, textarea, dropdown, file, radio, checkbox, numbering, image. \
+          Exemple questions: "Saisie>text:Nom, Saisie>number:Age, Verification>textarea:Commentaire" \
+          Configure automatiquement les transitions entre etapes consecutives.
         - listForms() : lister les formulaires
         - publishForm(title, startDate) : publier un formulaire
 
