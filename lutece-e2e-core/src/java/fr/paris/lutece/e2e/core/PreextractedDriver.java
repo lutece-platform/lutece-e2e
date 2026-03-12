@@ -9,6 +9,9 @@ import java.nio.file.Path;
  * Implementation custom du Driver Playwright utilisant un driver pre-extrait.
  * Contourne l'incompatibilite du filesystem wsjar d'OpenLiberty
  * avec le mecanisme d'extraction du driver depuis le JAR.
+ *
+ * Compatible Playwright 1.41 (playwright.sh) et 1.58+ (node + package/cli.js).
+ * Le driverDir() retourne le repertoire contenant le binaire (node ou playwright.sh).
  */
 public class PreextractedDriver extends Driver {
 
@@ -21,12 +24,14 @@ public class PreextractedDriver extends Driver {
                 .orElseThrow(() -> new IllegalStateException(
                         "Playwright driver not found. Set PLAYWRIGHT_DRIVER_PATH env var " +
                         "or playwright.driver.path system property."));
+        // driverPath pointe vers 'node' ou 'playwright.sh'
+        // driverDir() doit retourner le repertoire parent (ex: driver/linux/)
         this.driverDir = driverPath.getParent();
         LOG.info("Using pre-extracted driver directory: {}", driverDir);
     }
 
     @Override
-    protected Path driverDir() {
+    public Path driverDir() {
         return driverDir;
     }
 

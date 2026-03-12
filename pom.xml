@@ -25,11 +25,11 @@
 
     <properties>
          <!-- Versions -->
-        <playwright.version>1.41.0</playwright.version>
+        <playwright.version>1.58.0</playwright.version>
         <junit.version>5.10.2</junit.version>
-        <weld.version>5.1.2.Final</weld.version>
         <smallrye-config.version>3.5.4</smallrye-config.version>
         <testcontainers.version>1.19.7</testcontainers.version>
+        <allure.version>2.25.0</allure.version>
     </properties>
 
     <dependencyManagement>
@@ -45,18 +45,6 @@
                 <groupId>com.microsoft.playwright</groupId>
                 <artifactId>playwright</artifactId>
                 <version>${playwright.version}</version>
-            </dependency>
-
-            <!-- CDI (Weld) -->
-            <dependency>
-                <groupId>org.jboss.weld.se</groupId>
-                <artifactId>weld-se-core</artifactId>
-                <version>${weld.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.jboss.weld</groupId>
-                <artifactId>weld-junit5</artifactId>
-                <version>4.0.3.Final</version>
             </dependency>
 
             <!-- MicroProfile Config -->
@@ -76,6 +64,13 @@
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-suite</artifactId>
                 <version>1.10.2</version>
+            </dependency>
+
+            <!-- Allure -->
+            <dependency>
+                <groupId>io.qameta.allure</groupId>
+                <artifactId>allure-junit5</artifactId>
+                <version>${allure.version}</version>
             </dependency>
 
             <!-- Testcontainers -->

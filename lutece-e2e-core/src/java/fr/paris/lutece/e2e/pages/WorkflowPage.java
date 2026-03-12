@@ -3,7 +3,7 @@ package fr.paris.lutece.e2e.pages;
 import com.microsoft.playwright.FrameLocator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
-import fr.paris.lutece.e2e.core.BrowserManager;
+import fr.paris.lutece.e2e.core.BrowserSession;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 
@@ -15,7 +15,7 @@ import jakarta.inject.Inject;
 public class WorkflowPage extends BasePage {
 
     @Inject
-    public WorkflowPage(BrowserManager browser) {
+    public WorkflowPage(BrowserSession browser) {
         super(browser);
     }
 
@@ -346,57 +346,59 @@ public class WorkflowPage extends BasePage {
      * Configure la tâche de mise à jour du statut de publication.
      * Cette tâche permet de définir si une réponse de formulaire sera publiée ou dépubliée.
      * Les valeurs possibles sont "Publié" ou "Dépublié".
-     * Note: Le changement d'état workflow se fait automatiquement par l'action elle-même.
+     *
+     * En Lutece 8, la configuration de la tâche s'ouvre dans un offcanvas (dialog)
+     * contenant un iframe avec le formulaire de configuration.
      */
     public WorkflowPage configureTaskPublicationStatus(boolean published) {
-        // Cliquer sur "Modifier le workflow" pour accéder à la config de la tâche
-        // Utiliser first() car il peut y avoir plusieurs tâches avec ce lien
-        page().getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Modifier le workflow")).first().click();
-        waitForLoad();
+        // Trouver le listitem de la tâche "Mise à jour du statut de publication"
+        // et cliquer sur son lien d'édition (icône crayon).
+        // C'est un <a role="button" href="#task{N}-edit">, pas un <button>.
+        var taskItem = page().locator("li:has-text('statut de publication')").last();
+        taskItem.locator("a[href$='-edit']").first().click();
 
-        // Sélectionner le statut de publication via radio button
-        // Utiliser first() car il peut y avoir plusieurs radios avec le même nom (ex: si plusieurs tâches)
+        // L'offcanvas s'ouvre avec un iframe contenant le formulaire de configuration
+        FrameLocator iframe = page().frameLocator("[role='dialog'] iframe");
+
+        // Attendre que le contenu de l'iframe soit charge
+        iframe.locator("button:has-text('Enregistrer')")
+              .waitFor(new com.microsoft.playwright.Locator.WaitForOptions().setTimeout(10000));
+
+        // Sélectionner le statut de publication via le texte du label (Publié / Dépublié)
+        // setExact(true) obligatoire car "Dépublié" contient "Publié"
         String labelName = published ? "Publié" : "Dépublié";
-        page().getByRole(AriaRole.RADIO, new Page.GetByRoleOptions().setName(labelName)).first().check();
+        iframe.getByText(labelName, new FrameLocator.GetByTextOptions().setExact(true)).click();
 
         // Enregistrer
-        page().getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Enregistrer")).click();
+        iframe.locator("button:has-text('Enregistrer')").click();
+
+        // Attendre la fermeture de l'offcanvas
+        page().locator("[role='dialog']").waitFor(
+                new com.microsoft.playwright.Locator.WaitForOptions()
+                        .setState(com.microsoft.playwright.options.WaitForSelectorState.HIDDEN)
+                        .setTimeout(10000));
+
         waitForLoad();
         return this;
-    }
-
-    /**
-     * @deprecated Utilisez configureTaskPublicationStatus(boolean published) à la place.
-     * Le paramètre stateName était mal compris - cette tâche configure le statut de publication,
-     * pas l'état workflow.
-     */
-    @Deprecated
-    public WorkflowPage configureTaskStatusUpdate(String stateName) {
-        // Mapping des anciens noms vers published/dépublié
-        boolean published = !"Dépublié".equalsIgnoreCase(stateName) &&
-                           !"Depublie".equalsIgnoreCase(stateName) &&
-                           !"unpublished".equalsIgnoreCase(stateName);
-        return configureTaskPublicationStatus(published);
     }
 
     // === Activation ===
 
     public WorkflowPage activateWorkflow(String workflowName) {
         waitForLoad();
-        var workflowLink = page().locator("a:has-text('" + workflowName + "')").first();
-        workflowLink.locator("xpath=ancestor::*[contains(@class, 'row') or contains(@class, 'list-group-item')][1]")
-                .locator("button.btn-success, a.btn-success, button:has(.fa-play), a:has(.fa-play)")
-                .first().click();
+        // Trouver la ligne du workflow par son nom, puis cliquer sur le bouton "Activer le workflow"
+        // Le template Lutece 8 utilise @aButton avec title='Activer le workflow' et buttonIcon='player-play'
+        page().locator("xpath=//a[contains(text(),'" + workflowName + "')]/ancestor::*[.//a[@title='Activer le workflow']][1]")
+                .locator("a[title='Activer le workflow']").click();
         waitForLoad();
         return this;
     }
 
     public WorkflowPage deactivateWorkflow(String workflowName) {
         waitForLoad();
-        var workflowLink = page().locator("a:has-text('" + workflowName + "')").first();
-        workflowLink.locator("xpath=ancestor::*[contains(@class, 'row') or contains(@class, 'list-group-item')][1]")
-                .locator("button.btn-warning, a.btn-warning, button:has(.fa-pause), a:has(.fa-pause)")
-                .first().click();
+        // Le template Lutece 8 utilise @aButton avec title='Désactiver le workflow' et buttonIcon='player-pause'
+        page().locator("xpath=//a[contains(text(),'" + workflowName + "')]/ancestor::*[.//a[contains(@title,'sactiver le workflow')]][1]")
+                .locator("a[title='Désactiver le workflow']").click();
         waitForLoad();
         return this;
     }

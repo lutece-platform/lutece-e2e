@@ -1,7 +1,7 @@
 package fr.paris.lutece.e2e.pages;
 
 import com.microsoft.playwright.options.AriaRole;
-import fr.paris.lutece.e2e.core.BrowserManager;
+import fr.paris.lutece.e2e.core.BrowserSession;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 
@@ -18,7 +18,7 @@ public class LoginPage extends BasePage {
     private static final String LOGIN_BUTTON = "Se connecter";
 
     @Inject
-    public LoginPage(BrowserManager browser) {
+    public LoginPage(BrowserSession browser) {
         super(browser);
     }
 

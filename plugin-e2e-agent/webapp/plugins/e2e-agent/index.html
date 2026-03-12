@@ -1543,10 +1543,9 @@
 
         <div class="examples">
             <button class="example-btn" onclick="sendExample('Connecte-toi a Lutece')">Se connecter</button>
-            <button class="example-btn" onclick="sendExample('Liste les workflows')">Lister workflows</button>
-            <button class="example-btn" onclick="sendExample('Liste les formulaires')">Lister formulaires</button>
-            <button class="example-btn workflow-complete" onclick="showWorkflowModal()">Workflow Complet</button>
-            <button class="example-btn form-complete" onclick="showFormModal()">Formulaire Complet</button>
+            <button class="example-btn workflow-complete" onclick="showWorkflowModal()">Créer un workflow</button>
+            <button class="example-btn form-complete" onclick="showFormModal()">Créer un formulaire</button>
+            <button class="example-btn" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: white; border-color: #16a34a;" onclick="runIntegrationSuite()">Test forms complet</button>
         </div>
 
         <!-- Modal Settings -->
@@ -1578,9 +1577,7 @@
                     </div>
                     <div class="hint" id="urlHint">Entrez l'URL complete de votre site Lutece</div>
                     <div class="url-presets">
-                        <button class="url-preset" onclick="setUrlPreset('http://localhost:9080/site-deontologie')">site-deontologie</button>
-                        <button class="url-preset" onclick="setUrlPreset('http://localhost:9080/site-forms')">site-forms</button>
-                        <button class="url-preset" onclick="setUrlPreset('http://localhost:8080/site')">localhost:8080</button>
+                        <button class="url-preset" onclick="setUrlPreset('https://p30-forms-integration.rec.apps.paris.mdp/lutece')">p30-forms-integration</button>
                     </div>
                 </div>
 
@@ -1757,6 +1754,94 @@
         const urlBadge = document.getElementById('urlBadge');
         const urlBadgeText = document.getElementById('urlBadgeText');
 
+        // Session ID partage entre tous les onglets du meme navigateur (localStorage)
+        let sessionId = localStorage.getItem('e2e-session-id');
+        if (!sessionId) {
+            sessionId = crypto.randomUUID();
+            localStorage.setItem('e2e-session-id', sessionId);
+        }
+
+        function sessionHeaders(extra) {
+            return Object.assign({ 'X-Session-Id': sessionId }, extra || {});
+        }
+
+        // --- Persistance de l'historique des messages (localStorage = partage entre onglets) ---
+        const HISTORY_KEY = 'e2e-chat-history-' + sessionId;
+        // Message de bienvenue initial (pour le restaurer apres expiration)
+        const welcomeHtml = chatContainer.innerHTML;
+
+        function saveHistory() {
+            const messages = [];
+            chatContainer.querySelectorAll('.message').forEach(div => {
+                messages.push({ type: div.className.replace('message ', ''), html: div.innerHTML });
+            });
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(messages));
+        }
+
+        function clearHistory() {
+            localStorage.removeItem(HISTORY_KEY);
+        }
+
+        function resetToWelcome() {
+            clearHistory();
+            chatContainer.innerHTML = welcomeHtml;
+        }
+
+        /**
+         * Restaure l'historique uniquement si la session est encore active cote serveur.
+         * Si la session a expire, purge le localStorage et reaffiche le message de bienvenue.
+         */
+        async function restoreHistory() {
+            const raw = localStorage.getItem(HISTORY_KEY);
+            if (!raw) return;
+
+            let messages;
+            try {
+                messages = JSON.parse(raw);
+                if (!messages.length) return;
+            } catch (e) {
+                clearHistory();
+                return;
+            }
+
+            // Verifier cote serveur si la session est encore active
+            try {
+                const resp = await fetch(contextPath + '/rest/agent/session/active', {
+                    headers: sessionHeaders()
+                });
+                const data = await resp.json();
+                if (!data.active) {
+                    resetToWelcome();
+                    return;
+                }
+            } catch (e) {
+                // Serveur injoignable — on garde l'historique local en attendant
+                console.warn('Verification session impossible:', e.message);
+            }
+
+            // Session active — restaurer les messages
+            chatContainer.innerHTML = '';
+            messages.forEach(m => {
+                const div = document.createElement('div');
+                div.className = 'message ' + m.type;
+                div.innerHTML = m.html;
+                chatContainer.appendChild(div);
+            });
+            requestAnimationFrame(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+        }
+
+        // Synchroniser l'historique quand un autre onglet le met a jour
+        window.addEventListener('storage', (e) => {
+            if (e.key === HISTORY_KEY) {
+                restoreHistory();
+            }
+        });
+
+        // Restaurer l'historique au chargement (si la session serveur est active)
+        restoreHistory();
+
         let currentConfig = {
             url: '',
             configured: false,
@@ -1766,7 +1851,9 @@
 
         async function loadConfig() {
             try {
-                const response = await fetch(contextPath + '/rest/agent/config');
+                const response = await fetch(contextPath + '/rest/agent/config', {
+                    headers: sessionHeaders()
+                });
                 if (!response.ok) {
                     console.error('API config error:', response.status, response.statusText);
                     return;
@@ -1789,9 +1876,7 @@
         function updateUrlBadge() {
             if (currentConfig.configured && currentConfig.url) {
                 urlBadge.className = 'url-badge configured';
-                const urlParts = currentConfig.url.split('/');
-                const siteName = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2] || 'Configure';
-                urlBadgeText.textContent = siteName;
+                urlBadgeText.textContent = currentConfig.url;
             } else {
                 urlBadge.className = 'url-badge not-configured';
                 urlBadgeText.textContent = 'Non configure';
@@ -1800,7 +1885,9 @@
 
         async function checkHealth() {
             try {
-                const response = await fetch(contextPath + '/rest/agent/health');
+                const response = await fetch(contextPath + '/rest/agent/health', {
+                    headers: sessionHeaders()
+                });
                 if (response.ok) {
                     statusEl.className = 'status online';
                     statusEl.textContent = 'Agent connecte';
@@ -1842,6 +1929,7 @@
             requestAnimationFrame(() => {
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             });
+            saveHistory();
         }
 
         function formatMessage(content) {
@@ -1880,7 +1968,7 @@
             try {
                 const response = await fetch(contextPath + '/rest/agent/chat', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: sessionHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ message })
                 });
 
@@ -1899,6 +1987,17 @@
 
             sendButton.disabled = false;
             messageInput.focus();
+        }
+
+        function runIntegrationSuite() {
+            if (!currentConfig.configured) {
+                showToast('Configurez d\'abord l\'URL dans les parametres', 'error');
+                showSettingsModal();
+                return;
+            }
+            const prompt = `Configure URL ${currentConfig.url}, login ${currentConfig.username}/${currentConfig.password}, puis lance la suite d'integration complete avec runIntegrationSuite`;
+            messageInput.value = prompt;
+            sendMessage();
         }
 
         function sendExample(text) {
@@ -1966,7 +2065,7 @@
             try {
                 const response = await fetch(contextPath + '/rest/agent/config/test', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: sessionHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ url, username, password })
                 });
 
@@ -2038,7 +2137,7 @@
             try {
                 const response = await fetch(contextPath + '/rest/agent/config/url', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: sessionHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ url })
                 });
 

@@ -7,14 +7,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Gestionnaire singleton du navigateur Playwright.
- * Gere le cycle de vie du navigateur et des contextes.
+ * Gestionnaire singleton du processus Chromium.
+ * Gere le cycle de vie de Playwright et du navigateur (couteux a creer).
+ * Les contextes et pages sont geres par {@link BrowserSession} (un par requete).
  */
 @ApplicationScoped
 public class BrowserManager {
@@ -26,7 +24,7 @@ public class BrowserManager {
         PlaywrightDriverResolver.configure();
     }
 
-    private String baseUrl;
+    private String defaultBaseUrl;
     private boolean headless;
     private int slowMo;
     private int timeout;
@@ -34,14 +32,13 @@ public class BrowserManager {
     private int viewportHeight;
     private String locale;
     private String screenshotsPath;
-    private boolean baseUrlConfigured = false;
+    private boolean defaultBaseUrlConfigured = false;
+
+    /** URLs par session utilisateur (sessionId -> baseUrl). */
+    private final ConcurrentHashMap<String, String> sessionUrls = new ConcurrentHashMap<>();
 
     private Playwright playwright;
     private Browser browser;
-    private BrowserContext context;
-    private Page page;
-
-    private static final Path AUTH_STATE_PATH = Paths.get("target/auth-state.json");
 
     private void loadConfig() {
         org.eclipse.microprofile.config.Config config =
@@ -49,11 +46,11 @@ public class BrowserManager {
 
         var configuredUrl = config.getOptionalValue("lutece.base.url", String.class);
         if (configuredUrl.isPresent() && !configuredUrl.get().isEmpty()) {
-            baseUrl = configuredUrl.get();
-            baseUrlConfigured = true;
+            defaultBaseUrl = configuredUrl.get();
+            defaultBaseUrlConfigured = true;
         } else {
-            baseUrl = null;
-            baseUrlConfigured = false;
+            defaultBaseUrl = null;
+            defaultBaseUrlConfigured = false;
         }
         headless = config.getOptionalValue("browser.headless", Boolean.class)
             .orElse(true);
@@ -68,13 +65,14 @@ public class BrowserManager {
         locale = config.getOptionalValue("browser.locale", String.class)
             .orElse("fr-FR");
         screenshotsPath = config.getOptionalValue("screenshots.path", String.class)
-            .orElse("target/screenshots");
+            .orElse(java.nio.file.Paths.get(System.getProperty("java.io.tmpdir"),
+                    "lutece-e2e", "screenshots").toString());
     }
 
     @PostConstruct
     void init() {
         loadConfig();
-        LOG.info("Initialisation BrowserManager - headless={}, baseUrl={}", headless, baseUrl);
+        LOG.info("Initialisation BrowserManager - headless={}, defaultBaseUrl={}", headless, defaultBaseUrl);
 
         try {
             playwright = Playwright.create();
@@ -84,9 +82,6 @@ public class BrowserManager {
                     .setHeadless(headless)
                     .setSlowMo(headless ? 0 : slowMo));
             LOG.info("Chromium browser launched");
-
-            createNewContext();
-            LOG.info("BrowserManager initialization complete");
         } catch (Exception e) {
             LOG.error("Failed to initialize Playwright: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to initialize Playwright browser", e);
@@ -96,132 +91,121 @@ public class BrowserManager {
     @PreDestroy
     void cleanup() {
         LOG.info("Fermeture BrowserManager");
-        if (context != null) {
-            context.close();
+        try { if (browser != null) browser.close(); } catch (Exception ignored) {}
+        try { if (playwright != null) playwright.close(); } catch (Exception ignored) {}
+    }
+
+    /**
+     * Retourne le browser Chromium. Relance si necessaire.
+     */
+    public synchronized Browser getBrowser() {
+        ensureBrowserAlive();
+        return browser;
+    }
+
+    /**
+     * Retourne l'URL par defaut (depuis la config MicroProfile).
+     */
+    public String getDefaultBaseUrl() {
+        return defaultBaseUrl;
+    }
+
+    /**
+     * Retourne l'URL pour une session donnee, ou l'URL par defaut si aucune surcharge.
+     */
+    public String getBaseUrlForSession(String sessionId) {
+        if (sessionId != null) {
+            String sessionUrl = sessionUrls.get(sessionId);
+            if (sessionUrl != null) {
+                return sessionUrl;
+            }
         }
-        if (browser != null) {
-            browser.close();
+        return defaultBaseUrl;
+    }
+
+    /**
+     * Configure l'URL pour une session specifique (n'affecte pas les autres sessions).
+     */
+    public void setBaseUrlForSession(String sessionId, String url) {
+        if (url == null || url.isEmpty()) {
+            return;
         }
-        if (playwright != null) {
-            playwright.close();
-        }
-    }
-
-    /**
-     * Cree un nouveau contexte de navigation.
-     */
-    public void createNewContext() {
-        if (context != null) {
-            context.close();
-        }
-        context = browser.newContext(new Browser.NewContextOptions()
-                .setViewportSize(viewportWidth, viewportHeight)
-                .setLocale(locale)
-                .setIgnoreHTTPSErrors(true));
-        page = context.newPage();
-        page.setDefaultTimeout(timeout);
-    }
-
-    /**
-     * Cree un contexte avec l'etat d'authentification sauvegarde.
-     */
-    public void createAuthenticatedContext() {
-        if (context != null) {
-            context.close();
-        }
-        context = browser.newContext(new Browser.NewContextOptions()
-                .setViewportSize(viewportWidth, viewportHeight)
-                .setLocale(locale)
-                .setIgnoreHTTPSErrors(true)
-                .setStorageStatePath(AUTH_STATE_PATH));
-        page = context.newPage();
-        page.setDefaultTimeout(timeout);
-    }
-
-    /**
-     * Sauvegarde l'etat d'authentification.
-     */
-    public void saveAuthState() {
-        context.storageState(new BrowserContext.StorageStateOptions()
-                .setPath(AUTH_STATE_PATH));
-        LOG.info("Etat d'authentification sauvegarde dans {}", AUTH_STATE_PATH);
-    }
-
-    /**
-     * Verifie si un etat d'authentification existe.
-     */
-    public boolean hasAuthState() {
-        return AUTH_STATE_PATH.toFile().exists();
-    }
-
-    /**
-     * Prend une capture d'ecran.
-     */
-    public Path screenshot(String name) {
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
-        Path path = Paths.get(screenshotsPath, name + "-" + timestamp + ".png");
-        path.getParent().toFile().mkdirs();
-        page.screenshot(new Page.ScreenshotOptions()
-                .setPath(path)
-                .setFullPage(true));
-        LOG.debug("Screenshot: {}", path);
-        return path;
-    }
-
-    /**
-     * Navigue vers une URL relative.
-     */
-    public void navigate(String relativePath) {
-        String url = baseUrl + relativePath;
-        LOG.debug("Navigation vers {}", url);
-        page.navigate(url);
-        page.waitForLoadState();
-    }
-
-    public Page getPage() {
-        return page;
-    }
-
-    public String getBaseUrl() {
-        return baseUrl;
-    }
-
-    /**
-     * Definit l'URL de base du site Lutece.
-     */
-    public void setBaseUrl(String url) {
-        if (url != null && !url.isEmpty()) {
-            this.baseUrl = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
-            this.baseUrlConfigured = true;
-            LOG.info("URL de base configuree: {}", this.baseUrl);
+        String cleanUrl = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+        if (sessionId != null) {
+            sessionUrls.put(sessionId, cleanUrl);
+            LOG.info("URL configuree pour session {}: {}", sessionId, cleanUrl);
+        } else {
+            this.defaultBaseUrl = cleanUrl;
+            this.defaultBaseUrlConfigured = true;
+            LOG.info("URL par defaut configuree: {}", cleanUrl);
         }
     }
 
-    public boolean isBaseUrlConfigured() {
-        return baseUrlConfigured && baseUrl != null && !baseUrl.isEmpty();
+    /**
+     * Verifie si l'URL est configuree pour une session donnee.
+     */
+    public boolean isBaseUrlConfiguredForSession(String sessionId) {
+        if (sessionId != null && sessionUrls.containsKey(sessionId)) {
+            return true;
+        }
+        return defaultBaseUrlConfigured && defaultBaseUrl != null && !defaultBaseUrl.isEmpty();
     }
 
-    public String getCurrentUrl() {
-        return page.url();
+    /**
+     * Supprime l'URL d'une session (nettoyage).
+     */
+    public void removeSession(String sessionId) {
+        if (sessionId != null) {
+            sessionUrls.remove(sessionId);
+        }
     }
 
-    public String getPageContent() {
-        return page.content();
+    public int getTimeout() {
+        return timeout;
     }
 
-    public String getPageTitle() {
-        return page.title();
+    public int getViewportWidth() {
+        return viewportWidth;
     }
 
-    public void waitForLoad() {
-        page.waitForLoadState();
+    public int getViewportHeight() {
+        return viewportHeight;
     }
 
-    public Object evaluate(String script) {
-        return page.evaluate(script);
+    public String getLocale() {
+        return locale;
     }
 
-    public Object evaluate(String script, Object arg) {
-        return page.evaluate(script, arg);
+    public String getScreenshotsPath() {
+        return screenshotsPath;
+    }
+
+    public boolean isHeadless() {
+        return headless;
+    }
+
+    /**
+     * Verifie que le browser est vivant, le relance si necessaire.
+     */
+    private void ensureBrowserAlive() {
+        boolean needsRelaunch = (browser == null);
+        if (!needsRelaunch) {
+            try {
+                browser.contexts();
+            } catch (Exception e) {
+                LOG.warn("Browser mort, relance: {}", e.getMessage());
+                needsRelaunch = true;
+            }
+        }
+        if (needsRelaunch) {
+            try { if (browser != null) browser.close(); } catch (Exception ignored) {}
+            try { if (playwright != null) playwright.close(); } catch (Exception ignored) {}
+
+            playwright = Playwright.create();
+            browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
+                    .setHeadless(headless)
+                    .setSlowMo(headless ? 0 : slowMo));
+            LOG.info("Browser relance avec succes");
+        }
     }
 }

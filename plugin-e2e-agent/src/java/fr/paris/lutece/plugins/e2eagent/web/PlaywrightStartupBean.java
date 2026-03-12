@@ -23,8 +23,8 @@ public class PlaywrightStartupBean {
     public void onApplicationStart(@Observes @Initialized(ApplicationScoped.class) Object event) {
         LOGGER.info("Initialisation de Playwright au demarrage...");
         try {
-            String baseUrl = browserManager.getBaseUrl();
-            LOGGER.info("BrowserManager initialise - baseUrl: {}", baseUrl);
+            String baseUrl = browserManager.getDefaultBaseUrl();
+            LOGGER.info("BrowserManager initialise - defaultBaseUrl: {}", baseUrl);
         } catch (Exception e) {
             LOGGER.error("Erreur lors de l'initialisation de Playwright", e);
         }

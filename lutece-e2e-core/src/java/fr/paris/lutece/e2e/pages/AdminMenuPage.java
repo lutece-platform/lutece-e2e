@@ -1,7 +1,7 @@
 package fr.paris.lutece.e2e.pages;
 
 import com.microsoft.playwright.options.AriaRole;
-import fr.paris.lutece.e2e.core.BrowserManager;
+import fr.paris.lutece.e2e.core.BrowserSession;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 
@@ -13,7 +13,7 @@ import jakarta.inject.Inject;
 public class AdminMenuPage extends BasePage {
 
     @Inject
-    public AdminMenuPage(BrowserManager browser) {
+    public AdminMenuPage(BrowserSession browser) {
         super(browser);
     }
 

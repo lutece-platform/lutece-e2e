@@ -193,14 +193,17 @@ public class RbacConfigurationTest extends BaseTest {
         // Configurer FORMS_MANAGEMENT dans le groupe CONTENT (si present)
         if (page.locator("#group_name-FORMS_MANAGEMENT").count() > 0) {
             page.locator("#group_name-FORMS_MANAGEMENT").selectOption("CONTENT");
-            page.navigate(BASE_URL + "/jsp/admin/AdminTechnicalMenu.jsp?#features_management");
+            // Le selectOption declenche un onchange qui soumet le formulaire automatiquement
             page.waitForLoadState();
         }
 
         // Configurer FORMS_SEARCH_INDEXATION dans le groupe CONTENT (si present)
+        // Re-naviguer vers l'onglet features_management car le submit precedent a recharge la page
+        page.locator("a:has-text('Affectation des fonctionnalit')").first().click();
+        page.waitForLoadState();
+
         if (page.locator("#group_name-FORMS_SEARCH_INDEXATION").count() > 0) {
             page.locator("#group_name-FORMS_SEARCH_INDEXATION").selectOption("CONTENT");
-            page.navigate(BASE_URL + "/jsp/admin/AdminTechnicalMenu.jsp?#features_management");
             page.waitForLoadState();
         }
 

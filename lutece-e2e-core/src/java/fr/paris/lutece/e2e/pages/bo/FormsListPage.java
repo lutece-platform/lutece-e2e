@@ -92,9 +92,9 @@ public class FormsListPage {
      * Ouvre le menu dropdown d'actions du formulaire identifie par son nom.
      */
     public FormsListPage openActionsDropdown(String formName) {
-        page.locator(".list-group-item")
+        page.locator(".card")
             .filter(new Locator.FilterOptions().setHasText(formName))
-            .locator(".dropdown > .btn-action").click();
+            .locator(".form-actions .btn.dropdown-toggle").click();
         return this;
     }
 
