@@ -9,6 +9,8 @@ import com.microsoft.playwright.options.AriaRole;
 import org.junit.jupiter.api.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import io.qameta.allure.Severity;
+import io.qameta.allure.SeverityLevel;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -104,6 +106,7 @@ public class RbacConfigurationTest extends BaseTest {
     @Test
     @Order(1)
     @DisplayName("1. Connexion admin")
+    @Severity(SeverityLevel.BLOCKER)
     void testLogin() {
         LOGGER.info("Connexion admin");
         LoginPage loginPage = new LoginPage(page, BASE_URL);
@@ -210,6 +213,7 @@ public class RbacConfigurationTest extends BaseTest {
     @Test
     @Order(5)
     @DisplayName("5. Configuration des droits utilisateur")
+    @Severity(SeverityLevel.CRITICAL)
     void testConfigureUserRights() {
         LOGGER.info("Configuration des droits utilisateur");
 
