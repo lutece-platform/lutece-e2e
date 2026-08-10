@@ -39,10 +39,12 @@ public class FormsListPage {
     }
 
     /**
-     * Clique sur le lien de modification du formulaire identifie par son nom.
+     * Navigue vers la page de modification (etapes) du formulaire identifie par son nom.
+     * Extrait l'id_form depuis la liste puis navigue vers ManageSteps.
      */
     public FormsEditPage clickEditForm(String formName) {
-        page.locator("a[href*='view=manageSteps'][title='" + formName + "']").click();
+        String formId = getFormId(formName);
+        page.navigate(baseUrl + "/jsp/admin/plugins/forms/ManageSteps.jsp?view=manageSteps&id_form=" + formId);
         page.waitForLoadState();
         return new FormsEditPage(page, baseUrl);
     }
@@ -58,33 +60,31 @@ public class FormsListPage {
     }
 
     /**
-     * Clique sur "Ajouter un Formulaire".
+     * Navigue vers la page de creation d'un formulaire.
      */
     public FormsCreationPage clickAddForm() {
-        page.getByRole(AriaRole.LINK,
-            new Page.GetByRoleOptions().setName("Ajouter un Formulaire")).first().click();
+        page.navigate(baseUrl + "/jsp/admin/plugins/forms/ManageForms.jsp?view=createForm");
+        page.waitForLoadState();
         return new FormsCreationPage(page, baseUrl);
     }
 
     /**
-     * Accede au formulaire en front office via le menu dropdown du formulaire identifie par son nom.
-     * Retourne la page popup ouverte.
+     * Accede au formulaire en front office identifie par son nom.
+     * Extrait l'id_form depuis la liste puis navigue directement vers la vue FO.
      */
     public FormsFrontOfficePage clickAccessFrontOfficeForm(String formName) {
-        openActionsDropdown(formName);
-        Page popup = page.waitForPopup(() -> {
-            page.getByRole(AriaRole.LINK,
-                new Page.GetByRoleOptions().setName("Accéder au formulaire FO")).click();
-        });
-        return new FormsFrontOfficePage(popup, baseUrl);
+        String formId = getFormId(formName);
+        page.navigate(baseUrl + "/jsp/site/Portal.jsp?page=forms&view=stepView&id_form=" + formId);
+        page.waitForLoadState();
+        return new FormsFrontOfficePage(page, baseUrl);
     }
 
     /**
-     * Clique sur "Voir les reponses" dans le dropdown ouvert.
+     * Navigue vers la page multivue des reponses des formulaires.
      */
     public FormsResponsesPage clickViewResponses() {
-        page.getByRole(AriaRole.LINK,
-            new Page.GetByRoleOptions().setName("Voir les réponses")).first().click();
+        page.navigate(baseUrl + "/jsp/admin/plugins/forms/MultiviewForms.jsp");
+        page.waitForLoadState();
         return new FormsResponsesPage(page, baseUrl);
     }
 
@@ -102,6 +102,9 @@ public class FormsListPage {
      * Clique sur "Editer la publication du formulaire" dans le dropdown.
      */
     public FormsListPage clickEditPublication() {
+        // TODO(url-refactor): confirm URL — the target ManageForms.jsp?view=modifyPublication&id_form=ID
+        // needs an id_form which is not available in this signature (relies on the currently open
+        // actions dropdown of a specific form). Kept as a click until an id is threaded through.
         page.getByRole(AriaRole.LINK,
             new Page.GetByRoleOptions().setName("Editer la publication du")).click();
         return this;
@@ -111,6 +114,8 @@ public class FormsListPage {
      * Navigue vers la page d'accueil LUTECE.
      */
     public FormsListPage clickLuteceHome() {
+        // TODO(url-refactor): confirm URL — the LUTECE admin home URL is a core page and is not
+        // among the confirmed Forms/Workflow URL patterns. Kept as a click to avoid guessing.
         page.getByRole(AriaRole.LINK,
             new Page.GetByRoleOptions().setName("LUTECE").setExact(true)).click();
         return this;

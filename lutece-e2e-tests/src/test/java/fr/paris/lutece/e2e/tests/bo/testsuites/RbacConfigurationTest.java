@@ -183,10 +183,12 @@ public class RbacConfigurationTest extends BaseTest {
         LOGGER.info("Configuration des groupes de fonctionnalites");
 
         // Ouvrir le menu Systeme
+        // TODO(url-refactor): confirm URL
         page.locator("a:has-text('Système')").first().click();
         page.waitForTimeout(500);
 
         // Navigation vers les parametres techniques
+        // TODO(url-refactor): confirm URL
         page.locator("a:has-text('Paramètres techniques')").first().click();
         page.waitForLoadState();
 

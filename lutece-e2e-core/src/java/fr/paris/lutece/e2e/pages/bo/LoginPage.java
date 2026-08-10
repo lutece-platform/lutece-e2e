@@ -31,19 +31,18 @@ public class LoginPage {
 
     /**
      * Remplit le champ code d'accès.
+     * Utilise l'id stable #access_code (le libellé accessible varie selon la version du thème).
      */
     public LoginPage fillUsername(String username) {
-        page.getByRole(AriaRole.TEXTBOX,
-            new Page.GetByRoleOptions().setName(USERNAME_FIELD)).fill(username);
+        page.locator("#access_code").fill(username);
         return this;
     }
 
     /**
-     * Remplit le champ mot de passe.
+     * Remplit le champ mot de passe (id stable #password).
      */
     public LoginPage fillPassword(String password) {
-        page.getByRole(AriaRole.TEXTBOX,
-            new Page.GetByRoleOptions().setName(PASSWORD_FIELD)).fill(password);
+        page.locator("#password").fill(password);
         return this;
     }
 

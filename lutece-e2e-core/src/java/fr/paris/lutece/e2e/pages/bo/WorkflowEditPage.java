@@ -23,8 +23,9 @@ public class WorkflowEditPage {
     public WorkflowEditPage clickModifyWorkflow(String workflowName) {
         page.waitForLoadState();
 
-        // Cliquer directement sur le nom du workflow pour ouvrir la page d'édition
-        page.locator("a:has-text('" + workflowName + "')").first().click();
+        // Naviguer directement vers la page d'édition du workflow
+        String idWorkflow = getWorkflowId(workflowName);
+        page.navigate(baseUrl + "/jsp/admin/plugins/workflow/ModifyWorkflow.jsp?id_workflow=" + idWorkflow);
         page.waitForLoadState();
 
         // Debug: capture d'écran après navigation
@@ -45,7 +46,16 @@ public class WorkflowEditPage {
      * Utilise le lien unique present sur la page.
      */
     public WorkflowEditPage clickModifyWorkflowLink() {
-        page.locator("a:has-text('Modifier le workflow'), a:has-text('Retour Modification du workflow')").first().click();
+        Locator link = page.locator("a:has-text('Modifier le workflow'), a:has-text('Retour Modification du workflow')").first();
+        String href = link.getAttribute("href");
+        if (href != null && href.contains("id_workflow=")) {
+            String idWorkflow = href.split("id_workflow=")[1].split("&")[0].split("#")[0];
+            page.navigate(baseUrl + "/jsp/admin/plugins/workflow/ModifyWorkflow.jsp?id_workflow=" + idWorkflow);
+            page.waitForLoadState();
+        } else {
+            link.click();
+            page.waitForLoadState();
+        }
         return this;
     }
 
@@ -74,8 +84,9 @@ public class WorkflowEditPage {
      * Ajoute un etat au workflow.
      */
     public WorkflowEditPage addState(String name, String description, boolean isInitial) {
-        // C'est un lien, pas un bouton
-        page.locator("a:has-text('Ajouter un état')").click();
+        // Ouvrir le formulaire de creation d'un etat
+        String idWorkflow = currentWorkflowId();
+        page.navigate(baseUrl + "/jsp/admin/plugins/workflow/CreateState.jsp?id_workflow=" + idWorkflow);
         page.waitForLoadState();
 
         // Debug screenshot
@@ -91,7 +102,9 @@ public class WorkflowEditPage {
             // La checkbox a id="is_initial_state" et name="is_initial_state"
             page.locator("input#is_initial_state, input[name='is_initial_state']").first().check();
         }
-        page.locator("button:has-text('Enregistrer'), input[value='Enregistrer']").first().click();
+        // Le bouton de validation est <button name='save'> avec icone + title (pas de texte
+        // "Enregistrer") : cibler l'attribut name (le libelle-based ne matche pas le contenu).
+        page.locator("button[name='save']").first().click();
         page.waitForLoadState();
         dismissAdminMessage();
         return this;
@@ -111,8 +124,10 @@ public class WorkflowEditPage {
      */
     public WorkflowEditPage addAction(String name, String description,
             String linkedStateName, String stateAfterName) {
-        // C'est un lien, pas un bouton
-        page.locator("a:has-text('Ajouter une action')").click();
+        // Ouvrir le formulaire de creation d'une action
+        String idWorkflow = currentWorkflowId();
+        page.navigate(baseUrl + "/jsp/admin/plugins/workflow/CreateAction.jsp?id_workflow=" + idWorkflow);
+        page.waitForLoadState();
         page.locator("input[name=\"name\"]").click();
         page.locator("input[name=\"name\"]").fill(name);
         page.locator("textarea[name=\"description\"]").click();
@@ -133,8 +148,16 @@ public class WorkflowEditPage {
      * Clique sur "Modifier l'action" pour acceder a la configuration de la tache.
      */
     public WorkflowEditPage clickModifyAction() {
-        page.getByRole(AriaRole.LINK,
-            new Page.GetByRoleOptions().setName("Modifier l'action")).click();
+        Locator link = page.getByRole(AriaRole.LINK,
+            new Page.GetByRoleOptions().setName("Modifier l'action")).first();
+        String href = link.getAttribute("href");
+        if (href != null && href.contains("id_action=")) {
+            String idAction = href.split("id_action=")[1].split("&")[0].split("#")[0];
+            page.navigate(baseUrl + "/jsp/admin/plugins/workflow/ModifyAction.jsp?id_action=" + idAction);
+            page.waitForLoadState();
+        } else {
+            link.click();
+        }
         return this;
     }
 
@@ -171,9 +194,35 @@ public class WorkflowEditPage {
      * Retourne a la liste des workflows.
      */
     public WorkflowListPage goBackToList() {
-        page.getByRole(AriaRole.LINK,
-            new Page.GetByRoleOptions().setName("Gestion des workflows")).click();
+        page.navigate(baseUrl + "/jsp/admin/plugins/workflow/ManageWorkflow.jsp");
+        page.waitForLoadState();
         return new WorkflowListPage(page, baseUrl);
+    }
+
+    /**
+     * Recupere l'identifiant du workflow a partir de son nom dans la liste.
+     * Navigue vers la liste puis extrait id_workflow du lien de la ligne correspondante.
+     */
+    private String getWorkflowId(String workflowName) {
+        page.navigate(baseUrl + "/jsp/admin/plugins/workflow/ManageWorkflow.jsp");
+        page.waitForLoadState();
+        Locator link = page.locator("a[href*='id_workflow=']:has-text('" + workflowName + "')").first();
+        String href = link.getAttribute("href");
+        if (href != null && href.contains("id_workflow=")) {
+            return href.split("id_workflow=")[1].split("&")[0].split("#")[0];
+        }
+        return null;
+    }
+
+    /**
+     * Extrait id_workflow de l'URL courante (page d'edition ModifyWorkflow.jsp).
+     */
+    private String currentWorkflowId() {
+        String url = page.url();
+        if (url.contains("id_workflow=")) {
+            return url.split("id_workflow=")[1].split("&")[0].split("#")[0];
+        }
+        return null;
     }
 
     /**

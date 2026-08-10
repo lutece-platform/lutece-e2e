@@ -51,6 +51,14 @@ public class ContainerSetup {
         mariadb.start();
         LOGGER.info("MariaDB démarré sur: {}:{}", mariadb.getHost(), mariadb.getMappedPort(3306));
 
+        // NOTE bug image p30/site-integration-forms:8.0.0-SNAPSHOT : sur une DB fraiche, le plugin
+        // `mylutece` embarque fait un `INSERT INTO core_style` (table legacy supprimee du core Lutece 8)
+        // -> le changeset Liquibase echoue et `AdminAuthenticationService._authentication` reste null
+        // -> AdminLogin.jsp renvoie 500, le health check ne passe jamais. Ce n'est PAS reparable cote
+        // tests : pre-creer core_style declenche une precondition Liquibase "DB deja initialisee" qui
+        // saute la creation du schema core (core_datastore & co. manquants) => pire. Correctif requis
+        // cote IMAGE : embarquer un `mylutece` compatible core 8 (ou retirer/garder l'INSERT core_style).
+
         // Récupérer l'IP du conteneur MariaDB dans le réseau partagé
         // Bypass la résolution DNS (aardvark-dns) qui peut échouer sous Podman
         String mariaDbIp = mariadb.getContainerInfo()

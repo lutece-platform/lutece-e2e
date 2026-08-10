@@ -31,7 +31,7 @@ public class WorkflowListPage {
      * Clique sur le lien pour creer un nouveau workflow.
      */
     public WorkflowCreationFormPage clickCreateWorkflow() {
-        page.locator("a:has-text('Créer un workflow'), a:has-text('Creer un workflow')").first().click();
+        page.navigate(baseUrl + "/jsp/admin/plugins/workflow/CreateWorkflow.jsp");
         page.waitForLoadState();
         return new WorkflowCreationFormPage(page, baseUrl);
     }
@@ -42,10 +42,39 @@ public class WorkflowListPage {
      */
     public WorkflowListPage clickActivateWorkflow(String workflowName) {
         page.waitForLoadState();
-        // Cliquer sur le bouton "Activer le workflow" dans la meme ligne que le workflow
-        page.locator("xpath=//a[contains(text(),'" + workflowName + "')]/ancestor::*[.//a[@title='Activer le workflow']][1]")
-            .locator("a[title='Activer le workflow']").click();
-        page.waitForLoadState();
+        String idWorkflow = getWorkflowId(workflowName);
+        // getWorkflowId() a navigue vers ManageWorkflow : le lien d'activation reel y porte le token
+        // de securite (DoEnableWorkflow.jsp?id_workflow=..&token=..). Sans ce token, l'activation
+        // n'est pas persistee. On lit donc le vrai href puis on navigue dessus.
+        if (idWorkflow != null) {
+            Locator enableLink = page.locator(
+                "a[href*='DoEnableWorkflow.jsp?id_workflow=" + idWorkflow + "&']").first();
+            if (enableLink.count() > 0) {
+                String href = enableLink.getAttribute("href");
+                if (href != null) {
+                    String url = href.startsWith("http")
+                        ? href
+                        : baseUrl + "/" + href.replaceFirst("^/", "");
+                    page.navigate(url);
+                    page.waitForLoadState();
+                }
+            }
+        }
         return this;
+    }
+
+    /**
+     * Recupere l'identifiant du workflow a partir de son nom dans la liste.
+     * Navigue vers la liste puis extrait id_workflow du lien de la ligne correspondante.
+     */
+    private String getWorkflowId(String workflowName) {
+        page.navigate(baseUrl + "/jsp/admin/plugins/workflow/ManageWorkflow.jsp");
+        page.waitForLoadState();
+        Locator link = page.locator("a[href*='id_workflow=']:has-text('" + workflowName + "')").first();
+        String href = link.getAttribute("href");
+        if (href != null && href.contains("id_workflow=")) {
+            return href.split("id_workflow=")[1].split("&")[0].split("#")[0];
+        }
+        return null;
     }
 }

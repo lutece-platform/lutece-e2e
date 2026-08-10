@@ -28,7 +28,7 @@
         <playwright.version>1.58.0</playwright.version>
         <junit.version>5.10.2</junit.version>
         <smallrye-config.version>3.5.4</smallrye-config.version>
-        <testcontainers.version>1.19.7</testcontainers.version>
+        <testcontainers.version>1.20.6</testcontainers.version>
         <allure.version>2.25.0</allure.version>
     </properties>
 
@@ -63,6 +63,36 @@
             <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-suite</artifactId>
+                <version>1.10.2</version>
+            </dependency>
+            <!-- Alignement force de tous les artefacts junit-platform sur 1.10.2.
+                 Le pom parent (lutece-global-pom) remonte junit-platform-suite-engine a 1.14.3
+                 et junit-platform-launcher a 1.9.2, ce qui provoque un NoSuchMethodError
+                 (addClassContainerSelectorResolverWithContext) a la decouverte des tests.
+                 Les entrees du POM courant priment sur le dependencyManagement herite. -->
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-suite-engine</artifactId>
+                <version>1.10.2</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-suite-api</artifactId>
+                <version>1.10.2</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-launcher</artifactId>
+                <version>1.10.2</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-engine</artifactId>
+                <version>1.10.2</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-commons</artifactId>
                 <version>1.10.2</version>
             </dependency>
 

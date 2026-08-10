@@ -3,7 +3,6 @@ package fr.paris.lutece.e2e.tests.bo.testsuites;
 import fr.paris.lutece.e2e.tests.bo.config.BaseTest;
 import fr.paris.lutece.e2e.pages.bo.*;
 import org.junit.jupiter.api.*;
-import com.microsoft.playwright.Locator;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
 import static org.junit.jupiter.api.Assertions.*;
@@ -79,19 +78,11 @@ public class FormsSubmissionTest extends BaseTest {
     @DisplayName("Soumission du formulaire en front office")
     @Severity(SeverityLevel.CRITICAL)
     void testSubmitFormInFrontOffice() {
-        // Given - Acceder a la liste des formulaires FO puis cliquer sur le formulaire
-        String foUrl = BASE_URL + "/jsp/site/Portal.jsp?page=forms";
-        page.navigate(foUrl);
+        // Given - Acceder directement au formulaire cible en FO via son id_form
+        String formId = readFormId();
+        page.navigate(BASE_URL + "/jsp/site/Portal.jsp?page=forms&view=stepView&id_form=" + formId);
         page.waitForLoadState();
-        page.waitForTimeout(2000);
-
-        // Cliquer sur le lien du formulaire
-        Locator formLink = page.locator("a:has-text('" + formTitle + "')");
-        if (formLink.count() > 0) {
-            formLink.first().click();
-            page.waitForLoadState();
-            page.waitForTimeout(1000);
-        }
+        page.waitForTimeout(1000);
 
         FormsFrontOfficePage foPage = new FormsFrontOfficePage(page, BASE_URL);
 

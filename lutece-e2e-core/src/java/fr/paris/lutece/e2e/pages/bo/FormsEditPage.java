@@ -45,6 +45,13 @@ public class FormsEditPage {
         if (isFinal) {
             page.getByRole(AriaRole.CHECKBOX,
                 new Page.GetByRoleOptions().setName("Finale")).check();
+        } else {
+            // Une etape "Finale" ne peut porter aucune transition sortante. Sur ce site, la case
+            // "Finale" peut etre pre-cochee (et la 1re/seule etape est de toute facon forcee finale
+            // cote serveur par doCreateStep). On la decoche explicitement pour les etapes non finales
+            // afin que le contrat isFinal=false soit honore des que l'etape n'est plus la seule.
+            page.getByRole(AriaRole.CHECKBOX,
+                new Page.GetByRoleOptions().setName("Finale")).uncheck();
         }
         page.getByRole(AriaRole.BUTTON,
             new Page.GetByRoleOptions().setName("OK")).click();
@@ -72,6 +79,8 @@ public class FormsEditPage {
      * Ouvre l'edition d'une etape par son nom (clic sur le lien du nom).
      */
     public FormsEditPage openStepEditByName(String stepName) {
+        // TODO(url-refactor): confirm URL — no id_form is available here to reach the steps list,
+        // and there is no confirmed direct "edit step" URL. Kept as a click.
         page.getByRole(AriaRole.LINK,
             new Page.GetByRoleOptions().setName(stepName).setExact(true)).last().click();
         return this;
@@ -81,6 +90,8 @@ public class FormsEditPage {
      * Clique sur "Modifier l'etape" (lien direct).
      */
     public FormsEditPage clickModifyStep() {
+        // TODO(url-refactor): confirm URL — there is no confirmed "modify step" URL among the known
+        // patterns and no id_step is available in this signature. Kept as a click.
         page.getByRole(AriaRole.LINK,
             new Page.GetByRoleOptions().setName("Modifier l'étape")).last().click();
         return this;
@@ -250,11 +261,13 @@ public class FormsEditPage {
     }
 
     /**
-     * Clique sur un formulaire par son nom (dernier element correspondant).
+     * Navigue vers la page de modification (etapes) d'un formulaire par son nom.
+     * Extrait l'id_form depuis la liste des formulaires puis navigue vers ManageSteps.
      */
     public FormsEditPage clickFormByName(String formName) {
-        page.getByRole(AriaRole.LINK,
-            new Page.GetByRoleOptions().setName(formName)).last().click();
+        String formId = resolveFormId(formName);
+        page.navigate(baseUrl + "/jsp/admin/plugins/forms/ManageSteps.jsp?view=manageSteps&id_form=" + formId);
+        page.waitForLoadState();
         return this;
     }
 
@@ -262,9 +275,28 @@ public class FormsEditPage {
      * Clique sur une etape par son nom (dernier element correspondant).
      */
     public FormsEditPage clickStepByName(String stepName) {
+        // TODO(url-refactor): confirm URL — no id_form is available in this signature to reach the
+        // steps list, and there is no confirmed direct "open step" URL (a step is reached via
+        // ManageQuestions.jsp?view=manageQuestions&id_step=ID which requires an id_step). Kept as
+        // a click. Use navigateToStepQuestions(formId, stepName) when the id_form is known.
         page.getByRole(AriaRole.LINK,
             new Page.GetByRoleOptions().setName(stepName).setExact(true)).last().click();
         return this;
+    }
+
+    /**
+     * Resout l'id d'un formulaire a partir de son nom via la liste des formulaires
+     * (mirror du pattern d'extraction d'id de FormsListPage).
+     */
+    private String resolveFormId(String formName) {
+        page.navigate(baseUrl + "/jsp/admin/plugins/forms/ManageForms.jsp?view=manageForms");
+        page.waitForLoadState();
+        Locator editLink = page.locator("a[href*='view=manageSteps'][title='" + formName + "']");
+        String href = editLink.getAttribute("href");
+        if (href != null && href.contains("id_form=")) {
+            return href.split("id_form=")[1].split("&")[0].split("#")[0];
+        }
+        return null;
     }
 
 }

@@ -142,11 +142,11 @@ public class FormsCreationTest extends BaseTest {
                 String formId = href.split("id_form=")[1].split("&")[0].split("#")[0];
                 java.nio.file.Files.writeString(
                     java.nio.file.Paths.get("target/test-form-id.txt"), formId);
-            }
 
-            // Cliquer sur le formulaire pour naviguer vers ManageSteps
-            editLink.click();
-            page.waitForLoadState();
+                // Naviguer directement vers la gestion des etapes du formulaire
+                page.navigate(BASE_URL + "/jsp/admin/plugins/forms/ManageSteps.jsp?view=manageSteps&id_form=" + formId);
+                page.waitForLoadState();
+            }
         } catch (Exception e) {
             // ignore
         }

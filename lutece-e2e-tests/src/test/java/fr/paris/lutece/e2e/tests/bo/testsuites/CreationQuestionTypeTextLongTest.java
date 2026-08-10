@@ -104,18 +104,19 @@ public class CreationQuestionTypeTextLongTest extends BaseTest {
         page.waitForLoadState();
 
         // 3. Naviguer vers la gestion des formulaires
-        page.navigate(BASE_URL + "/jsp/admin/plugins/forms/ManageForms.jsp");
+        page.navigate(BASE_URL + "/jsp/admin/plugins/forms/ManageForms.jsp?view=manageForms");
         page.waitForLoadState();
 
-        // 4. Cliquer sur le nom du formulaire pour l'ouvrir
-        Locator formLink = page.locator("text=" + formName).first();
+        // 4. Ouvrir le formulaire par son nom : extraire l'id_form de la ligne
+        //    correspondante (miroir du pattern Forms) au lieu de cliquer sur le lien.
+        Locator formLink = page.locator("a[href*='id_form=']")
+            .filter(new Locator.FilterOptions().setHasText(formName)).first();
         assertTrue(formLink.isVisible(), "Le formulaire '" + formName + "' devrait etre visible");
-        formLink.click();
-        page.waitForLoadState();
+        String formHref = formLink.getAttribute("href");
+        String idForm = formHref.split("id_form=")[1].split("&")[0];
 
-        // 5. Aller sur l'onglet Etapes
-        page.getByRole(AriaRole.TAB,
-            new Page.GetByRoleOptions().setName("Etapes")).click();
+        // 5. Naviguer directement vers la gestion des etapes du formulaire (onglet Etapes)
+        page.navigate(BASE_URL + "/jsp/admin/plugins/forms/ManageSteps.jsp?view=manageSteps&id_form=" + idForm);
         page.waitForLoadState();
 
         // 6. Trouver l'etape et cliquer sur "Modifier l'etape"
@@ -146,14 +147,7 @@ public class CreationQuestionTypeTextLongTest extends BaseTest {
                 // ou si c'est bien l'etape recherchee
                 System.out.println("DEBUG: Step " + i + " (id=" + rowId + ") - verifie '" + stepName + "'");
 
-                // Cliquer sur le bouton "Modifier l'etape" de cette ligne
-                Locator modifyBtn = row.locator("a[title*='Modifier'], button[title*='Modifier']").first();
-                if (modifyBtn.count() == 0) {
-                    modifyBtn = row.getByRole(AriaRole.LINK,
-                        new Locator.GetByRoleOptions().setName("Modifier l'étape"));
-                }
-
-                // Ne cliquer que si c'est vraiment la bonne etape
+                // Ne selectionner que si c'est vraiment la bonne etape
                 // Verifier en regardant le debut du texte de la ligne
                 String rowText = row.textContent();
                 // Le nom de l'etape doit etre au debut de la ligne, pas dans "Liste des liaisons"
@@ -164,8 +158,15 @@ public class CreationQuestionTypeTextLongTest extends BaseTest {
 
                 // Si le nom de l'etape apparait AVANT "Liste des liaisons" ou s'il n'y a pas de liaisons
                 if (stepNamePos >= 0 && (liaisonsPos < 0 || stepNamePos < liaisonsPos)) {
-                    System.out.println("DEBUG: >>> Selection de l'etape: " + stepName + " (id=" + rowId + ")");
-                    modifyBtn.click();
+                    // Extraire l'id_step depuis un lien de la ligne, puis naviguer directement
+                    // vers la liste des questions de cette etape (remplace le clic sur
+                    // "Modifier l'etape" + l'onglet "Liste des Questions").
+                    Locator stepIdLink = row.locator("a[href*='id_step=']").first();
+                    String stepHref = stepIdLink.getAttribute("href");
+                    String idStep = stepHref.split("id_step=")[1].split("&")[0];
+                    System.out.println("DEBUG: >>> Selection de l'etape: " + stepName + " (id=" + rowId + ", id_step=" + idStep + ")");
+                    page.navigate(BASE_URL + "/jsp/admin/plugins/forms/ManageQuestions.jsp?view=manageQuestions&id_step=" + idStep);
+                    page.waitForLoadState();
                     found = true;
                     break;
                 }
@@ -177,10 +178,9 @@ public class CreationQuestionTypeTextLongTest extends BaseTest {
         }
         page.waitForLoadState();
 
-        // 7. Aller sur l'onglet Liste des Questions
-        page.getByRole(AriaRole.TAB,
-            new Page.GetByRoleOptions().setName("Liste des Questions")).click();
-        page.waitForLoadState();
+        // 7. La liste des questions de l'etape est deja affichee : la navigation directe
+        //    vers ManageQuestions.jsp?view=manageQuestions&id_step=... a ete effectuee
+        //    ci-dessus (remplace le clic sur l'onglet "Liste des Questions").
 
         // 8. Cliquer sur "Ajouter une question"
         page.getByRole(AriaRole.BUTTON,

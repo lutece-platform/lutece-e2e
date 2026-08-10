@@ -97,6 +97,13 @@ public class LuteceContainer extends GenericContainer<LuteceContainer> {
                 "javax.sql.ConnectionPoolDataSource=\"com.mysql.cj.jdbc.MysqlConnectionPoolDataSource\" " +
                 "javax.sql.XADataSource=\"com.mysql.cj.jdbc.MysqlXADataSource\"|' /config/server.xml; " +
                 "fi && " +
+                // Certaines images (ex: p30/site-integration-forms) declarent une DataSource MariaDB
+                // (org.mariadb.jdbc.MariaDbDataSource) mais un fileset jdbcLib qui n'inclut que
+                // 'mysql-connector*.jar' (absent de l'image) -> la librairie jdbcLib est vide et Liberty
+                // leve DSRA4000E / ClassNotFoundException. Le driver reellement present est
+                // mariadb-java-client-*.jar. On elargit donc l'include du fileset pour couvrir les deux
+                // pilotes (idempotent : si l'include ne matche pas, aucun changement).
+                "sed -i 's|includes=\"mysql-connector[^\"]*\"|includes=\"mariadb-java-client*.jar,mysql-connector*.jar\"|' /config/server.xml && " +
                 "exec /opt/ol/helpers/runtime/docker-server.sh /opt/ol/wlp/bin/server run defaultServer"));
 
         return this;

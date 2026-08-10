@@ -20,6 +20,9 @@ public class FormsResponsesPage {
      * Clique sur la reponse identifiee par le nom du formulaire dans le tableau.
      */
     public FormsResponsesPage clickFirstResponse(String formName) {
+        // TODO(url-refactor): confirm URL — opening a response record detail from MultiviewForms has
+        // no confirmed URL pattern and needs record ids (id_form_response / id_history) not available
+        // here. Kept as a click on the matching table cell.
         page.getByRole(AriaRole.CELL,
             new Page.GetByRoleOptions().setName(formName)).first().click();
         return this;
