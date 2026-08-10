@@ -85,7 +85,7 @@ public class AdminMenuPage {
      */
     public void goToFormsManagement() {
         // Navigation directe pour plus de fiabilité et rapidité
-        page.navigate(baseUrl + "/jsp/admin/plugins/forms/ManageForms.jsp");
+        page.navigate(baseUrl + "/jsp/admin/plugins/forms/ManageForms.jsp?view=manageForms");
         page.waitForLoadState();
     }
 
@@ -94,6 +94,7 @@ public class AdminMenuPage {
      */
     public SitePropertiesPage goToSiteProperties() {
         clickSystemMenu();
+        // TODO(url-refactor): confirm URL
         page.getByRole(AriaRole.LINK,
             new Page.GetByRoleOptions().setName("Gestion des propriétés du site")).first().click();
         return new SitePropertiesPage(page, baseUrl);
@@ -104,6 +105,7 @@ public class AdminMenuPage {
      */
     public LoginPage logout() {
         // Adapter selon l'UI de votre Lutece
+        // TODO(url-refactor): confirm URL
         page.locator("a[href*='logout'], .logout-link, #logout").click();
         return new LoginPage(page, baseUrl);
     }
