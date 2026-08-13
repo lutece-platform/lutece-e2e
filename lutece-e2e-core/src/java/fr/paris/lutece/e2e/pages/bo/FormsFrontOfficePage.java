@@ -124,11 +124,27 @@ public class FormsFrontOfficePage {
     }
 
     /**
-     * Clique sur "Etape suivante".
+     * Clique sur "Etape suivante" — SEULEMENT s'il est present.
+     *
+     * <p>Le bouton "Etape suivante" n'existe que s'il reste une etape apres l'etape courante. Sur un
+     * formulaire mono-etape (ou sur la derniere etape), le FO propose directement "Voir le
+     * recapitulatif" : on n'avance donc pas (no-op) et le flux enchaine sur {@link #clickViewSummary()}.
+     * On attend d'abord que l'un des deux boutons de progression soit rendu pour eviter une detection
+     * prematuree (evite le faux timeout observe sur les formulaires mono-etape).</p>
      */
     public FormsFrontOfficePage clickNextStep() {
-        page.getByRole(AriaRole.BUTTON,
-            new Page.GetByRoleOptions().setName("Etape suivante")).click();
+        try {
+            page.locator("button:has-text('Etape suivante'), button:has-text('Voir le récapitulatif')")
+                .first().waitFor(new Locator.WaitForOptions().setTimeout(10000));
+        } catch (RuntimeException ignored) {
+            // aucun des deux boutons rendu : on laisse le flux se poursuivre (echec plus explicite en aval)
+        }
+        Locator next = page.getByRole(AriaRole.BUTTON,
+            new Page.GetByRoleOptions().setName("Etape suivante"));
+        if (next.count() > 0 && next.first().isVisible()) {
+            next.first().click();
+            page.waitForLoadState();
+        }
         return this;
     }
 
