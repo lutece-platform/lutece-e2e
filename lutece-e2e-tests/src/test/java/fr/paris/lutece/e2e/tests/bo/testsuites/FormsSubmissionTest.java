@@ -62,6 +62,22 @@ public class FormsSubmissionTest extends BaseTest {
             .setViewportSize(VIEWPORT_WIDTH, VIEWPORT_HEIGHT)
             .setLocale(LOCALE)
             .setIgnoreHTTPSErrors(true));
+
+        // Le FO de certains sites (ex: image p30 site-integration-forms) charge des ressources tierces
+        // (widget Google Translate, tarteaucitron, Matomo). Dans le conteneur de test SANS egress internet,
+        // ces requetes pendent jusqu'au timeout et l'evenement 'load' ne se declenche jamais -> la moindre
+        // attente de chargement (navigate / waitForLoadState) expire (30s) des l'ouverture de la page.
+        // On coupe les requetes hors-localhost : le test devient hermetique (identique a un navigateur reel
+        // cote formulaire, mais deterministe et independant de la disponibilite des tiers).
+        context.route("**/*", route -> {
+            String url = route.request().url();
+            if (url.startsWith("http") && !url.contains("localhost") && !url.contains("127.0.0.1")) {
+                route.abort();
+            } else {
+                route.resume();
+            }
+        });
+
         page = context.newPage();
         page.setDefaultTimeout(TIMEOUT);
     }

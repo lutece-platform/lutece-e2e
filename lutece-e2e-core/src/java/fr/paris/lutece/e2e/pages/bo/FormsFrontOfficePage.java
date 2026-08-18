@@ -124,24 +124,30 @@ public class FormsFrontOfficePage {
     }
 
     /**
-     * Clique sur "Etape suivante" — SEULEMENT s'il est present.
+     * Avance d'etape en etape jusqu'a la derniere.
      *
-     * <p>Le bouton "Etape suivante" n'existe que s'il reste une etape apres l'etape courante. Sur un
-     * formulaire mono-etape (ou sur la derniere etape), le FO propose directement "Voir le
-     * recapitulatif" : on n'avance donc pas (no-op) et le flux enchaine sur {@link #clickViewSummary()}.
-     * On attend d'abord que l'un des deux boutons de progression soit rendu pour eviter une detection
-     * prematuree (evite le faux timeout observe sur les formulaires mono-etape).</p>
+     * <p>On cible le bouton par son action Lutece stable {@code action_doSaveStep} via son <b>id</b>
+     * ({@code button#action_doSaveStep}) plutot que par son libelle francais. Motif : le libelle rendu
+     * est "&Eacute;tape suivante" (avec accent) et le match par nom accessible de Playwright est
+     * <i>insensible a la casse mais sensible aux accents</i> — l'ancien selecteur "Etape suivante" (sans
+     * accent) ne matchait donc jamais (count == 0), le clic etait un no-op silencieux et le formulaire
+     * restait bloque a l'etape 1 (le timeout surgissait plus loin, dans {@link #clickViewSummary()}).
+     * L'id vise le bouton VISIBLE : le doublon cache (meme {@code name}, {@code aria-hidden}) n'a pas d'id.</p>
+     *
+     * <p>Sur la derniere etape, {@code action_doSaveStep} disparait au profit de "Voir le recapitulatif" :
+     * la boucle s'arrete alors et le flux enchaine sur {@link #clickViewSummary()}. Boucle bornee
+     * (garde-fou) pour supporter les formulaires a N etapes.</p>
      */
     public FormsFrontOfficePage clickNextStep() {
-        try {
-            page.locator("button:has-text('Etape suivante'), button:has-text('Voir le récapitulatif')")
-                .first().waitFor(new Locator.WaitForOptions().setTimeout(10000));
-        } catch (RuntimeException ignored) {
-            // aucun des deux boutons rendu : on laisse le flux se poursuivre (echec plus explicite en aval)
-        }
-        Locator next = page.getByRole(AriaRole.BUTTON,
-            new Page.GetByRoleOptions().setName("Etape suivante"));
-        if (next.count() > 0 && next.first().isVisible()) {
+        Locator next = page.locator("button#action_doSaveStep");
+        for (int step = 0; step < 10; step++) {
+            try {
+                next.first().waitFor(new Locator.WaitForOptions()
+                    .setState(WaitForSelectorState.VISIBLE).setTimeout(8000));
+            } catch (RuntimeException noMoreSteps) {
+                // plus de bouton "Etape suivante" : derniere etape atteinte -> on sort
+                break;
+            }
             next.first().click();
             page.waitForLoadState();
         }
