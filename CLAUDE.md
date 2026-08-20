@@ -200,6 +200,16 @@ mvn test -pl lutece-e2e-tests \
   -Dlutece.image=nexus-docker-fastdeploy.api.paris.mdp/bild/p30/site-integration-forms:8.0.0-SNAPSHOT \
   -Dtest.headless=true
 
+# Suite globale : conteneurs + toutes les briques macro (96 tests) - Docker requis
+mvn test -pl lutece-e2e-tests \
+  -Dtest=fr.paris.lutece.e2e.tests.bo.testsuites.ContainerMacroIntegrationSuite \
+  -Dlutece.image=nexus-docker-fastdeploy.api.paris.mdp/bild/p30/site-integration-forms:8.0.0-SNAPSHOT \
+  -Dtest.headless=true
+
+# Toutes les briques macro seules (74 tests) - instance existante
+mvn test -pl lutece-e2e-tests \
+  -Dtest=fr.paris.lutece.e2e.tests.bo.testsuites.MacroTestsSuite
+
 # Surcharger l'URL de base (mode externe)
 mvn test -pl lutece-e2e-tests \
   -Dtest=fr.paris.lutece.e2e.tests.bo.testsuites.WorkflowFormsIntegrationSuite \
@@ -232,6 +242,8 @@ lutece-e2e-tests/src/test/java/fr/paris/lutece/e2e/tests/bo/
     ├── ContainerSetup.java                # Demarre MariaDB + Lutece via Testcontainers
     ├── ContainerIntegrationSuite.java     # Suite Docker (22 tests)
     ├── WorkflowFormsIntegrationSuite.java # Suite externe (22 tests)
+    ├── MacroTestsSuite.java               # Toutes les briques macro (74 tests, scan de package)
+    ├── ContainerMacroIntegrationSuite.java # Suite Docker + toutes les briques macro (96 tests)
     ├── RbacConfigurationTest.java         # 5 tests - droits utilisateur
     ├── WorkflowCreationTest.java          # 6 tests - workflow + etats + actions
     ├── FormsCreationTest.java             # 9 tests - formulaires + questions
