@@ -60,13 +60,17 @@ pipeline {
             name: 'TEST_SUITE',
             choices: [
                 'ContainerIntegrationSuite',
+                'ContainerMacroIntegrationSuite',
                 'WorkflowFormsIntegrationSuite',
+                'MacroTestsSuite',
                 'LoginContainerTest',
                 'LoginTest',
                 'RbacConfigurationTest',
                 'WorkflowCreationTest',
                 'FormsCreationTest',
-                'FormsSubmissionTest'
+                'FormsSubmissionTest',
+                'AdminNavigationTest',
+                'CreationQuestionTypeTextLongTest'
             ],
             description: 'Suite de tests à exécuter'
         )
@@ -306,6 +310,9 @@ pipeline {
                             if (params.TEST_SUITE == 'WorkflowFormsIntegrationSuite') {
                                 testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.ContainerIntegrationSuite"
                             }
+                            if (params.TEST_SUITE == 'MacroTestsSuite') {
+                                testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.ContainerMacroIntegrationSuite"
+                            }
                             if (params.TEST_SUITE == 'LoginTest') {
                                 testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.LoginContainerTest"
                             }
@@ -371,6 +378,9 @@ pipeline {
                             def testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.${params.TEST_SUITE}"
                             if (params.TEST_SUITE == 'ContainerIntegrationSuite') {
                                 testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.WorkflowFormsIntegrationSuite"
+                            }
+                            if (params.TEST_SUITE == 'ContainerMacroIntegrationSuite') {
+                                testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.MacroTestsSuite"
                             }
                             if (params.TEST_SUITE == 'LoginContainerTest') {
                                 testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.LoginTest"
