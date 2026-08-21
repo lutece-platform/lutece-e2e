@@ -107,7 +107,9 @@ pipeline {
     }
 
     options {
-        timeout(time: 30, unit: 'MINUTES')
+        // ContainerMacroIntegrationSuite (96 tests) prend ~30 min de tests seuls,
+        // auxquels s'ajoutent le build Maven et le pull des images (~5 min)
+        timeout(time: 60, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '10'))
         disableConcurrentBuilds()
     }
