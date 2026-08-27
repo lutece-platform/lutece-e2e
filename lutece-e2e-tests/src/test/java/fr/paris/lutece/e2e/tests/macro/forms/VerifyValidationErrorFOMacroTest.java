@@ -62,7 +62,14 @@ public class VerifyValidationErrorFOMacroTest extends MacroTest {
             "Champ '" + data.label() + "' introuvable sur le formulaire FO : verification ignoree.");
         fillField(field.first(), data.invalidValue());
 
-        Assumptions.assumeTrue(clickAdvance(page),
+        boolean advanced = clickAdvance(page);
+        // Un « Internal error » / « Error 500 » n'est PAS un motif de skip : c'est un bug serveur que le
+        // test doit exposer. Mesure : avec un controle de validation sur une question texte, la soumission
+        // FO renvoie une page Error 500 (reproduit avec une valeur de validateur vide ET non vide).
+        Assertions.assertFalse(isServerError(page),
+            "Le front-office renvoie une erreur technique (Error 500) apres saisie invalide : le controle "
+            + "de validation casse le rendu FO. Bug serveur a corriger, pas une precondition manquante.");
+        Assumptions.assumeTrue(advanced,
             "Aucun bouton de soumission d'etape (Etape suivante / Voir le récapitulatif) present en FO : "
             + "verification ignoree.");
         page.waitForLoadState();
@@ -148,6 +155,16 @@ public class VerifyValidationErrorFOMacroTest extends MacroTest {
     }
 
     /** Clique le premier bouton de soumission d'etape present et visible. Renvoie false si aucun. */
+    /** Vrai si la page affiche une erreur technique serveur (a faire echouer, jamais skipper). */
+    private static boolean isServerError(Page page) {
+        try {
+            String text = page.locator("body").innerText();
+            return text.contains("Error 500") || text.contains("Internal error");
+        } catch (RuntimeException unreadable) {
+            return false;
+        }
+    }
+
     private static boolean clickAdvance(Page page) {
         for (String name : ADVANCE_BUTTONS) {
             Locator btn = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName(name));
