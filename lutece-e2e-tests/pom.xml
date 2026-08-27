@@ -19,6 +19,11 @@
         <lutece.image>nexus-docker-fastdeploy.api.paris.mdp/bild/f98/site-deontologie:1.0.0-SNAPSHOT</lutece.image>
         <lutece.http.port>9090</lutece.http.port>
         <lutece.context.root>/lutece</lutece.context.root>
+        <!-- Agent AspectJ requis par Allure pour que les @Step des briques macro soient tisses -->
+        <aspectj.version>1.9.22.1</aspectj.version>
+        <!-- Defaut vide : jacoco prepare-agent (POM parent) remplit cette propriete ; le defaut
+             garde @{argLine} resoluble si jacoco est saute (-Djacoco.skip) -->
+        <argLine></argLine>
     </properties>
 
     <dependencies>
@@ -93,6 +98,14 @@
             <artifactId>slf4j-api</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Tisseur AspectJ : sans lui les @Step d'Allure sont inertes (aucun detail par brique
+             dans le rapport, une suite metier apparait comme un test opaque) -->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <version>${aspectj.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -102,6 +115,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <!-- @{argLine} = substitution tardive : conserve l'agent jacoco pose par le POM
+                         parent, auquel on ajoute le tisseur AspectJ pour les @Step Allure -->
+                    <argLine>@{argLine} -javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"</argLine>
                     <includes>
                         <include>**/*Test.java</include>
                     </includes>
