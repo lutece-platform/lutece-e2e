@@ -58,28 +58,15 @@ public class ConfigureFormOptionsMacroTest extends MacroTest {
                 "#maxResponse", "#max_response", "input[name='maxResponse']", "input[name='max_response']");
         }
 
-        // Cases a cocher (uniquement si presentes)
-        if (data.oneResponsePerUser()) {
-            checkByLabelIfPresent(page, "Une seule réponse par utilisateur");
-            checkFirstPresent(page, "#one_form_response", "input[name='one_form_response']");
-        }
-        if (data.displaySummary()) {
-            checkByLabelIfPresent(page, "Afficher le récapitulatif");
-            checkFirstPresent(page, "#displaySummary", "input[name='displaySummary']");
-        }
-        if (data.enableBackup()) {
-            checkByLabelIfPresent(page, "Sauvegarde");
-            checkByLabelIfPresent(page, "Brouillon");
-            checkFirstPresent(page, "#backup", "input[name='backup']");
-        }
-        if (data.displayBreadcrumb()) {
-            checkByLabelIfPresent(page, "Fil d'Ariane");
-            checkFirstPresent(page, "#breadcrumb", "input[name='breadcrumb']");
-        }
-        if (data.requireAuthentication()) {
-            checkByLabelIfPresent(page, "Authentification");
-            checkFirstPresent(page, "#authentificationNeeded", "input[name='authentificationNeeded']");
-        }
+        // Cases a cocher : ciblees par leur ATTRIBUT name reel, releve sur le DOM de modifyForm.
+        // L'ancienne version passait par getByRole(CHECKBOX, name=...) avec des libelles approximatifs
+        // ("Sauvegarde", "Brouillon") : le nom accessible reel est "Activer la sauvegarde des reponses
+        // incompletes", donc rien ne matchait et la case n'etait JAMAIS cochee, en silence (faux vert).
+        boolean backupControl = setCheckboxByName(page, "backupEnabled", data.enableBackup());
+        setCheckboxByName(page, "oneResponseByUser", data.oneResponsePerUser());
+        setCheckboxByName(page, "displaySummary", data.displaySummary());
+        setCheckboxByName(page, "authentificationNeeded", data.requireAuthentication());
+        // Pas de case "fil d'Ariane" sur ce formulaire d'options : data.displayBreadcrumb() est sans effet.
 
         // Categorie / groupe de travail (listes deroulantes)
         if (data.category() != null) {
@@ -97,6 +84,34 @@ public class ConfigureFormOptionsMacroTest extends MacroTest {
         int id = MacroSupport.extractFormId(ctx, ctx.formTitle);
         Assertions.assertTrue(id > 0,
             "Le formulaire '" + ctx.formTitle + "' devrait toujours exister apres configuration des options");
+
+        // Relecture : une option demandee et pilotable DOIT etre effectivement persistee. Sans ce
+        // controle, un selecteur errone repassait en vert alors que rien n'avait ete coche, et l'echec
+        // ne se manifestait que bien plus tard en front-office (brique de brouillon sans controle).
+        if (data.enableBackup() && backupControl) {
+            MacroSupport.navigate(ctx, MacroSupport.FORMS + "ManageForms.jsp?view=modifyForm&id_form=" + ctx.formId);
+            Assertions.assertTrue(
+                page.locator("input[type='checkbox'][name='backupEnabled']").first().isChecked(),
+                "L'option de sauvegarde des reponses incompletes devrait etre active apres enregistrement");
+        }
+    }
+
+    /**
+     * Positionne une case a cocher par son attribut {@code name} et retourne {@code false} si le
+     * controle est absent du formulaire (option non pilotable sur cette version).
+     */
+    private static boolean setCheckboxByName(Page page, String name, boolean wanted) {
+        Locator cb = page.locator("input[type='checkbox'][name='" + name + "']");
+        if (cb.count() == 0) {
+            return false;
+        }
+        boolean checked = cb.first().isChecked();
+        if (wanted && !checked) {
+            cb.first().check();
+        } else if (!wanted && checked) {
+            cb.first().uncheck();
+        }
+        return true;
     }
 
     // === Helpers gardes ===
@@ -138,12 +153,6 @@ public class ConfigureFormOptionsMacroTest extends MacroTest {
         }
     }
 
-    private static void checkByLabelIfPresent(Page page, String label) {
-        Locator cb = page.getByRole(AriaRole.CHECKBOX, new Page.GetByRoleOptions().setName(label));
-        if (cb.count() > 0 && cb.first().isVisible() && !cb.first().isChecked()) {
-            cb.first().check();
-        }
-    }
 
     private static void selectByLabelIfPresent(Page page, String label, String... selectors) {
         for (String selector : selectors) {

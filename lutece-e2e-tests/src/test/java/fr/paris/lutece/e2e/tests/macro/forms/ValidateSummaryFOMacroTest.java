@@ -59,10 +59,13 @@ public class ValidateSummaryFOMacroTest extends MacroTest {
         page.waitForLoadState(LoadState.NETWORKIDLE);
 
         String url = page.url();
-        // Succes de soumission : on a quitte l'ecran de recapitulatif (le bouton "Valider le
-        // recapitulatif" n'est plus la) SANS message d'erreur/validation. Sur ce site, la soumission
-        // reussie redirige vers le stepView du formulaire (et non vers page=formsResponse), tout en
-        // creant bien la reponse cote serveur. On peut aussi tomber sur un accuse explicite.
+        // Ce que cette brique peut constater : on a quitte l'ecran de recapitulatif (le bouton
+        // "Valider le recapitulatif" n'est plus la) SANS message d'erreur, ou bien un accuse explicite.
+        // ATTENTION : cela ne PROUVE PAS l'enregistrement. Mesure sur f98 1.0.3 : la validation POST
+        // action_doSaveResponseSummary renvoie un 302 vers un formulaire vierge, sans erreur, et AUCUNE
+        // reponse n'est creee (multivue a 0 apres indexation complete du portail). Le front-office ne
+        // permet donc pas de distinguer un succes d'un echec silencieux : pour exiger la preuve,
+        // enchainer VerifyResponseSubmittedMacroTest, qui verifie en back-office.
         Locator validateAfter = page.getByRole(AriaRole.BUTTON,
             new Page.GetByRoleOptions().setName("Valider le récapitulatif"));
         boolean leftRecap = validateAfter.count() == 0 || !validateAfter.first().isVisible();
