@@ -62,6 +62,7 @@ public class WorkflowCreationTest extends BaseTest {
                 .setViewportSize(VIEWPORT_WIDTH, VIEWPORT_HEIGHT)
                 .setLocale(LOCALE)
                 .setIgnoreHTTPSErrors(true));
+            blockThirdPartyRequests(context);
             page = context.newPage();
             page.setDefaultTimeout(TIMEOUT);
 
