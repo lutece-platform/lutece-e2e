@@ -1,7 +1,5 @@
 package fr.paris.lutece.e2e.tests.macro;
 
-import com.microsoft.playwright.Page;
-import com.microsoft.playwright.options.AriaRole;
 import fr.paris.lutece.e2e.pages.bo.LoginPage;
 import fr.paris.lutece.e2e.tests.bo.config.BaseTest;
 import org.junit.jupiter.api.TestInstance;
@@ -37,24 +35,12 @@ public abstract class MacroTest extends BaseTest {
     }
 
     /**
-     * Effectue le login admin et neutralise une eventuelle page d'avertissement (ex: expiration de
-     * mot de passe) affichee juste apres la connexion.
+     * Effectue le login admin. L'eventuel ecran d'expiration de mot de passe est neutralise par
+     * LoginPage.loginAs(), pour que tous les chemins de connexion partagent le meme comportement.
      */
     protected void login() {
         new LoginPage(page, BASE_URL).navigate().loginAs(ADMIN_USER, ADMIN_PASS);
         page.waitForLoadState();
-        dismissOptionalWarning();
     }
 
-    private void dismissOptionalWarning() {
-        try {
-            var okLink = page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("OK"));
-            if (okLink.count() > 0 && okLink.first().isVisible()) {
-                okLink.first().click();
-                page.waitForLoadState();
-            }
-        } catch (Exception ignored) {
-            // avertissement absent : rien a faire
-        }
-    }
 }
