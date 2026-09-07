@@ -58,6 +58,7 @@ public class RbacConfigurationTest extends BaseTest {
             .setViewportSize(VIEWPORT_WIDTH, VIEWPORT_HEIGHT)
             .setLocale(LOCALE)
             .setIgnoreHTTPSErrors(true));
+        blockThirdPartyRequests(context);
 
         page = context.newPage();
         page.setDefaultTimeout(TIMEOUT);
@@ -112,15 +113,9 @@ public class RbacConfigurationTest extends BaseTest {
         LoginPage loginPage = new LoginPage(page, BASE_URL);
         loginPage.navigate();
 
-        // Gerer le message d'avertissement eventuel
-        try {
-            if (page.locator("button:has-text('OK')").count() > 0) {
-                page.locator("button:has-text('OK')").first().click();
-            }
-        } catch (Exception e) {
-            // Pas de message
-        }
-
+        // L'ecran d'expiration de mot de passe est neutralise par LoginPage.loginAs() : il apparait
+        // APRES la connexion (l'ancien clic place ici, avant loginAs, portait sur la page de login et
+        // ne pouvait rien neutraliser).
         loginPage.loginAs("admin", "adminadmin");
         page.waitForLoadState();
 

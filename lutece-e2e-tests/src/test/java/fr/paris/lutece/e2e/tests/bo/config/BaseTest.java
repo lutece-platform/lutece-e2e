@@ -70,16 +70,60 @@ public abstract class BaseTest {
             .setPath(AUTH_STATE_PATH));
     }
 
+
+    /**
+     * Coupe les requêtes sortant vers un hôte <b>autre</b> que celui de {@link #BASE_URL}.
+     *
+     * <p>Certains sites chargent des ressources tierces (widget Google Translate, tarteaucitron,
+     * Matomo). Dans un conteneur de test sans egress internet, ces requêtes pendent jusqu'au timeout :
+     * l'événement {@code load} ne se déclenche jamais et toute attente de chargement expire, ce qui
+     * fait échouer les briques touchant le front-office alors que l'application répond parfaitement.</p>
+     *
+     * <p>Le filtre porte sur l'<b>hôte de l'application</b> et non sur « localhost » : en mode externe
+     * ({@code -Dlutece.base.url=https://...apps.paris.mdp/lutece}) un filtre sur localhost couperait
+     * l'application elle-même.</p>
+     */
+    public static void blockThirdPartyRequests(BrowserContext browserContext) {
+        String appHost;
+        try {
+            appHost = java.net.URI.create(BASE_URL).getHost();
+        } catch (RuntimeException invalidBaseUrl) {
+            return;
+        }
+        if (appHost == null) {
+            return;
+        }
+        final String allowed = appHost;
+        browserContext.route("**/*", route -> {
+            String url = route.request().url();
+            if (url.startsWith("http")) {
+                String host = null;
+                try {
+                    host = java.net.URI.create(url).getHost();
+                } catch (RuntimeException malformed) {
+                    host = null;
+                }
+                if (host != null && !host.equals(allowed)) {
+                    route.abort();
+                    return;
+                }
+            }
+            route.resume();
+        });
+    }
+
     /**
      * Cree un contexte avec l'etat d'authentification sauvegarde.
      * Evite de refaire le login UI.
      */
     protected BrowserContext createAuthenticatedContext() {
-        return browser.newContext(new Browser.NewContextOptions()
+        BrowserContext authenticated = browser.newContext(new Browser.NewContextOptions()
             .setViewportSize(VIEWPORT_WIDTH, VIEWPORT_HEIGHT)
             .setLocale(LOCALE)
             .setIgnoreHTTPSErrors(true)
             .setStorageStatePath(AUTH_STATE_PATH));
+        blockThirdPartyRequests(authenticated);
+        return authenticated;
     }
 
     /**
@@ -133,6 +177,7 @@ public abstract class BaseTest {
             .setViewportSize(VIEWPORT_WIDTH, VIEWPORT_HEIGHT)
             .setLocale(LOCALE)
             .setIgnoreHTTPSErrors(true));
+        blockThirdPartyRequests(context);
 
         startTracing();
 
