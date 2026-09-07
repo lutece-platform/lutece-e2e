@@ -80,6 +80,7 @@ public class LoginContainerTest {
             .setViewportSize(1920, 1080)
             .setLocale("fr-FR")
             .setIgnoreHTTPSErrors(true));
+        fr.paris.lutece.e2e.tests.bo.config.BaseTest.blockThirdPartyRequests(context);
 
         page = context.newPage();
         page.setDefaultTimeout(10000);
