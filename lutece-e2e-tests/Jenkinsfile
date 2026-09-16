@@ -487,10 +487,24 @@ pipeline {
                         artifacts: 'lutece-e2e-tests/target/surefire-reports/**/*',
                         allowEmptyArchive: true
                     )
-                    allure([
-                        results: [[path: 'lutece-e2e-tests/target/allure-results']],
-                        reportBuildPolicy: 'ALWAYS'
-                    ])
+                    archiveArtifacts(
+                        artifacts: 'lutece-e2e-tests/target/allure-results/**/*',
+                        allowEmptyArchive: true
+                    )
+                    // Le step `allure` requiert le plugin Allure Jenkins, absent de certains
+                    // controleurs : sans garde, un NoSuchMethodError dans ce bloc `always`
+                    // fait echouer tout le build meme quand les tests sont verts.
+                    script {
+                        try {
+                            allure([
+                                results: [[path: 'lutece-e2e-tests/target/allure-results']],
+                                reportBuildPolicy: 'ALWAYS'
+                            ])
+                        } catch (NoSuchMethodError e) {
+                            echo 'Plugin Allure Jenkins non installe : rapport non publie, ' +
+                                 'les resultats bruts restent archives.'
+                        }
+                    }
                 }
             }
         }
