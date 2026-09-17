@@ -73,6 +73,8 @@ public class AddValidationControlMacroTest extends MacroTest {
         Assumptions.assumeTrue(okButton.count() > 0,
             "Le formulaire de controle de validation ne s'est pas affiche (bouton action_modifyControl absent)");
 
+        confirmValidator(page);
+
         // Valeur du validateur (present uniquement pour les validateurs qui en attendent une).
         fillControlValue(page, data.value());
 
@@ -90,6 +92,27 @@ public class AddValidationControlMacroTest extends MacroTest {
         Assertions.assertTrue(controlId > 0,
             "Un controle de validation devrait exister pour la question '" + question.title + "' apres enregistrement");
         ctx.controlIds.add(controlId);
+    }
+
+    /**
+     * Confirme le validateur selectionne afin que le template du validateur soit rendu.
+     *
+     * <p>Le controle en session porte un {@code validatorName} null tant qu'il n'a pas ete confirme. Or
+     * {@code FormControlJspBean} ne positionne le validateur par defaut que si {@code validatorName} vaut
+     * la chaine vide ({@code StringUtils.EMPTY.equals(null)} est faux), et ne rend
+     * {@code ${control_template}} que si {@code validatorName} est non vide. Sans ce passage, le
+     * formulaire n'expose donc aucun champ {@code value} : le controle serait enregistre sans valeur et
+     * la soumission front-office echouerait.</p>
+     *
+     * <p>Sans effet si le bouton de confirmation est absent (validateur deja confirme).</p>
+     */
+    private static void confirmValidator(Page page) {
+        Locator validate = page.locator("button[name='view_modifyControl'][value='validateValidator']");
+        if (validate.count() == 0 || !validate.first().isVisible()) {
+            return;
+        }
+        validate.first().click();
+        page.waitForLoadState();
     }
 
     /**

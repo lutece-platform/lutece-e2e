@@ -159,7 +159,8 @@ public class VerifyValidationErrorFOMacroTest extends MacroTest {
     private static boolean isServerError(Page page) {
         try {
             String text = page.locator("body").innerText();
-            return text.contains("Error 500") || text.contains("Internal error");
+            return text.contains("Error 500") || text.contains("Internal error")
+                || text.contains("Erreur technique") || text.contains("Technical error");
         } catch (RuntimeException unreadable) {
             return false;
         }

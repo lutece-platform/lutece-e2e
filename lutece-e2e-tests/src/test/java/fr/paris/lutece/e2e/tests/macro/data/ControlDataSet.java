@@ -54,8 +54,13 @@ public record ControlDataSet(
 
     /**
      * Defaut validation : regle sur la question 0, avec un message d'erreur.
+     *
+     * <p>L'expression reguliere est designee explicitement par son libelle : sans cela le formulaire
+     * retiendrait la premiere entree de la liste, qui depend du jeu de donnees de l'instance et rendrait
+     * la verification front-office non deterministe. Les valeurs de {@code ValidationCheckDataSet} sont
+     * calibrees sur cette expression.</p>
      */
     public static ControlDataSet validationDefaults() {
-        return validation(0, "", "Saisie invalide");
+        return validation(0, "Email", "Saisie invalide");
     }
 }

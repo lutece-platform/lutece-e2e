@@ -23,7 +23,12 @@ public record ValidationCheckDataSet(
         return new ValidationCheckDataSet(label, invalidValue, validValue, errorHint);
     }
 
+    /**
+     * Defaut aligne sur {@code ControlDataSet.validationDefaults()}, qui pose une validation par
+     * expression reguliere « Email » : la valeur invalide ne peut pas etre une adresse, la valide doit
+     * en etre une.
+     */
     public static ValidationCheckDataSet defaults() {
-        return new ValidationCheckDataSet("Question a valider", "@@@", "Texte valide", "Saisie invalide");
+        return new ValidationCheckDataSet("Question a valider", "@@@", "test@example.com", "Saisie invalide");
     }
 }
