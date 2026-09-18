@@ -45,6 +45,8 @@ public class VerifyResponseSubmittedMacroTest extends MacroTest {
         Page page = ctx.page;
         MacroSupport.navigate(ctx, MacroSupport.FORMS + "MultiviewForms.jsp");
 
+        openAllResponsesPanel(page);
+
         int counter = readAllResponsesCounter(page);
         int rows = page.locator("table tbody tr").count();
 
@@ -55,29 +57,64 @@ public class VerifyResponseSubmittedMacroTest extends MacroTest {
             + "complete du portail relancee, formsIndexerDaemon execute, compteur toujours a 0).");
     }
 
-    /** Lit le compteur du panneau « Toutes les reponses » de la multivue, ou -1 s'il est illisible. */
-    private static int readAllResponsesCounter(Page page) {
-        Locator panels = page.locator("a, li, span, button");
-        int count = Math.min(panels.count(), 200);
-        for (int i = 0; i < count; i++) {
-            String text;
-            try {
-                text = panels.nth(i).textContent();
-            } catch (RuntimeException detached) {
-                continue;
-            }
-            if (text == null) {
-                continue;
-            }
-            String flat = text.replaceAll("\\s+", " ").trim();
-            if (flat.startsWith("Toutes les réponses")) {
-                java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+)").matcher(flat);
-                if (m.find()) {
-                    return Integer.parseInt(m.group(1));
-                }
-            }
+    /**
+     * Active le panneau « Toutes les reponses » de la multivue.
+     *
+     * <p>Le panneau selectionne par defaut depend des modules installes : avec {@code forms-unittree}
+     * la multivue ouvre « Reponses de mon entite », qui est vide pour une reponse anonyme. Le comptage
+     * des lignes porterait alors sur le mauvais panneau.</p>
+     *
+     * <p>Sans effet si l'onglet est absent ou deja actif.</p>
+     */
+    private static void openAllResponsesPanel(Page page) {
+        Locator tab = allResponsesTab(page);
+        if (tab.count() == 0 || "true".equals(tab.first().getAttribute("aria-selected"))) {
+            return;
         }
-        return -1;
+        tab.first().click();
+        page.waitForLoadState();
+    }
+
+    /**
+     * Resout l'onglet « Toutes les reponses » de la multivue, par son identifiant puis par son intitule.
+     *
+     * @param page
+     *            la page de la multivue
+     * @return le locator de l'onglet, vide si la multivue ne l'expose pas
+     */
+    private static Locator allResponsesTab(Page page) {
+        Locator byId = page.locator("a#multiviewforms[role='tab']");
+        if (byId.count() > 0) {
+            return byId;
+        }
+        return page.locator("a[role='tab']")
+            .filter(new Locator.FilterOptions().setHasText("Toutes les réponses"));
+    }
+
+    /**
+     * Lit le compteur du panneau « Toutes les reponses ».
+     *
+     * @param page
+     *            la page de la multivue
+     * @return le nombre de reponses annonce par l'onglet, ou -1 s'il est illisible
+     */
+    private static int readAllResponsesCounter(Page page) {
+        Locator tab = allResponsesTab(page);
+        if (tab.count() == 0) {
+            return -1;
+        }
+        String text;
+        try {
+            text = tab.first().textContent();
+        } catch (RuntimeException detached) {
+            return -1;
+        }
+        if (text == null) {
+            return -1;
+        }
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+)")
+            .matcher(text.replaceAll("\\s+", " ").trim());
+        return m.find() ? Integer.parseInt(m.group(1)) : -1;
     }
 
     @Test
