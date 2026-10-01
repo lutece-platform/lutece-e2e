@@ -514,10 +514,11 @@ pipeline {
                         }
                     }
 
-                    // Publication sur le serveur Allure mutualise : historique des runs et
-                    // rapport consultable hors Jenkins. Un serveur indisponible ne doit pas
-                    // faire echouer un build dont les tests sont verts.
-                    echo '=== Publication du rapport sur le serveur Allure ==='
+                    // Envoi des resultats au serveur Allure mutualise : la generation du
+                    // rapport et l'historique sont faits par Allure, le pipeline ne pousse
+                    // que les resultats. Un serveur indisponible ne doit pas faire echouer
+                    // un build dont les tests sont verts.
+                    echo '=== Envoi des resultats au serveur Allure ==='
                     script {
                         // L'artifactId du site teste identifie le projet Allure : fourni par
                         // le job, sinon lu dans le pom.properties du war que l'image embarque

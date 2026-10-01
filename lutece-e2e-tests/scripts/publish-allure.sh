@@ -14,9 +14,11 @@
 #   ALLURE_SITE_URL    URL du site teste, sert a deduire l'artifactId (mode instance existante)
 #   ALLURE_CONTAINER_RUNTIME  Runtime a utiliser pour lire l'image (defaut : podman, sinon docker)
 #   ALLURE_RESULTS_DIR Repertoire des resultats (defaut : target/allure-results)
-#   ALLURE_CLEAN       1 = purge les resultats en attente avant l'envoi (defaut : 1)
-#   ALLURE_EXEC_NAME   Libelle de l'execution dans le rapport (defaut : job Jenkins ou branche git)
-#   ALLURE_EXEC_FROM   Lien source de l'execution (defaut : BUILD_URL Jenkins)
+#   ALLURE_UI_URL      URL de l'IHM Allure (defaut : ALLURE_SERVER_URL suffixe de -ui)
+#   ALLURE_CLEAN       1 = purge les resultats en attente avant l'envoi (defaut : 0)
+#   ALLURE_EXEC_NAME   Libelle de l'execution, ecrit dans executor.json (defaut : job
+#                      Jenkins ou branche git)
+#   ALLURE_EXEC_FROM   Lien vers le build, ecrit dans executor.json (defaut : BUILD_URL)
 #   ALLURE_EXEC_TYPE   Type d'execution : jenkins, github, gitlab... (defaut : jenkins)
 #   ALLURE_INSECURE    1 = ignore la verification TLS (defaut : 1, CA interne Ville de Paris)
 #   ALLURE_NO_PROXY    1 = bypass le proxy HTTP (defaut : 1, le serveur est interne)
@@ -41,14 +43,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODULE_DIR="$(dirname "${SCRIPT_DIR}")"
 
 SERVER_URL="${ALLURE_SERVER_URL:-https://<serveur-allure>/allure-docker-service}"
+SERVER_URL="${SERVER_URL%/}"
+UI_URL="${ALLURE_UI_URL:-${SERVER_URL}-ui}"
+UI_URL="${UI_URL%/}"
 RESULTS_DIR="${1:-${ALLURE_RESULTS_DIR:-${MODULE_DIR}/target/allure-results}}"
-CLEAN="${ALLURE_CLEAN:-1}"
+# Purge desactivee par defaut : le script ne genere plus le rapport, donc les resultats
+# qu'il envoie restent en attente cote serveur jusqu'a ce qu'Allure les consomme.
+# Purger reviendrait a detruire ceux d'un run precedent pas encore transforme en rapport.
+CLEAN="${ALLURE_CLEAN:-0}"
 EXEC_TYPE="${ALLURE_EXEC_TYPE:-jenkins}"
 # Taille de lot visee au depart : volontairement large, pour tirer parti d'une route
 # genereuse. Si elle refuse, la limite reelle est decouverte a l'envoi (cf. send_files).
 BATCH_BYTES="${ALLURE_BATCH_BYTES:-32000000}"
-
-SERVER_URL="${SERVER_URL%/}"
 
 CURL_OPTS=(--silent --show-error --fail-with-body --max-time 300)
 [ "${ALLURE_INSECURE:-1}" = "1" ] && CURL_OPTS+=(--insecure)
@@ -146,18 +152,6 @@ resolve_project_id() {
     printf '%s' "$(normalize_id "${id}")"
 }
 
-urlencode() {
-    local s="$1" out="" c i
-    for (( i=0; i<${#s}; i++ )); do
-        c="${s:i:1}"
-        case "${c}" in
-            [a-zA-Z0-9.~_-]) out+="${c}" ;;
-            *) out+="$(printf '%%%02X' "'${c}")" ;;
-        esac
-    done
-    printf '%s' "${out}"
-}
-
 PROJECT_ID="$(resolve_project_id)"
 if [ -z "${PROJECT_ID}" ]; then
     # Publier sous un nom approximatif melangerait les tendances de deux sites :
@@ -168,6 +162,18 @@ if [ -z "${PROJECT_ID}" ]; then
 fi
 
 [ -d "${RESULTS_DIR}" ] || { echo "ERREUR : repertoire de resultats introuvable : ${RESULTS_DIR}" >&2; exit 1; }
+
+# Le script n'appelant plus generate-report, c'est executor.json qui porte l'origine du
+# run jusqu'au rapport : Allure l'y affiche et s'en sert pour relier les tendances.
+# Un executor.json deja produit par le build fait foi et n'est pas ecrase.
+if [ ! -f "${RESULTS_DIR}/executor.json" ]; then
+    {
+        printf '{"name":"Jenkins","type":"%s","buildName":"%s"' "${EXEC_TYPE}" "${EXEC_NAME}"
+        [ -n "${EXEC_FROM}" ] && printf ',"buildUrl":"%s","reportUrl":"%s"' \
+            "${EXEC_FROM}" "${UI_URL}/projects/${PROJECT_ID}"
+        printf '}\n'
+    } > "${RESULTS_DIR}/executor.json"
+fi
 
 mapfile -t ALL_FILES < <(find "${RESULTS_DIR}" -maxdepth 1 -type f ! -name '.*' | sort)
 [ "${#ALL_FILES[@]}" -gt 0 ] || { echo "ERREUR : aucun resultat Allure dans ${RESULTS_DIR}" >&2; exit 1; }
@@ -269,12 +275,6 @@ if [ "${#SKIPPED[@]}" -gt 0 ]; then
     echo "  Relever proxy-body-size sur la route pour les publier."
 fi
 
-# 4. Generation du rapport
-echo "Generation du rapport..."
-GEN_URL="/generate-report?project_id=${PROJECT_ID}&execution_name=$(urlencode "${EXEC_NAME}")&execution_type=${EXEC_TYPE}"
-[ -n "${EXEC_FROM}" ] && GEN_URL+="&execution_from=$(urlencode "${EXEC_FROM}")"
-api GET "${GEN_URL}" > /dev/null
-
 echo
-echo "Rapport publie :"
-echo "  ${SERVER_URL}/projects/${PROJECT_ID}/reports/latest/index.html"
+echo "Resultats envoyes. Le rapport est genere par Allure :"
+echo "  ${UI_URL}/projects/${PROJECT_ID}"
