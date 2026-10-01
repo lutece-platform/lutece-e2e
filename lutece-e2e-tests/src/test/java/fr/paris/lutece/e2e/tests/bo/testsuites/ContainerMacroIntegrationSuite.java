@@ -29,12 +29,12 @@ import org.junit.platform.suite.api.SuiteDisplayName;
  * <pre>
  *   mvn test -pl lutece-e2e-tests -Dtest=ContainerMacroIntegrationSuite -Dtest.headless=true
  *   mvn test -pl lutece-e2e-tests -Dtest=ContainerMacroIntegrationSuite \
- *     -Dlutece.image=<registre>/bild/p30/site-integration-forms:8.0.0-SNAPSHOT \
+ *     -Dlutece.image=${DOCKER_REGISTRY}/bild/p30/site-integration-forms:8.0.0-SNAPSHOT \
  *     -Dlutece.context.root=/lutece -Dtest.headless=true
  * </pre>
  *
  * <p>Prerequis : Docker/Podman disponible, et acces au registre d'images (VPN Ville de Paris pour
- * {@code <registre>}).</p>
+ * {@code ${DOCKER_REGISTRY}}).</p>
  *
  * <p>Parametres : voir {@link ContainerIntegrationSuite} ({@code lutece.image},
  * {@code lutece.context.root}, {@code lutece.db.password}).</p>

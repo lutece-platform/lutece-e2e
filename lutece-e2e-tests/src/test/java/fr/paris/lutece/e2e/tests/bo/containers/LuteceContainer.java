@@ -13,7 +13,7 @@ import java.time.Duration;
 
 /**
  * Conteneur Testcontainers pour l'application Lutece sur Open Liberty.
- * Basé sur l'image Docker <registre>/bild/f98/site-deontologie:1.0.0-SNAPSHOT.
+ * L'image du site a tester est fournie par l'appelant (propriete {@code lutece.image}).
  */
 public class LuteceContainer extends GenericContainer<LuteceContainer> {
 
@@ -24,13 +24,6 @@ public class LuteceContainer extends GenericContainer<LuteceContainer> {
     public static final String DEFAULT_CONTEXT_ROOT = "/lutece";
 
     private final String contextRoot;
-
-    /**
-     * Crée un conteneur Lutece avec l'image par défaut.
-     */
-    public LuteceContainer() {
-        this("<registre>/bild/f98/site-deontologie:1.0.0-SNAPSHOT", DEFAULT_CONTEXT_ROOT);
-    }
 
     /**
      * Crée un conteneur Lutece avec une image personnalisée.

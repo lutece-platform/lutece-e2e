@@ -15,8 +15,10 @@
     <description>Tests JUnit classiques utilisant les Actions</description>
 
     <properties>
-        <!-- Image Docker Lutece pour les tests Testcontainers -->
-        <lutece.image><registre>/bild/f98/site-deontologie:1.0.0-SNAPSHOT</lutece.image>
+        <!-- Image Docker Lutece pour les tests Testcontainers. Le registre vient de la
+             variable d'environnement DOCKER_REGISTRY : il n'a pas a figurer dans le depot.
+             Surchargeable entierement par -Dlutece.image=<registre>/<chemin>:<tag>. -->
+        <lutece.image>${env.DOCKER_REGISTRY}/bild/f98/site-deontologie:1.0.0-SNAPSHOT</lutece.image>
         <lutece.http.port>9090</lutece.http.port>
         <lutece.context.root>/lutece</lutece.context.root>
         <!-- Agent AspectJ requis par Allure pour que les @Step des briques macro soient tisses -->

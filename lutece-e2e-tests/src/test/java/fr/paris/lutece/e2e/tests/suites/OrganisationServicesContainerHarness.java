@@ -12,7 +12,7 @@ import org.junit.platform.suite.api.Suite;
  * <pre>
  *   mvn -o clean test -pl lutece-e2e-tests \
  *     -Dtest=fr.paris.lutece.e2e.tests.suites.OrganisationServicesContainerHarness \
- *     -Dlutece.image=<registre>/bild/f98/site-deontologie:1.0.3-SNAPSHOT \
+ *     -Dlutece.image=${DOCKER_REGISTRY}/bild/f98/site-deontologie:1.0.3-SNAPSHOT \
  *     -Dtest.headless=true
  * </pre>
  */

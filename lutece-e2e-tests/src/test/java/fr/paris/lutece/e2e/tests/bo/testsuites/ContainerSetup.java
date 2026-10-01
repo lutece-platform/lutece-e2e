@@ -66,8 +66,18 @@ public class ContainerSetup {
             .values().iterator().next().getIpAddress();
         LOGGER.info("MariaDB IP dans le réseau partagé: {}", mariaDbIp);
 
-        // Récupérer les paramètres de l'image
-        String luteceImage = System.getProperty("lutece.image", "<registre>/bild/f98/site-deontologie:1.0.0-SNAPSHOT");
+        // Récupérer les paramètres de l'image. Pas d'image par défaut : le registre
+        // interne n'a pas à figurer dans le dépôt, l'image est fournie par l'appelant.
+        String luteceImage = System.getProperty("lutece.image");
+        // Le defaut du pom reference ${env.DOCKER_REGISTRY} : Maven laisse la chaine telle
+        // quelle quand la variable est absente, ce qui echouerait au pull sur un message
+        // incomprehensible. On le signale ici plutot que de laisser Docker s'en charger.
+        if (luteceImage == null || luteceImage.isBlank() || luteceImage.contains("${env.")) {
+            throw new IllegalStateException(
+                "Image Lutece non definie. Passer -Dlutece.image=<registre>/<chemin>:<tag>, "
+                    + "ou definir la variable d'environnement DOCKER_REGISTRY pour que le "
+                    + "defaut du pom soit resolu.");
+        }
         String contextRoot = System.getProperty("lutece.context.root", "/lutece");
         String dbPassword = System.getProperty("lutece.db.password", "lutece");
 

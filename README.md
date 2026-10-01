@@ -57,7 +57,7 @@ Aucune instance Lutece prealable requise. Docker demarre automatiquement MariaDB
 
 ```bash
 mvn verify -pl lutece-e2e-tests -Pcontainer-tests \
-  -Dlutece.image=<registre>/bild/p30/site-integration-forms:8.0.0-SNAPSHOT \
+  -Dlutece.image=${DOCKER_REGISTRY}/bild/p30/site-integration-forms:8.0.0-SNAPSHOT \
   -Dtest.headless=true
 ```
 

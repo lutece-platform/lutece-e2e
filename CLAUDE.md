@@ -197,13 +197,13 @@ mvn test -pl lutece-e2e-tests \
 # Suite complete avec conteneurs (22 tests) - Docker requis, aucune instance prealable
 mvn test -pl lutece-e2e-tests \
   -Dtest=fr.paris.lutece.e2e.tests.bo.testsuites.ContainerIntegrationSuite \
-  -Dlutece.image=<registre>/bild/p30/site-integration-forms:8.0.0-SNAPSHOT \
+  -Dlutece.image=${DOCKER_REGISTRY}/bild/p30/site-integration-forms:8.0.0-SNAPSHOT \
   -Dtest.headless=true
 
 # Suite globale : conteneurs + toutes les briques macro (96 tests) - Docker requis
 mvn test -pl lutece-e2e-tests \
   -Dtest=fr.paris.lutece.e2e.tests.bo.testsuites.ContainerMacroIntegrationSuite \
-  -Dlutece.image=<registre>/bild/p30/site-integration-forms:8.0.0-SNAPSHOT \
+  -Dlutece.image=${DOCKER_REGISTRY}/bild/p30/site-integration-forms:8.0.0-SNAPSHOT \
   -Dtest.headless=true
 
 # Toutes les briques macro seules (74 tests) - instance existante

@@ -23,8 +23,10 @@ pipeline {
         // Playwright - image Docker avec navigateurs et dépendances pré-installés
         PLAYWRIGHT_IMAGE = 'mcr.microsoft.com/playwright/java:v1.58.0-noble'
 
-        // Container Registry
-        DOCKER_REGISTRY = '<registre>'
+        // Container Registry : DOCKER_REGISTRY n'est volontairement pas définie ici, elle
+        // vient des variables d'environnement globales Jenkins pour garder le registre hors
+        // du dépôt. La déclarer dans ce bloc la masquerait (un environment de pipeline est
+        // prioritaire sur les variables globales).
         DOCKER_CREDENTIALS_ID = 'NexusSTIPS_bild_user'
 
         // Lutece Testcontainers config
@@ -50,8 +52,9 @@ pipeline {
         )
         string(
             name: 'LUTECE_IMAGE',
-            defaultValue: '<registre>/bild/f98/site-deontologie:1.0.0-SNAPSHOT',
-            description: '[TESTCONTAINERS] Image Docker Lutece à tester'
+            defaultValue: "${env.DOCKER_REGISTRY ?: '<registre>'}/bild/f98/site-deontologie:1.0.0-SNAPSHOT",
+            description: '[TESTCONTAINERS] Image Docker Lutece à tester. Le registre du ' +
+                         'défaut vient de la variable d\'environnement globale DOCKER_REGISTRY.'
         )
         choice(
             name: 'ENVIRONMENT',
@@ -155,6 +158,16 @@ pipeline {
                 stage('Verify Environment') {
                     steps {
                         echo '=== Vérification de l\'environnement ==='
+                        script {
+                            // Sans le registre, le podman login échouerait cinq minutes plus
+                            // tard sur un message obscur : autant s'arrêter tout de suite.
+                            if (!env.DOCKER_REGISTRY?.trim()) {
+                                error 'DOCKER_REGISTRY non définie. Elle doit être déclarée ' +
+                                      'dans les variables d\'environnement globales Jenkins ' +
+                                      '(Manage Jenkins > System > Global properties).'
+                            }
+                            echo "Registre : ${env.DOCKER_REGISTRY}"
+                        }
                         withMaven(jdk: "${JAVA_MAVEN}", maven: "${MAVEN}", traceability: false) {
                             sh '''
                                 echo "Java:"
