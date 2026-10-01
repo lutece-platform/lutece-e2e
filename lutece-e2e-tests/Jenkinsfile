@@ -2,7 +2,7 @@
  * Pipeline Jenkins pour les tests E2E Lutece
  *
  * Deux modes d'exécution:
- * - EXTERNAL: Tests sur une instance Lutece existante (recette, preprod, etc.)
+ * - EXTERNAL: Tests sur une instance Lutece existante (recette, ou URL au choix)
  * - TESTCONTAINERS: Tests avec environnement Podman isolé (MariaDB + Lutece)
  *
  * Architecture:
@@ -55,8 +55,9 @@ pipeline {
         )
         choice(
             name: 'ENVIRONMENT',
-            choices: ['recette', 'preprod', 'local'],
-            description: '[EXTERNAL] Environnement cible'
+            choices: ['recette', 'local'],
+            description: '[EXTERNAL] Environnement cible. Pour toute autre cible, ' +
+                         'renseigner LUTECE_URL.'
         )
         string(
             name: 'LUTECE_URL',
@@ -177,9 +178,6 @@ pipeline {
                                 switch(params.ENVIRONMENT) {
                                     case 'recette':
                                         env.TARGET_URL = 'https://<site-recette>/lutece'
-                                        break
-                                    case 'preprod':
-                                        env.TARGET_URL = 'https://<site-preprod>/site-deontologie'
                                         break
                                     case 'local':
                                     default:
