@@ -33,6 +33,11 @@ pipeline {
 
         // Testcontainers avec Podman - les valeurs exactes seront détectées dynamiquement
         TESTCONTAINERS_RYUK_DISABLED = 'true'
+
+        // Serveur Allure mutualisé - publication du rapport en fin de build.
+        // Le projet est déduit du site testé par le script (un projet par site, pour que
+        // les tendances d'un site ne soient pas mélangées à celles d'un autre).
+        ALLURE_SERVER_URL = 'https://<serveur-allure>/allure-docker-service'
     }
 
     parameters {
@@ -55,6 +60,15 @@ pipeline {
             name: 'LUTECE_URL',
             defaultValue: '',
             description: '[EXTERNAL] URL personnalisée (override ENVIRONMENT)'
+        )
+        string(
+            name: 'SITE_ARTIFACT_ID',
+            defaultValue: '',
+            description: 'artifactId du site testé, identifiant du projet sur le serveur Allure. ' +
+                         'Vide = lu dans le pom.properties du war embarqué dans l\'image ' +
+                         '(TESTCONTAINERS) ou déduit du context root de l\'URL (EXTERNAL). ' +
+                         'À renseigner en mode EXTERNAL quand le site est déployé sous un ' +
+                         'context root générique type /lutece, qui ne permet pas de le déduire.'
         )
         choice(
             name: 'TEST_SUITE',
@@ -503,6 +517,31 @@ pipeline {
                         } catch (NoSuchMethodError e) {
                             echo 'Plugin Allure Jenkins non installe : rapport non publie, ' +
                                  'les resultats bruts restent archives.'
+                        }
+                    }
+
+                    // Publication sur le serveur Allure mutualise : historique des runs et
+                    // rapport consultable hors Jenkins. Un serveur indisponible ne doit pas
+                    // faire echouer un build dont les tests sont verts.
+                    echo '=== Publication du rapport sur le serveur Allure ==='
+                    script {
+                        // L'artifactId du site teste identifie le projet Allure : fourni par
+                        // le job, sinon lu dans le pom.properties du war que l'image embarque
+                        // (mode conteneur), sinon deduit du context root de l'URL cible (mode
+                        // instance existante). La resolution vit dans le script, seule
+                        // implementation a maintenir.
+                        def siteEnv = [
+                            "ALLURE_SITE_ARTIFACT_ID=${params.SITE_ARTIFACT_ID?.trim() ?: ''}",
+                            params.TEST_MODE == 'TESTCONTAINERS'
+                                ? "ALLURE_SITE_IMAGE=${params.LUTECE_IMAGE ?: ''}"
+                                : "ALLURE_SITE_URL=${env.TARGET_URL ?: params.LUTECE_URL ?: ''}"
+                        ]
+                        try {
+                            withEnv(siteEnv) {
+                                sh 'bash lutece-e2e-tests/scripts/publish-allure.sh lutece-e2e-tests/target/allure-results'
+                            }
+                        } catch (err) {
+                            echo "Publication sur le serveur Allure impossible : ${err}"
                         }
                     }
                 }
