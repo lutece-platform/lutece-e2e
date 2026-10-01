@@ -34,10 +34,12 @@ pipeline {
         // Testcontainers avec Podman - les valeurs exactes seront détectées dynamiquement
         TESTCONTAINERS_RYUK_DISABLED = 'true'
 
-        // Serveur Allure mutualisé - publication du rapport en fin de build.
-        // Le projet est déduit du site testé par le script (un projet par site, pour que
-        // les tendances d'un site ne soient pas mélangées à celles d'un autre).
-        ALLURE_SERVER_URL = 'https://<serveur-allure>/allure-docker-service'
+        // ALLURE_SERVER_URL n'est volontairement pas définie ici : elle vient des
+        // variables d'environnement globales Jenkins, pour garder l'URL du serveur hors
+        // du dépôt. La déclarer dans ce bloc la masquerait, un environment de pipeline
+        // étant prioritaire sur les variables globales.
+        // Le projet Allure, lui, est déduit du site testé par le script (un projet par
+        // site, pour que les tendances d'un site ne soient pas mélangées à un autre).
     }
 
     parameters {

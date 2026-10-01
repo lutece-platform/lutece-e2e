@@ -6,7 +6,8 @@
 #   ./scripts/publish-allure.sh [repertoire-resultats]
 #
 # Variables d'environnement :
-#   ALLURE_SERVER_URL  URL du service (defaut : serveur PIC Lutece P30)
+#   ALLURE_SERVER_URL  URL du service, obligatoire (pas de valeur par defaut : le
+#                      serveur n'a pas a figurer dans le depot)
 #   ALLURE_PROJECT_ID  Projet cible, cree s'il n'existe pas (defaut : artifactId deduit)
 #   ALLURE_SITE_ARTIFACT_ID artifactId du site teste, quand il n'est pas deductible
 #   ALLURE_SITE_IMAGE  Image du site teste : l'artifactId est lu dans le war qu'elle
@@ -44,7 +45,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODULE_DIR="$(dirname "${SCRIPT_DIR}")"
 
-SERVER_URL="${ALLURE_SERVER_URL:-https://<serveur-allure>/allure-docker-service}"
+# Pas d'URL par defaut : le serveur n'a pas a figurer dans le depot. En CI elle vient
+# des variables d'environnement globales Jenkins, en local de l'environnement du shell.
+SERVER_URL="${ALLURE_SERVER_URL:-}"
+if [ -z "${SERVER_URL}" ]; then
+    echo "ERREUR : ALLURE_SERVER_URL non definie." >&2
+    echo "  CI    : variable d'environnement globale Jenkins." >&2
+    echo "  Local : export ALLURE_SERVER_URL=https://<serveur>/allure-docker-service" >&2
+    exit 1
+fi
 SERVER_URL="${SERVER_URL%/}"
 UI_URL="${ALLURE_UI_URL:-${SERVER_URL}-ui}"
 UI_URL="${UI_URL%/}"
