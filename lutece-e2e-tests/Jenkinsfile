@@ -493,18 +493,12 @@ pipeline {
                         fingerprint: true
                     )
                     archiveArtifacts(
-                        artifacts: 'lutece-e2e-tests/target/traces/**/*.zip',
-                        allowEmptyArchive: true,
-                        fingerprint: true
-                    )
-                    archiveArtifacts(
                         artifacts: 'lutece-e2e-tests/target/surefire-reports/**/*',
                         allowEmptyArchive: true
                     )
-                    // Les resultats bruts Allure ne sont plus archives : ils sont publies
-                    // sur le serveur Allure (voir plus bas). Les traces Playwright, elles,
-                    // restent archivees ci-dessus : trop volumineuses pour l'ingress du
-                    // serveur, l'archive Jenkins est le seul moyen de les recuperer.
+                    // Ni les resultats bruts ni les traces Playwright ne sont archives :
+                    // tout part sur le serveur Allure (voir plus bas), qui les attache au
+                    // rapport. Le script s'adapte seul a la limite de taille de la route.
                     // Le step `allure` requiert le plugin Allure Jenkins, absent de certains
                     // controleurs : sans garde, un NoSuchMethodError dans ce bloc `always`
                     // fait echouer tout le build meme quand les tests sont verts.

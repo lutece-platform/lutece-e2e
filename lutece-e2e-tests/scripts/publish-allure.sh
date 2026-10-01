@@ -20,8 +20,7 @@
 #   ALLURE_EXEC_TYPE   Type d'execution : jenkins, github, gitlab... (defaut : jenkins)
 #   ALLURE_INSECURE    1 = ignore la verification TLS (defaut : 1, CA interne Ville de Paris)
 #   ALLURE_NO_PROXY    1 = bypass le proxy HTTP (defaut : 1, le serveur est interne)
-#   ALLURE_BATCH_BYTES Taille maximale d'un lot d'envoi en octets (defaut : 900000)
-#   ALLURE_MAX_FILE_BYTES Taille maximale d'un fichier isole (defaut : 900000)
+#   ALLURE_BATCH_BYTES Taille de lot visee au depart, en octets (defaut : 32000000)
 #
 # Projet cible : un projet Allure par site teste, identifie par son artifactId, pour que
 # l'historique et les tendances d'un site ne soient pas melanges a ceux d'un autre.
@@ -30,12 +29,11 @@
 # (ALLURE_SITE_URL), puis le lutece.base.url du microprofile-config des tests. Si rien ne
 # le determine, le script echoue plutot que de publier sous un nom approximatif.
 #
-# Limite d'envoi : l'ingress nginx devant le service applique client_max_body_size 1m.
-# Au-dela, la requete est rejetee en 413 avant d'atteindre Allure. Les lots sont donc
-# plafonnes et les fichiers plus gros que la limite sont ecartes avec un avertissement :
-# en pratique seules les traces Playwright (target/traces, plusieurs Mo) sont concernees.
-# Pour les publier, faire relever proxy-body-size sur la route par l'equipe infra puis
-# surcharger ALLURE_BATCH_BYTES / ALLURE_MAX_FILE_BYTES.
+# Limite d'envoi : la route devant le service plafonne la taille des requetes (nginx
+# client_max_body_size, 1 Mo a l'origine) et rejette le surplus en 413 avant qu'Allure
+# ne le voie. Le script ne suppose pas cette limite, il la decouvre : un lot refuse est
+# scinde, et un fichier seul refuse est ecarte avec un avertissement. Tout relevement de
+# proxy-body-size est donc pris en compte sans modification ici.
 #
 set -euo pipefail
 
@@ -46,8 +44,9 @@ SERVER_URL="${ALLURE_SERVER_URL:-https://<serveur-allure>/allure-docker-service}
 RESULTS_DIR="${1:-${ALLURE_RESULTS_DIR:-${MODULE_DIR}/target/allure-results}}"
 CLEAN="${ALLURE_CLEAN:-1}"
 EXEC_TYPE="${ALLURE_EXEC_TYPE:-jenkins}"
-BATCH_BYTES="${ALLURE_BATCH_BYTES:-900000}"
-MAX_FILE_BYTES="${ALLURE_MAX_FILE_BYTES:-900000}"
+# Taille de lot visee au depart : volontairement large, pour tirer parti d'une route
+# genereuse. Si elle refuse, la limite reelle est decouverte a l'envoi (cf. send_files).
+BATCH_BYTES="${ALLURE_BATCH_BYTES:-32000000}"
 
 SERVER_URL="${SERVER_URL%/}"
 
@@ -173,28 +172,13 @@ fi
 mapfile -t ALL_FILES < <(find "${RESULTS_DIR}" -maxdepth 1 -type f ! -name '.*' | sort)
 [ "${#ALL_FILES[@]}" -gt 0 ] || { echo "ERREUR : aucun resultat Allure dans ${RESULTS_DIR}" >&2; exit 1; }
 
-# Ecarte les fichiers que l'ingress rejetterait en 413 (traces Playwright volumineuses)
-FILES=()
+FILES=("${ALL_FILES[@]}")
 SKIPPED=()
-for f in "${ALL_FILES[@]}"; do
-    if [ "$(stat -c %s "${f}")" -gt "${MAX_FILE_BYTES}" ]; then
-        SKIPPED+=("${f}")
-    else
-        FILES+=("${f}")
-    fi
-done
-[ "${#FILES[@]}" -gt 0 ] || { echo "ERREUR : tous les fichiers depassent ${MAX_FILE_BYTES} octets" >&2; exit 1; }
 
 echo "Serveur   : ${SERVER_URL}"
 echo "Projet    : ${PROJECT_ID}"
 echo "Resultats : ${RESULTS_DIR} (${#FILES[@]} fichiers)"
 echo "Execution : ${EXEC_NAME}"
-if [ "${#SKIPPED[@]}" -gt 0 ]; then
-    echo "ATTENTION : ${#SKIPPED[@]} fichiers ecartes (> ${MAX_FILE_BYTES} octets, limite ingress) :"
-    for f in "${SKIPPED[@]}"; do
-        echo "  $(basename "${f}") ($(stat -c %s "${f}") o)"
-    done
-fi
 
 # 1. Creation du projet si absent
 if api GET "/projects/${PROJECT_ID}" -o /dev/null 2>/dev/null; then
@@ -211,33 +195,79 @@ if [ "${CLEAN}" = "1" ]; then
     api GET "/clean-results?project_id=${PROJECT_ID}" > /dev/null
 fi
 
-# 3. Envoi par lots : les traces Playwright pesent plusieurs Mo, un envoi unique
-#    depasserait la limite de taille de la route OpenShift.
-batch=()
-batch_count=0
-batch_size=0
+# 3. Envoi par lots, en decouvrant la limite de la route plutot qu'en la supposant :
+#    un lot refuse en 413 est scinde en deux et la limite courante est abaissee, de
+#    sorte que les lots suivants la respectent sans nouvel aller-retour. Un fichier
+#    seul refuse est ecarte. Le script suit ainsi tout relevement de proxy-body-size
+#    sur la route sans modification : les traces Playwright passeront d'elles-memes.
 sent=0
-flush_batch() {
-    [ "${batch_count}" -gt 0 ] || return 0
-    api POST "/send-results?project_id=${PROJECT_ID}" "${batch[@]}" > /dev/null
-    sent=$(( sent + batch_count ))
-    echo "  ${sent}/${#FILES[@]} fichiers envoyes"
-    batch=()
-    batch_count=0
-    batch_size=0
+cur_limit="${BATCH_BYTES}"
+
+post_files() {
+    local args=() f code
+    for f in "$@"; do args+=(-F "files[]=@${f}"); done
+    # stderr masque : un 413 fait partie du fonctionnement normal (decouverte de la
+    # limite), le code HTTP suffit a decider. Une vraie panne ressort en HTTP 000.
+    code="$(curl "${CURL_OPTS[@]}" -o /dev/null -w '%{http_code}' \
+        -X POST "${args[@]}" \
+        "${SERVER_URL}/send-results?project_id=${PROJECT_ID}" 2>/dev/null || true)"
+    printf '%s' "${code}"
+}
+
+send_files() {
+    # f est local : la boucle d'envoi principale itere sur la meme variable et un
+    # ecrasement ici lui ferait reempiler le mauvais fichier.
+    local files=("$@") code total half f
+    [ "${#files[@]}" -gt 0 ] || return 0
+    code="$(post_files "${files[@]}")"
+    case "${code}" in
+        200|201)
+            sent=$(( sent + ${#files[@]} ))
+            echo "  ${sent}/${#FILES[@]} fichiers envoyes"
+            return 0
+            ;;
+        413)
+            if [ "${#files[@]}" -eq 1 ]; then
+                SKIPPED+=("${files[0]}")
+                return 0
+            fi
+            total=0
+            for f in "${files[@]}"; do total=$(( total + $(stat -c %s "${f}") )); done
+            [ "${total}" -lt "${cur_limit}" ] && cur_limit=$(( total / 2 + 1 ))
+            half=$(( ${#files[@]} / 2 ))
+            send_files "${files[@]:0:${half}}"
+            send_files "${files[@]:${half}}"
+            return 0
+            ;;
+        *)
+            echo "ERREUR : envoi refuse par le serveur (HTTP ${code})" >&2
+            return 1
+            ;;
+    esac
 }
 
 echo "Envoi des resultats..."
+batch=()
+batch_size=0
 for f in "${FILES[@]}"; do
     size=$(stat -c %s "${f}")
-    if [ "${batch_count}" -gt 0 ] && [ $(( batch_size + size )) -gt "${BATCH_BYTES}" ]; then
-        flush_batch
+    if [ "${#batch[@]}" -gt 0 ] && [ $(( batch_size + size )) -gt "${cur_limit}" ]; then
+        send_files "${batch[@]}"
+        batch=()
+        batch_size=0
     fi
-    batch+=(-F "files[]=@${f}")
-    batch_count=$(( batch_count + 1 ))
+    batch+=("${f}")
     batch_size=$(( batch_size + size ))
 done
-flush_batch
+[ "${#batch[@]}" -gt 0 ] && send_files "${batch[@]}"
+
+if [ "${#SKIPPED[@]}" -gt 0 ]; then
+    echo "ATTENTION : ${#SKIPPED[@]} fichiers refuses par la route (trop volumineux) :"
+    for f in "${SKIPPED[@]}"; do
+        echo "  $(basename "${f}") ($(stat -c %s "${f}") o)"
+    done
+    echo "  Relever proxy-body-size sur la route pour les publier."
+fi
 
 # 4. Generation du rapport
 echo "Generation du rapport..."
