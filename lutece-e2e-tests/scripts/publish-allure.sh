@@ -14,6 +14,8 @@
 #   ALLURE_SITE_URL    URL du site teste, sert a deduire l'artifactId (mode instance existante)
 #   ALLURE_CONTAINER_RUNTIME  Runtime a utiliser pour lire l'image (defaut : podman, sinon docker)
 #   ALLURE_RESULTS_DIR Repertoire des resultats (defaut : target/allure-results)
+#   ALLURE_URL_FILE    Fichier ou deposer l'URL du rapport, pour que le pipeline la
+#                      reprenne dans ses mails (defaut : target/allure-report-url.txt)
 #   ALLURE_UI_URL      URL de l'IHM Allure (defaut : ALLURE_SERVER_URL suffixe de -ui)
 #   ALLURE_CLEAN       1 = purge les resultats en attente avant l'envoi (defaut : 1)
 #   ALLURE_EXEC_NAME   Libelle du build, porte par le rapport (defaut : job Jenkins ou
@@ -47,6 +49,7 @@ SERVER_URL="${SERVER_URL%/}"
 UI_URL="${ALLURE_UI_URL:-${SERVER_URL}-ui}"
 UI_URL="${UI_URL%/}"
 RESULTS_DIR="${1:-${ALLURE_RESULTS_DIR:-${MODULE_DIR}/target/allure-results}}"
+URL_FILE="${ALLURE_URL_FILE:-$(dirname "${RESULTS_DIR}")/allure-report-url.txt}"
 # Purge des resultats en attente avant l'envoi : sans danger puisque le script genere le
 # rapport dans la foulee, donc rien ne reste en attente d'un run a l'autre. Elle evite
 # qu'un envoi interrompu laisse des resultats qui se melangeraient au run suivant.
@@ -303,6 +306,15 @@ if [ -n "${EXEC_FROM}" ]; then
 fi
 api GET "${GEN_URL}" > /dev/null
 
+REPORT_URL="${SERVER_URL}/projects/${PROJECT_ID}/reports/latest/index.html"
+
+# L'URL est ecrite sur disque pour que le pipeline la reprenne dans ses mails : le
+# projet n'etant connu qu'ici (artifactId resolu a l'execution), le Jenkinsfile ne
+# peut pas la reconstruire sans dupliquer la resolution.
+echo "${REPORT_URL}" > "${URL_FILE}"
+
 echo
 echo "Rapport publie :"
+echo "  ${REPORT_URL}"
+echo "Historique du projet :"
 echo "  ${UI_URL}/projects/${PROJECT_ID}"

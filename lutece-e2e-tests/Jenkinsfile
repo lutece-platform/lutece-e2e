@@ -535,6 +535,14 @@ pipeline {
                             withEnv(siteEnv) {
                                 sh 'bash lutece-e2e-tests/scripts/publish-allure.sh lutece-e2e-tests/target/allure-results'
                             }
+                            // Le script y depose l'URL du rapport : le projet Allure etant
+                            // resolu a l'execution, le pipeline ne peut pas la reconstruire.
+                            // Mise en env pour les mails du post global, qui tourne ailleurs.
+                            def urlFile = 'lutece-e2e-tests/target/allure-report-url.txt'
+                            if (fileExists(urlFile)) {
+                                env.ALLURE_REPORT_URL = readFile(urlFile).trim()
+                                echo "Rapport Allure : ${env.ALLURE_REPORT_URL}"
+                            }
                         } catch (err) {
                             echo "Publication sur le serveur Allure impossible : ${err}"
                         }
@@ -596,7 +604,8 @@ Commit  : ${params.COMMIT_HASH ?: 'N/A'}
 Image   : ${env.LUTECE_IMAGE_REF ?: params.LUTECE_IMAGE ?: 'N/A'}
 Suite   : ${params.TEST_SUITE ?: 'N/A'}
 
-Rapport : ${env.BUILD_URL}
+Rapport Allure : ${env.ALLURE_REPORT_URL ?: 'non publie'}
+Build Jenkins  : ${env.BUILD_URL}
 
 Cordialement,
 Jenkins CI""",
@@ -625,7 +634,8 @@ Commit  : ${params.COMMIT_HASH ?: 'N/A'}
 Image   : ${env.LUTECE_IMAGE_REF ?: params.LUTECE_IMAGE ?: 'N/A'}
 Suite   : ${params.TEST_SUITE ?: 'N/A'}
 
-Rapport complet et screenshots : ${env.BUILD_URL}
+Rapport Allure : ${env.ALLURE_REPORT_URL ?: 'non publie'}
+Build Jenkins  : ${env.BUILD_URL}
 
 Merci de vérifier les résultats.
 
@@ -657,7 +667,8 @@ Commit  : ${params.COMMIT_HASH ?: 'N/A'}
 Image   : ${env.LUTECE_IMAGE_REF ?: params.LUTECE_IMAGE ?: 'N/A'}
 Suite   : ${params.TEST_SUITE ?: 'N/A'}
 
-Rapport complet et screenshots : ${env.BUILD_URL}
+Rapport Allure : ${env.ALLURE_REPORT_URL ?: 'non publie'}
+Build Jenkins  : ${env.BUILD_URL}
 
 Cordialement,
 Jenkins CI""",
