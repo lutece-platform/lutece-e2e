@@ -408,13 +408,14 @@ Frontend (onglet A)                Frontend (onglet B)
 ### Lancement local
 
 ```bash
-export PLAYWRIGHT_DRIVER_PATH=<home>/lutece/workspace-site/playwright/lutece-e2e/playwright-driver/java/driver/linux/node
+# Depuis la racine du depot
+export PLAYWRIGHT_DRIVER_PATH="$(pwd)/playwright-driver/java/driver/linux/node"
 export http_proxy=http://<proxy-host>:<port>
 export https_proxy=http://<proxy-host>:<port>
 
 cd plugin-e2e-agent
 mvn clean liberty:dev \
-  -DconfigDirectory="<home>/lutece/openlibertyConfigFirectory/main/liberty/config" \
+  -DconfigDirectory="<chemin-vers>/openlibertyConfigDirectory/main/liberty/config" \
   -Dmaven.test.skip=true -DhotTests=false
 ```
 
