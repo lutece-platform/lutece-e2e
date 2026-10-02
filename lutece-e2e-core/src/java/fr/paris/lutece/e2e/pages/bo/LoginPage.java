@@ -19,6 +19,27 @@ public class LoginPage {
      */
     private static final java.util.Map<String, String> ROTATED = new java.util.concurrent.ConcurrentHashMap<>();
 
+    /**
+     * Delai d'attente du message d'erreur de connexion, en millisecondes.
+     *
+     * <p>Couvre la navigation declenchee par le clic de connexion sur un site distant, sans
+     * allonger inutilement les scenarios ou aucun message n'est attendu.</p>
+     */
+    private static final double ERROR_MESSAGE_TIMEOUT_MS = 5000;
+
+    /**
+     * Autorise ou non le changement du mot de passe impose par Lutece.
+     *
+     * <p>Y consentir modifie durablement le compte du site teste. C'est sans consequence sur
+     * une image jetable, ou l'ecran d'expiration doit etre franchi pour que la suite s'execute,
+     * mais inacceptable sur un site durable vise par une URL externe : le compte deviendrait
+     * inutilisable pour ses autres usagers. Desactiver avec
+     * {@code -Dtest.admin.password.rotate=false} : le test echoue alors franchement au lieu de
+     * modifier le compte.</p>
+     */
+    private static final boolean ROTATION_ALLOWED =
+        !"false".equalsIgnoreCase(System.getProperty("test.admin.password.rotate", "true"));
+
     // Locators
     private static final String USERNAME_FIELD = "Code d'accès. *";
     private static final String PASSWORD_FIELD = "Mot de passe *";
@@ -137,6 +158,12 @@ public class LoginPage {
         if (!isForcedPasswordChangeForm()) {
             return;
         }
+        if (!ROTATION_ALLOWED) {
+            throw new IllegalStateException("Lutece impose un changement de mot de passe pour le compte \""
+                + username + "\", et la rotation est desactivee (test.admin.password.rotate=false). "
+                + "Y consentir modifierait durablement le compte du site teste. Renouveler le mot de "
+                + "passe hors test, ou repousser son expiration, puis relancer.");
+        }
         String current = ROTATED.getOrDefault(username, password);
         String renewed = derive(password);
         fillIfPresent("password_current", current);
@@ -233,9 +260,24 @@ public class LoginPage {
 
     /**
      * Vérifie si un message d'erreur est affiché.
+     *
+     * <p>L'apparition du message suit une navigation : le clic de connexion ne l'attend pas.
+     * Un simple {@code isVisible()} teste donc la page d'avant et repond faux des que le site
+     * n'est pas local — le defaut ne se voit pas en conteneur, ou la navigation est immediate.
+     * L'attente est bornee : au-dela, il n'y a pas de message d'erreur.</p>
+     *
+     * @return true si un message d'erreur est affiché
      */
     public boolean hasErrorMessage() {
-        return page.locator(".card-status-start.bg-danger").isVisible();
+        try {
+            page.locator(".card-status-start.bg-danger").first()
+                .waitFor(new Locator.WaitForOptions()
+                    .setState(WaitForSelectorState.VISIBLE)
+                    .setTimeout(ERROR_MESSAGE_TIMEOUT_MS));
+            return true;
+        } catch (TimeoutError e) {
+            return false;
+        }
     }
 
     /**

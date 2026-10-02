@@ -21,7 +21,7 @@ public class AdminNavigationTest extends BaseTest {
     void loginAndSetupPages() {
         loginPage = new LoginPage(page, BASE_URL);
         loginPage.navigate();
-        adminMenu = loginPage.loginAs("admin", "adminadmin");
+        adminMenu = loginPage.loginAs(ADMIN_USER, ADMIN_PASS);
     }
 
     @Test

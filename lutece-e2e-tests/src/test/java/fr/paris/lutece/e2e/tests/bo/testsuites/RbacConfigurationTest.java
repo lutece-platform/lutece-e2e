@@ -116,7 +116,7 @@ public class RbacConfigurationTest extends BaseTest {
         // L'ecran d'expiration de mot de passe est neutralise par LoginPage.loginAs() : il apparait
         // APRES la connexion (l'ancien clic place ici, avant loginAs, portait sur la page de login et
         // ne pouvait rien neutraliser).
-        loginPage.loginAs("admin", "adminadmin");
+        loginPage.loginAs(ADMIN_USER, ADMIN_PASS);
         page.waitForLoadState();
 
         // Sauvegarder l'etat d'authentification pour les classes suivantes

@@ -48,6 +48,11 @@ public abstract class BaseTest {
     public static void updateBaseUrl(String url) {
         BASE_URL = url;
     }
+    // Compte d'administration. Surchargeable par -Dtest.admin.password : le compte par
+    // defaut de Lutece n'est pas le meme d'un site a l'autre (politique de mot de passe).
+    protected static final String ADMIN_USER = config.getValue("test.admin.username", String.class);
+    protected static final String ADMIN_PASS = config.getValue("test.admin.password", String.class);
+
     protected static final boolean HEADLESS = config.getValue("test.headless", Boolean.class);
     protected static final int TIMEOUT = config.getValue("test.timeout", Integer.class);
     protected static final int SLOW_MO = config.getValue("test.slowmo", Integer.class);

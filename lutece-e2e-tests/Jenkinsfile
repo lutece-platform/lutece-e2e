@@ -36,6 +36,13 @@ pipeline {
         // Testcontainers avec Podman - les valeurs exactes seront détectées dynamiquement
         TESTCONTAINERS_RYUK_DISABLED = 'true'
 
+        // Identifiants d'administration saisis au lancement. Transmis au conteneur de test
+        // par `-e VAR` sans valeur : podman hérite de la variable, et le mot de passe
+        // n'apparaît donc jamais dans la commande tracée par le shell.
+        // Vides = valeurs par défaut du projet (microprofile-config des tests).
+        TEST_ADMIN_USER = "${params.ADMIN_USER ?: ''}"
+        TEST_ADMIN_PASSWORD = "${params.ADMIN_PASSWORD ?: ''}"
+
         // ALLURE_SERVER_URL n'est volontairement pas définie ici : elle vient des
         // variables d'environnement globales Jenkins, pour garder l'URL du serveur hors
         // du dépôt. La déclarer dans ce bloc la masquerait, un environment de pipeline
@@ -75,6 +82,20 @@ pipeline {
                          '(TESTCONTAINERS) ou déduit du context root de l\'URL (EXTERNAL). ' +
                          'À renseigner en mode EXTERNAL quand le site est déployé sous un ' +
                          'context root générique type /lutece, qui ne permet pas de le déduire.'
+        )
+        string(
+            name: 'ADMIN_USER',
+            defaultValue: '',
+            description: 'Compte d\'administration utilisé par les tests. Vide = valeur par ' +
+                         'défaut du projet (admin). À renseigner quand le site cible a un ' +
+                         'compte différent.'
+        )
+        password(
+            name: 'ADMIN_PASSWORD',
+            defaultValue: '',
+            description: 'Mot de passe du compte d\'administration. Vide = valeur par défaut ' +
+                         'du projet. Indispensable sur un site dont le mot de passe a été ' +
+                         'changé (politique de mot de passe propre au site).'
         )
         choice(
             name: 'TEST_SUITE',
@@ -395,8 +416,13 @@ pipeline {
                                     -e DOCKER_HOST=unix:///var/run/docker.sock \
                                     -e TESTCONTAINERS_RYUK_DISABLED=true \
                                     -e TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock \
+                                    -e TEST_ADMIN_USER \
+                                    -e TEST_ADMIN_PASSWORD \
                                     ${PLAYWRIGHT_IMAGE} \
-                                    bash -c './mvnw clean test -o \
+                                    bash -c 'set -- ; \
+                                        [ -n "\$TEST_ADMIN_USER" ] && set -- "\$@" "-Dtest.admin.username=\$TEST_ADMIN_USER" ; \
+                                        [ -n "\$TEST_ADMIN_PASSWORD" ] && set -- "\$@" "-Dtest.admin.password=\$TEST_ADMIN_PASSWORD" ; \
+                                        ./mvnw clean test -o \
                                         -Dmaven.repo.local=m2-repo \
                                         -Dtest=${testClass} \
                                         -Dlutece.image=${luteceImageRef} \
@@ -404,6 +430,7 @@ pipeline {
                                         -Dlutece.http.port=${LUTECE_HTTP_PORT} \
                                         -Dtest.headless=${params.HEADLESS} \
                                         -Dtest.timeout=10000 \
+                                        "\$@" \
                                         -B \
                                         --fail-at-end'
                             """
@@ -462,13 +489,20 @@ pipeline {
                                     -e HTTP_PROXY=\${HTTP_PROXY:-} \
                                     -e HTTPS_PROXY=\${HTTPS_PROXY:-} \
                                     -e NO_PROXY=\${NO_PROXY:-} \
+                                    -e TEST_ADMIN_USER \
+                                    -e TEST_ADMIN_PASSWORD \
                                     ${PLAYWRIGHT_IMAGE} \
-                                    bash -c './mvnw clean test -o \
+                                    bash -c 'set -- ; \
+                                        [ -n "\$TEST_ADMIN_USER" ] && set -- "\$@" "-Dtest.admin.username=\$TEST_ADMIN_USER" ; \
+                                        [ -n "\$TEST_ADMIN_PASSWORD" ] && set -- "\$@" "-Dtest.admin.password=\$TEST_ADMIN_PASSWORD" ; \
+                                        ./mvnw clean test -o \
                                         -Dmaven.repo.local=m2-repo \
                                         -Dtest=${testClass} \
                                         -Dlutece.base.url=${env.TARGET_URL} \
                                         -Dtest.headless=${params.HEADLESS} \
                                         -Dtest.timeout=30000 \
+                                        -Dtest.admin.password.rotate=false \
+                                        "\$@" \
                                         -B \
                                         --fail-at-end'
                             """

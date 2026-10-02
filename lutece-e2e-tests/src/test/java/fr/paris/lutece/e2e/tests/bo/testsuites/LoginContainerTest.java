@@ -28,6 +28,13 @@ public class LoginContainerTest {
 
     private static final Logger LOGGER = LogManager.getLogger(LoginContainerTest.class);
 
+    // Compte d'administration, surchargeable par -Dtest.admin.password : le compte par
+    // defaut de Lutece n'est pas le meme d'un site a l'autre (politique de mot de passe).
+    private static final org.eclipse.microprofile.config.Config CONFIG =
+        org.eclipse.microprofile.config.ConfigProvider.getConfig();
+    private static final String ADMIN_USER = CONFIG.getValue("test.admin.username", String.class);
+    private static final String ADMIN_PASS = CONFIG.getValue("test.admin.password", String.class);
+
     // Réseau partagé
     private static final Network NETWORK = Network.newNetwork();
 
@@ -127,7 +134,7 @@ public class LoginContainerTest {
         LOGGER.info("Page de login chargée: {}", page.url());
 
         // Connexion
-        AdminMenuPage adminMenu = loginPage.loginAs("admin", "adminadmin");
+        AdminMenuPage adminMenu = loginPage.loginAs(ADMIN_USER, ADMIN_PASS);
 
         // Attendre le chargement
         page.waitForLoadState();
