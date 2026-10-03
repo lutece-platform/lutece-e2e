@@ -112,7 +112,8 @@ public class AddTaskToActionMacroTest extends MacroTest {
         taskIds(ctx.page).stream()
             .filter(id -> !avant.contains(id))
             .findFirst()
-            .ifPresent(ctx.taskIds::add);
+            .ifPresent(id -> ctx.tasks.add(
+                new WorkflowContext.TaskRef(id, data.taskTypeKey(), data.actionLabel())));
 
         // La tache inseree apparait sur la page de l'action (liens de gestion porteurs de id_task,
         // ou libelle de la cle de tache). Assertion best-effort avec deux signaux.

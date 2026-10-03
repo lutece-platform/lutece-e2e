@@ -80,12 +80,46 @@ public class ConfigureTaskMacroTest extends MacroTest {
     /** Delai d'ouverture du panneau de configuration avancee, en millisecondes. */
     private static final double PANNEAU_TIMEOUT_MS = 5000;
 
+    /**
+     * Parametre la tache du type indique, quelle que soit sa place dans l'ordre d'insertion.
+     *
+     * <p>C'est la forme a preferer des qu'une action porte plusieurs taches : designer la tache
+     * par son type dit ce qu'on parametre, la ou s'en remettre a la derniere inseree impose
+     * d'enchainer ajout et configuration sans rien intercaler — et parametre silencieusement la
+     * mauvaise tache si cet ordre n'est pas tenu.</p>
+     *
+     * @param ctx         contexte workflow courant
+     * @param taskTypeKey cle du type de tache a parametrer
+     * @param data        reglages a appliquer
+     */
+    @Step("Parametrer la tache designee par son type")
+    public static void run(WorkflowContext ctx, String taskTypeKey, TaskConfigDataSet data) {
+        WorkflowContext.TaskRef tache = ctx.tasks.stream()
+            .filter(t -> taskTypeKey.equals(t.typeKey))
+            .reduce((premiere, derniere) -> derniere)
+            .orElse(null);
+        Assertions.assertNotNull(tache,
+            "Aucune tache de type '" + taskTypeKey + "' n'a ete ajoutee au workflow : elle ne peut "
+                + "pas etre parametree");
+        parametrer(ctx, tache.id, data);
+    }
+
     @Step("Parametrer la tache")
     public static void run(WorkflowContext ctx, TaskConfigDataSet data) {
-        Assertions.assertFalse(ctx.taskIds.isEmpty(),
-            "Une tache doit avoir ete ajoutee (ctx.taskIds) avant d'etre parametree");
+        Assertions.assertFalse(ctx.tasks.isEmpty(),
+            "Une tache doit avoir ete ajoutee (ctx.tasks) avant d'etre parametree");
 
-        int taskId = ctx.taskIds.get(ctx.taskIds.size() - 1);
+        parametrer(ctx, ctx.tasks.get(ctx.tasks.size() - 1).id, data);
+    }
+
+    /**
+     * Applique les reglages a une tache designee par son identifiant, puis relit sa configuration.
+     *
+     * @param ctx    contexte workflow courant
+     * @param taskId identifiant de la tache a parametrer
+     * @param data   reglages a appliquer
+     */
+    private static void parametrer(WorkflowContext ctx, int taskId, TaskConfigDataSet data) {
         Page page = ctx.page;
         WorkflowSupport.navigate(ctx, WorkflowSupport.WF + "ModifyTask.jsp?id_task=" + taskId);
 
