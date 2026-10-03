@@ -168,10 +168,10 @@ tests/bo/
 
 - **Java 17** + **Jakarta EE 10** (CDI)
 - **MicroProfile Config 3.1** (SmallRye)
-- **Playwright 1.41** (Chromium headless)
+- **Playwright 1.63** (Chromium headless)
 - **Log4j2** (logging)
-- **JUnit 5** + **Testcontainers** (tests)
-- **Maven** (build, parent: `lutece-global-pom:8.0.1-SNAPSHOT`)
+- **JUnit 5.14** + **Testcontainers 2.0** (tests)
+- **Maven** (build, parent: `lutece-global-pom:8.0.2`)
 
 ## Licence
 

@@ -7,12 +7,12 @@ Tests E2E pour Lutece 8 avec Playwright.
 - **Java 17** - Langage
 - **Jakarta EE 10** (CDI) - Injection de dependances
 - **MicroProfile Config 3.1** - Configuration externalisee
-- **Playwright 1.58** - Automatisation navigateur (Chromium headless)
+- **Playwright 1.63** - Automatisation navigateur (Chromium headless)
 - **Log4j2 2.23** - Logging
-- **Allure 2.25** - Rapports de tests (screenshots, traces Playwright)
-- **JUnit 5** + **Testcontainers** - Tests
+- **Allure 2.29** - Rapports de tests (screenshots, traces Playwright)
+- **JUnit 5.14** + **Testcontainers 2.0** - Tests
 - **Maven** - Build multi-modules
-- **Parent POM** : `lutece-global-pom:8.0.1-SNAPSHOT`
+- **Parent POM** : `lutece-global-pom:8.0.2`
 
 ## Architecture multi-modules
 
@@ -20,7 +20,7 @@ Tests E2E pour Lutece 8 avec Playwright.
 lutece-e2e/                 (parent POM)
 ├── lutece-e2e-core/        Page Objects Playwright + Actions metier + BrowserManager/BrowserSession
 ├── lutece-e2e-tests/       Tests E2E (Playwright direct, Testcontainers)
-├── playwright-driver/      Driver Playwright 1.58 pre-extrait (contournement wsjar OpenLiberty)
+├── playwright-driver/      Driver Playwright 1.63 pre-extrait (contournement wsjar OpenLiberty)
 └── plugin-e2e-agent/       Plugin Lutece avec agent IA (LangChain4j) pour creation workflow/formulaires
 ```
 
@@ -122,6 +122,8 @@ playwright.driver.path=...
 ```
 
 ## Build et execution
+
+La pipeline construit avec **Maven 3.9.12** (`MAVEN = 'maven-3.9.12'` dans le Jenkinsfile).
 
 ```bash
 # Build complet
@@ -305,11 +307,21 @@ playwright-driver/java/driver/
 
 Pour mettre a jour le driver pre-extrait vers une nouvelle version :
 
+Depuis la 1.63, le contenu du driver est reparti sur **deux** artefacts : `driver-bundle`
+porte les binaires Node par plateforme (`driver/<plateforme>/node`) et `driver` porte le code
+Playwright commun (`driver/package/`). Il faut donc desarchiver les deux puis recopier `package/`
+dans chaque plateforme, car `Driver.createProcessBuilder()` cherche `node` et `package/cli.js`
+cote a cote dans le repertoire rendu par `driverDir()`.
+
 ```bash
 cd playwright-driver/java
+V=1.63.0
 rm -rf driver
-unzip -qo ~/.m2/repository/com/microsoft/playwright/driver-bundle/VERSION/driver-bundle-VERSION.jar "driver/*"
-chmod +x driver/linux/node
+unzip -qo ~/.m2/repository/com/microsoft/playwright/driver-bundle/$V/driver-bundle-$V.jar "driver/*"
+unzip -qo ~/.m2/repository/com/microsoft/playwright/driver/$V/driver-$V.jar "driver/package/*"
+for p in linux-arm64 mac mac-arm64 win32_x64; do cp -r driver/package "driver/$p/package"; done
+mv driver/package driver/linux/package
+chmod +x driver/linux/node driver/linux-arm64/node driver/mac/node driver/mac-arm64/node
 
 # Creer le wrapper playwright.sh (requis pour OpenLiberty)
 cat > driver/linux/playwright.sh << 'SCRIPT'
@@ -318,6 +330,9 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 exec "$DIR/node" "$DIR/package/cli.js" "$@"
 SCRIPT
 chmod +x driver/linux/playwright.sh
+
+# Telecharger les navigateurs correspondant a la version du driver
+driver/linux/playwright.sh install chromium
 ```
 
 ### Configuration pour OpenLiberty (plugin-e2e-agent)

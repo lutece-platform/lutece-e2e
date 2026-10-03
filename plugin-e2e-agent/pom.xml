@@ -7,7 +7,7 @@
     <parent>
         <groupId>fr.paris.lutece.tools</groupId>
         <artifactId>lutece-global-pom</artifactId>
-        <version>8.0.1-SNAPSHOT</version>
+        <version>8.0.2</version>
     </parent>
 
     <groupId>fr.paris.lutece.plugins</groupId>
@@ -51,6 +51,22 @@
             </snapshots>
         </repository>
     </repositories>
+
+    <!-- Convergence Netty : langchain4j-azure-open-ai tire netty 4.1.118 par azure-core-http-netty
+         et 4.1.128 par netty-codec-http2, ce que la regle RequireUpperBoundDeps du pom parent
+         refuse. Le BOM aligne toute la famille sur la version la plus haute. -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>4.1.128.Final</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <!-- Plugin REST (fournit LuteceRestApplication et @ApplicationPath("/rest/")) -->
         <dependency>

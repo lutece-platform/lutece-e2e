@@ -7,7 +7,7 @@
 	<parent>
         <groupId>fr.paris.lutece.tools</groupId>
         <artifactId>lutece-global-pom</artifactId>
-        <version>8.0.1-SNAPSHOT</version>
+        <version>8.0.2</version>
     </parent>
     
     <groupId>fr.paris.lutece.e2e</groupId>
@@ -25,11 +25,12 @@
 
     <properties>
          <!-- Versions -->
-        <playwright.version>1.58.0</playwright.version>
-        <junit.version>5.10.2</junit.version>
-        <smallrye-config.version>3.5.4</smallrye-config.version>
-        <testcontainers.version>1.20.6</testcontainers.version>
-        <allure.version>2.25.0</allure.version>
+        <playwright.version>1.63.0</playwright.version>
+        <junit.version>5.14.4</junit.version>
+        <junit-platform.version>1.14.4</junit-platform.version>
+        <smallrye-config.version>3.18.2</smallrye-config.version>
+        <testcontainers.version>2.0.5</testcontainers.version>
+        <allure.version>2.29.1</allure.version>
     </properties>
 
     <dependencyManagement>
@@ -63,37 +64,37 @@
             <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-suite</artifactId>
-                <version>1.10.2</version>
+                <version>${junit-platform.version}</version>
             </dependency>
-            <!-- Alignement force de tous les artefacts junit-platform sur 1.10.2.
-                 Le pom parent (lutece-global-pom) remonte junit-platform-suite-engine a 1.14.3
-                 et junit-platform-launcher a 1.9.2, ce qui provoque un NoSuchMethodError
+            <!-- Alignement force de tous les artefacts junit-platform sur une meme version.
+                 Le pom parent (lutece-global-pom) ne gere pas toute la famille junit-platform,
+                 et un melange de versions provoque un NoSuchMethodError
                  (addClassContainerSelectorResolverWithContext) a la decouverte des tests.
                  Les entrees du POM courant priment sur le dependencyManagement herite. -->
             <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-suite-engine</artifactId>
-                <version>1.10.2</version>
+                <version>${junit-platform.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-suite-api</artifactId>
-                <version>1.10.2</version>
+                <version>${junit-platform.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-launcher</artifactId>
-                <version>1.10.2</version>
+                <version>${junit-platform.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-engine</artifactId>
-                <version>1.10.2</version>
+                <version>${junit-platform.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-commons</artifactId>
-                <version>1.10.2</version>
+                <version>${junit-platform.version}</version>
             </dependency>
 
             <!-- Allure -->
@@ -111,16 +112,30 @@
             </dependency>
             <dependency>
                 <groupId>org.testcontainers</groupId>
-                <artifactId>junit-jupiter</artifactId>
+                <artifactId>testcontainers-junit-jupiter</artifactId>
                 <version>${testcontainers.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.testcontainers</groupId>
-                <artifactId>mariadb</artifactId>
+                <artifactId>testcontainers-mariadb</artifactId>
                 <version>${testcontainers.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <!-- Depot public Lutece : porte le lutece-global-pom de release (parent de ce projet).
+         Les depots declares dans le settings.xml ne couvrent que les artefacts prives. -->
+    <repositories>
+        <repository>
+            <id>lutece</id>
+            <name>luteceRepository</name>
+            <url>https://dev.lutece.paris.fr/maven_repository</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
 
     <build>
         <pluginManagement>

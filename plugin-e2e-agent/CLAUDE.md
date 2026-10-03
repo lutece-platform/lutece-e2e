@@ -18,7 +18,7 @@ mvn clean install -DskipTests
 cd .. && mvn clean install -DskipTests
 ```
 
-The plugin uses `lutece-global-pom:8.0.1-SNAPSHOT` as parent and requires the Lutece snapshot repository (`https://dev.lutece.paris.fr/snapshot_repository`).
+The plugin uses `lutece-global-pom:8.0.2` as parent and requires the Lutece snapshot repository (`https://dev.lutece.paris.fr/snapshot_repository`).
 
 ## Source Layout
 
