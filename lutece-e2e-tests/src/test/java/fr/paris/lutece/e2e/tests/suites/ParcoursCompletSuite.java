@@ -112,6 +112,10 @@ public class ParcoursCompletSuite extends MacroTest {
      */
     private static final String NOTIF_COMPLEMENT = "Completez votre dossier";
     private static final String NOTIF_CORRECTION = "Corrigez votre saisie";
+
+    /** Signets portant l'adresse de retour de l'usager, resolus dans le courriel. */
+    private static final String SIGNET_COMPLEMENT = "${complete_form_url!}";
+    private static final String SIGNET_CORRECTION = "${resubmit_form_url!}";
     private static final String TRACE_NOTIFICATION = "Voir les notifications";
     private static final String CANAL_NOTIFICATION = "Agent";
 
@@ -270,7 +274,8 @@ public class ParcoursCompletSuite extends MacroTest {
 
         AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("taskNotifyGru", ACTION_COMPLEMENT));
         ConfigureTaskMacroTest.run(wf, notification(
-            "workflow-forms.completeFormResponseMarkerProvider", ETAT_COMPLEMENT, NOTIF_COMPLEMENT));
+            "workflow-forms.completeFormResponseMarkerProvider", ETAT_COMPLEMENT,
+            NOTIF_COMPLEMENT, SIGNET_COMPLEMENT));
 
         AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("taskUnitAssignmentNotification", ACTION_COMPLEMENT));
         ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
@@ -291,7 +296,8 @@ public class ParcoursCompletSuite extends MacroTest {
 
         AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("taskNotifyGru", ACTION_CORRECTION));
         ConfigureTaskMacroTest.run(wf, notification(
-            "workflow-forms.resubmitFormResponseMarkerProvider", ETAT_CORRECTION, NOTIF_CORRECTION));
+            "workflow-forms.resubmitFormResponseMarkerProvider", ETAT_CORRECTION,
+            NOTIF_CORRECTION, SIGNET_CORRECTION));
 
         // Piece jointe non obligatoire : l'exiger imposerait un televersement a chaque passage de
         // l'action, ce qui n'est pas l'objet du controle.
@@ -308,32 +314,41 @@ public class ParcoursCompletSuite extends MacroTest {
      *
      * <p>Le fournisseur de donnees doit etre enregistre avant que les canaux ne deviennent
      * proposables, et la famille de signets activee dans la configuration avancee avant que le
-     * message puisse s'y referer. Le canal « agent » est retenu parce que c'est le seul dont le
-     * contenu se retrouve dans l'historique de la reponse, donc observable par un test.</p>
+     * message puisse s'y referer. Les deux canaux sont poses : la vue agent, dont le contenu se
+     * retrouve dans l'historique de la reponse et qu'un test peut donc observer, et le courriel,
+     * qui porte l'adresse de retour de l'usager.</p>
      *
-     * @param famille  fournisseur de signets concerne, cf. la note ci-dessous
-     * @param statut   statut affiche dans la vue agent
-     * @param message  corps du message, signets compris
+     * <p><b>Prerequis du site.</b> Les signets d'adresse de retour ne sont calculables que si le
+     * site sait quelle est son URL publique. Selon {@code workflow-forms.base_url.use_property},
+     * elle est prise dans la requete ou dans {@code lutece.base.url} puis {@code lutece.prod.url}.
+     * Sur une instance ou aucune n'est renseignee, le fournisseur de signets echoue a l'execution
+     * de l'action — {@code NullPointerException} dans {@code getTaskResourceInfo} — et annule
+     * toute la transition sans message a l'ecran.</p>
+     *
+     * @param famille fournisseur de signets a activer
+     * @param statut  statut affiche dans la vue agent, et objet du courriel
+     * @param message corps commun aux deux canaux
+     * @param signet  signet portant l'adresse de retour, ajoute au seul courriel
      * @return le parametrage correspondant
      */
-    private TaskConfigDataSet notification(String famille, String statut, String message) {
-        // La famille de signets correspondante n'est volontairement pas activee ici. Les signets
-        // « Compléter une réponse » et « Corriger une réponse » portent l'adresse de retour de
-        // l'usager, mais les activer sur la notification que porte l'action elle-meme fait echouer
-        // celle-ci : le fournisseur leve une NullPointerException
-        // (CompleteFormResponseMarkerProvider.provideMarkerValues ->
-        // AbstractCompleteFormResponseTaskInfoProvider.getTaskResourceInfo), et toute la transition
-        // est annulee sans message a l'ecran. Verifie avec un mapping renseigne et un ordre de
-        // taches placant la notification apres la demande : le defaut est dans le module, pas dans
-        // le parametrage. Le lien de retour reste verifie sur le detail de la reponse, ou la tache
-        // de demande le depose bien.
+    private TaskConfigDataSet notification(String famille, String statut, String message, String signet) {
         return TaskConfigDataSet.vide()
             .selectionLibelle("list_provider", "Forms")
             .enregistrer()
+            .avance()
+            .case_("marker_providers", famille)
+            .appliquer("saveAdvancedConfig")
             .selection("added_notification_config", "agent")
             .appliquer("AddNotificationConfig")
             .texte("status_text_agent", statut)
-            .texte("message_agent", message);
+            .texte("message_agent", message)
+            // Le courriel porte l'adresse de retour. Les signets ne sont resolus que dans ce
+            // canal : la vue agent affiche un statut et un message, pas un lien a suivre.
+            .selection("added_notification_config", "email")
+            .appliquer("AddNotificationConfig")
+            .texte("sender_name_email", "no-reply")
+            .texte("subject_email", statut)
+            .texte("message_email", message + " " + signet);
     }
 
     /**
