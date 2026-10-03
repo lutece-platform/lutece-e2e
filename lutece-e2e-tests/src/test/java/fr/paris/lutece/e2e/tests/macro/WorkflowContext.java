@@ -23,6 +23,15 @@ public class WorkflowContext {
     public final List<StateRef> states = new ArrayList<>();
     public final List<ActionRef> actions = new ArrayList<>();
 
+    /**
+     * Identifiants des taches inserees, dans l'ordre d'insertion.
+     *
+     * <p>Une tache n'est pas configurable depuis la page de l'action : son parametrage vit sur
+     * {@code ModifyTask.jsp?id_task=...}. Memoriser l'identifiant est donc le seul moyen de
+     * configurer une tache qu'on vient d'ajouter.</p>
+     */
+    public final List<Integer> taskIds = new ArrayList<>();
+
     public WorkflowContext(Page page, String baseUrl, String runSuffix) {
         this.page = page;
         this.baseUrl = baseUrl;

@@ -93,9 +93,17 @@ public class AddTaskToActionMacroTest extends MacroTest {
             "Le select 'Nouvelle tâche' (ou l'option '" + data.taskTypeKey()
                 + "') ou le bouton 'Insérer' est absent : ajout de tache ignore");
 
+        java.util.List<Integer> avant = taskIds(ctx.page);
         edit.selectTask(data.taskTypeKey());
         edit.clickInsertTask();
         ctx.page.waitForLoadState();
+
+        // L'identifiant de la tache inseree est indispensable pour la configurer ensuite : son
+        // parametrage ne vit pas sur la page de l'action mais sur ModifyTask.jsp?id_task=...
+        taskIds(ctx.page).stream()
+            .filter(id -> !avant.contains(id))
+            .findFirst()
+            .ifPresent(ctx.taskIds::add);
 
         // La tache inseree apparait sur la page de l'action (liens de gestion porteurs de id_task,
         // ou libelle de la cle de tache). Assertion best-effort avec deux signaux.
@@ -103,6 +111,32 @@ public class AddTaskToActionMacroTest extends MacroTest {
             || WorkflowSupport.isTextVisible(ctx.page, data.taskTypeKey());
         Assertions.assertTrue(taskPresent,
             "La tache '" + data.taskTypeKey() + "' devrait apparaitre sur la page de l'action apres insertion");
+    }
+
+    /**
+     * Identifiants des taches presentes sur la page de l'action.
+     *
+     * @param page page de l'action
+     * @return les identifiants, sans doublon et dans l'ordre d'apparition
+     */
+    private static java.util.List<Integer> taskIds(Page page) {
+        java.util.List<Integer> ids = new java.util.ArrayList<>();
+        Locator liens = page.locator("a[href*='id_task=']");
+        for (int i = 0; i < liens.count(); i++) {
+            String href = liens.nth(i).getAttribute("href");
+            if (href == null) {
+                continue;
+            }
+            try {
+                int id = Integer.parseInt(href.split("id_task=")[1].split("&")[0].split("#")[0]);
+                if (!ids.contains(id)) {
+                    ids.add(id);
+                }
+            } catch (RuntimeException ignore) {
+                // href sans identifiant exploitable : sans interet pour le suivi des taches
+            }
+        }
+        return ids;
     }
 
     @Test

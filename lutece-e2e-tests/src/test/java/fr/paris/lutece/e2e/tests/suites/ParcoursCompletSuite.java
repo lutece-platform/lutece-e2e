@@ -28,11 +28,14 @@ import org.junit.jupiter.api.Test;
  * <ol>
  *   <li><b>Unittree</b> : deux entites organisationnelles et l'affectation d'un agent.</li>
  *   <li><b>Workflow</b> : quatre etats, trois actions formant un graphe branchant (prise en
- *       charge, puis complement <i>ou</i> cloture), trois taches sur l'action d'entree dont une
- *       d'affectation a une entite organisationnelle — c'est elle qui raccroche le workflow a
- *       l'arborescence creee au point 1 —, puis activation.</li>
- *   <li><b>Formulaire</b> : trois etapes enchainees par transitions, plusieurs questions de types
- *       differents par etape, association au workflow, publication.</li>
+ *       charge, puis complement <i>ou</i> cloture), et cinq taches sur l'action d'entree,
+ *       <i>chacune reellement parametree</i> : une tache inseree sans configuration est inoperante
+ *       — une mise a jour de statut sans choix publie/depublie, une affectation sans mode
+ *       d'assignation ni strategie de selection d'entite. C'est cette derniere qui raccroche le
+ *       workflow aux entites creees au point 1. Puis activation.</li>
+ *   <li><b>Formulaire</b> : trois etapes enchainees par transitions, portant ensemble quatorze
+ *       types de question differents — du texte au creneau horaire en passant par les listes, le
+ *       fichier et l'attribut d'utilisateur —, association au workflow, publication.</li>
  *   <li><b>Front office puis instruction</b> : saisie etape par etape, recapitulatif, validation,
  *       puis execution d'une action du workflow sur la reponse recue.</li>
  * </ol>
@@ -40,6 +43,13 @@ import org.junit.jupiter.api.Test;
  * <p>L'ordre n'est pas arbitraire : le workflow doit etre actif avant d'etre associe, le
  * formulaire publie avant d'etre ouvert en front office, et une reponse soumise avant qu'une
  * action puisse s'y appliquer.</p>
+ *
+ * <p><b>Etapes conditionnelles.</b> Conditionner une transition, pour faire bifurquer le parcours
+ * selon une reponse, demande d'attacher un controle a cette transition — ce que fait
+ * {@code AddTransitionControlMacroTest}. L'ecran exige un « type de controle », dont la liste est
+ * vide sur les sites d'integration eprouves : aucun validateur n'y est expose, et l'enregistrement
+ * est refuse. La brique existe et s'ignore avec ce diagnostic ; elle n'est pas appelee ici pour ne
+ * pas rendre tout le parcours tributaire de cette absence.</p>
  *
  * <p>Execution :</p>
  * <pre>
@@ -134,8 +144,29 @@ public class ParcoursCompletSuite extends MacroTest {
         AddActionMacroTest.run(wf, ActionDataSet.of("Cloturer", 1, 3));
 
         AddTaskToActionMacroTest.run(wf, TaskDataSet.of("modifyUpdateStatusTask"));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .radio("published", "true"));
+
         AddTaskToActionMacroTest.run(wf, TaskDataSet.of("taskTypeComment"));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .texte("title", "Commentaire d'instruction")
+            .radio("mandatory", "false")
+            .radio("richText", "true"));
+
         AddTaskToActionMacroTest.run(wf, TaskDataSet.of("taskUnitAssignmentManual"));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .radio("assignment_type", "create")
+            .selection("unit_selection_id_to_add", "ParametrableUnitSelection")
+            .appliquer());
+
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.of("taskTypeConfirmAction"));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .texte("message", "Confirmez-vous la prise en charge de cette demande ?"));
+
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.of("completeFormResponseTypeTask"));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .selection("idStateAfterEdition", wf.states.get(2).name)
+            .texte("defaultMessage", "Merci de completer votre dossier."));
 
         ActivateWorkflowMacroTest.run(wf);
         VerifyWorkflowActiveMacroTest.run(wf);
@@ -168,9 +199,21 @@ public class ParcoursCompletSuite extends MacroTest {
 
         AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TEXT, Q_NOM).onStep(0));
         AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.DATE, Q_NAISSANCE).onStep(0));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TELEPHONE, "Telephone").onStep(0));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.NUMBERING, "Numero de dossier").onStep(0));
+
         AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TEXTAREA, Q_OBJET).onStep(1));
         AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.NUMBER, Q_MONTANT).onStep(1));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.RADIO, "Type de demandeur").onStep(1));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.CHECKBOX, "Dispositifs concernes").onStep(1));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.SELECT, "Direction de rattachement").onStep(1));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.SELECT_ORDER, "Priorites par ordre").onStep(1));
+
         AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TEXT, Q_PRECISIONS).onStep(2));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.FILE, "Piece justificative").onStep(2));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.SLOT, "Creneau de rendez-vous").onStep(2));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.SESSION, "Session").onStep(2));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.MYLUTECE_ATTRIBUTE, "Attribut utilisateur").onStep(2));
 
         AssociateWorkflowMacroTest.run(forms, WorkflowRefDataSet.of(wf.workflowName));
         PublishFormMacroTest.run(forms, PublishDataSet.defaults());

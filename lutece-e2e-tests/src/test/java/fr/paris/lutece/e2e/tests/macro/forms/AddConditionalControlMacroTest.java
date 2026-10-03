@@ -180,7 +180,7 @@ public class AddConditionalControlMacroTest extends MacroTest {
      * Selectionne, dans une liste deroulante, l'option dont le libelle contient {@code label}.
      * Renvoie {@code true} si une option a pu etre selectionnee.
      */
-    private static boolean selectByLabelContains(Locator select, String label) {
+    static boolean selectByLabelContains(Locator select, String label) {
         try {
             select.selectOption(new SelectOption().setLabel(label));
             return true;
@@ -206,7 +206,7 @@ public class AddConditionalControlMacroTest extends MacroTest {
      * Renseigne le champ de valeur du validateur ({@code select[name='value']} ou {@code input[name='value']}).
      * Silencieux si aucun champ de valeur n'est present.
      */
-    private static void fillControlValue(Page page, String value) {
+    static void fillControlValue(Page page, String value) {
         if (value == null || value.isBlank()) {
             return;
         }
@@ -235,7 +235,7 @@ public class AddConditionalControlMacroTest extends MacroTest {
     }
 
     /** Clique un bouton de soumission de vue ({@code name=...} + {@code value=...}). */
-    private static void clickSubmit(Page page, String name, String value) {
+    static void clickSubmit(Page page, String name, String value) {
         Locator button = page.locator("button[name='" + name + "'][value='" + value + "']");
         if (button.count() > 0 && button.first().isVisible()) {
             button.first().click();
