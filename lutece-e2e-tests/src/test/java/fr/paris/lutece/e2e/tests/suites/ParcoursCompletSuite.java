@@ -20,6 +20,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
+import io.qameta.allure.Step;
 import io.qameta.allure.SeverityLevel;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -117,6 +118,7 @@ public class ParcoursCompletSuite extends MacroTest {
      *
      * @param forms contexte formulaire courant
      */
+    @Step("Instruire un dossier par une demande de complement")
     private void instruction(FormsContext forms) {
         OpenMultiviewMacroTest.run(forms);
         OpenResponseDetailMacroTest.run(forms);
@@ -149,6 +151,7 @@ public class ParcoursCompletSuite extends MacroTest {
      *
      * @param forms contexte formulaire courant
      */
+    @Step("Instruire un second dossier par une demande de correction")
     private void correction(FormsContext forms) {
         // La multivue lit un index, pas la base : sans nouvelle indexation, les reponses y portent
         // encore l'etat qu'elles avaient avant les actions precedentes, et designer un dossier par

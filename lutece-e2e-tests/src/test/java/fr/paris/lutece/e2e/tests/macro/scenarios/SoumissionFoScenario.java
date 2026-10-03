@@ -1,5 +1,6 @@
 package fr.paris.lutece.e2e.tests.macro.scenarios;
 
+import io.qameta.allure.Step;
 import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.data.*;
 import fr.paris.lutece.e2e.tests.macro.forms.*;
@@ -32,6 +33,7 @@ public final class SoumissionFoScenario {
      * @param etapeAttendue titre de l'etape qui doit suivre
      * @param etapeEcartee  titre de l'etape qui ne doit pas etre atteinte
      */
+    @Step("Soumettre une reponse en front office")
     public static void soumettre(FormsContext forms, String choix, String etapeAttendue, String etapeEcartee) {
         OpenFormFOMacroTest.run(forms);
         VerifyStepFOMacroTest.run(forms, ETAPE_IDENTITE);
@@ -79,6 +81,7 @@ public final class SoumissionFoScenario {
      *
      * @param forms contexte formulaire courant
      */
+    @Step("Indexer les reponses soumises")
     public static void indexer(FormsContext forms) {
         RunDaemonMacroTest.run(forms, DaemonDataSet.formsIndexer());
         VerifyResponseSubmittedMacroTest.run(forms);

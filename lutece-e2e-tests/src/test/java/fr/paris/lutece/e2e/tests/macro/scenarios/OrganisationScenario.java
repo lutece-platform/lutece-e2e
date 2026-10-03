@@ -1,6 +1,7 @@
 package fr.paris.lutece.e2e.tests.macro.scenarios;
 
 import com.microsoft.playwright.Page;
+import io.qameta.allure.Step;
 import fr.paris.lutece.e2e.tests.macro.UnittreeContext;
 import fr.paris.lutece.e2e.tests.macro.data.UnitDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.UserAssignmentDataSet;
@@ -37,6 +38,7 @@ public final class OrganisationScenario {
      * @param suffix suffixe unique du run, pour des libelles non collisionnants
      * @return le contexte unittree alimente
      */
+    @Step("Mettre en place l'organisation")
     public static UnittreeContext construire(Page page, String baseUrl, String suffix) {
         UnittreeContext units = new UnittreeContext(page, baseUrl, suffix);
         CreateUnitMacroTest.run(units, UnitDataSet.of(UNITE_DIRECTION));

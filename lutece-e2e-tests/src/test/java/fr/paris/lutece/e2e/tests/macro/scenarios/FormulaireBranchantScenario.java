@@ -1,6 +1,7 @@
 package fr.paris.lutece.e2e.tests.macro.scenarios;
 
 import com.microsoft.playwright.Page;
+import io.qameta.allure.Step;
 import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.WorkflowContext;
 import fr.paris.lutece.e2e.tests.macro.data.*;
@@ -60,6 +61,7 @@ public final class FormulaireBranchantScenario {
      * @param suffix  suffixe unique du run
      * @return le contexte formulaire alimente
      */
+    @Step("Construire le formulaire a embranchement")
     public static FormsContext construire(Page page, String baseUrl, String suffix) {
         FormsContext forms = new FormsContext(page, baseUrl, suffix);
         CreateFormMacroTest.run(forms, FormDataSet.defaults().withTitle("Parcours complet"));
@@ -187,6 +189,7 @@ public final class FormulaireBranchantScenario {
      * @param forms contexte formulaire courant
      * @param wf    workflow a associer
      */
+    @Step("Associer le workflow et publier le formulaire")
     public static void mettreEnService(FormsContext forms, WorkflowContext wf) {
         forms.workflowId = wf.workflowId;
         forms.workflowName = wf.workflowName;

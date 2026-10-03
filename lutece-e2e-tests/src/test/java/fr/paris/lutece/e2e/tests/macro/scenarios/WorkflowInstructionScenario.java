@@ -1,6 +1,7 @@
 package fr.paris.lutece.e2e.tests.macro.scenarios;
 
 import com.microsoft.playwright.Page;
+import io.qameta.allure.Step;
 import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.UnittreeContext;
 import fr.paris.lutece.e2e.tests.macro.WorkflowContext;
@@ -95,6 +96,7 @@ public final class WorkflowInstructionScenario {
      * @param units  entites organisationnelles sur lesquelles s'appuie la tache d'affectation
      * @return le contexte workflow alimente
      */
+    @Step("Construire le workflow d'instruction")
     public static WorkflowContext construire(Page page, String baseUrl, String suffix,
         UnittreeContext units) {
         WorkflowContext wf = new WorkflowContext(page, baseUrl, suffix);
@@ -286,6 +288,7 @@ public final class WorkflowInstructionScenario {
      * @param wf    contexte workflow courant
      * @param forms formulaire support
      */
+    @Step("Completer le workflow avec les taches liees au formulaire")
     public static void completerAvecLeFormulaire(WorkflowContext wf, FormsContext forms) {
         // Les demandes de correction et de complement ne rouvrent a l'usager que les questions
         // declarees ici. Sans cette declaration, l'ecran d'execution ne propose rien a selectionner
