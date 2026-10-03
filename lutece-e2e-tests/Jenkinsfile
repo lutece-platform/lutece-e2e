@@ -574,8 +574,45 @@ pipeline {
                         }
                     }
 
+                    // Rapport Allure 3 en fichier unique, archive avec le build.
+                    //
+                    // Le serveur mutualise genere un rapport Allure 2 ; celui-ci apporte ce que
+                    // la version 3 sait faire en plus et que l'on exploite deja : les etapes
+                    // regroupees par scenario, les parametres d'execution du run, les pieces
+                    // jointes attachees aux moments qui fondent le verdict. En un seul fichier,
+                    // il se telecharge depuis Jenkins et s'ouvre sans serveur.
+                    //
+                    // La generation tourne dans l'image Playwright, seule a embarquer Node, et
+                    // n'est pas bloquante : un registre npm injoignable ne doit pas faire echouer
+                    // un build dont les tests sont verts.
+                    echo '=== Rapport Allure 3 (fichier unique) ==='
+                    script {
+                        try {
+                            sh """
+                                docker run --rm \\
+                                    -v \$(pwd):/work -w /work \\
+                                    -e http_proxy=\${http_proxy:-} \\
+                                    -e https_proxy=\${https_proxy:-} \\
+                                    -e no_proxy=\${no_proxy:-} \\
+                                    ${PLAYWRIGHT_IMAGE} \\
+                                    npx --yes allure awesome \\
+                                        --single-file \\
+                                        --name 'Lutece E2E - ${params.TEST_SUITE}' \\
+                                        --output lutece-e2e-tests/target/allure3 \\
+                                        lutece-e2e-tests/target/allure-results
+                            """
+                            archiveArtifacts(
+                                artifacts: 'lutece-e2e-tests/target/allure3/**/*.html',
+                                allowEmptyArchive: true,
+                                fingerprint: true
+                            )
+                        } catch (err) {
+                            echo "Rapport Allure 3 non genere : ${err}"
+                        }
+                    }
+
                     // Publication sur le serveur Allure mutualise : resultats envoyes puis
-                    // rapport genere, a chaque build. Le service ne declenche aucune
+                    // rapport genere, a chaque build.""" Le service ne declenche aucune
                     // generation de lui-meme. Un serveur indisponible ne doit pas faire
                     // echouer un build dont les tests sont verts.
                     echo '=== Publication du rapport sur le serveur Allure ==='
