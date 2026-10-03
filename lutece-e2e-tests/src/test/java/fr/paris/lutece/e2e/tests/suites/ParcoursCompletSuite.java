@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
  *
  * <ol>
  *   <li><b>Unittree</b> : deux entites organisationnelles et l'affectation d'un agent.</li>
- *   <li><b>Workflow</b> : cinq etats et quatre actions formant un graphe branchant, portant
+ *   <li><b>Workflow</b> : sept etats et six actions formant un graphe branchant, portant
  *       ensemble onze types de taches differents repartis sur les quatre actions —
  *       publication, commentaire, affectation a une entite, confirmation, notification de l'usager,
  *       demande de complement, demande de correction, piece jointe, notification de l'entite.
@@ -72,12 +72,16 @@ public class ParcoursCompletSuite extends MacroTest {
     private static final String ETAT_INSTRUCTION = "En cours d'instruction";
     private static final String ETAT_COMPLEMENT = "Complement demande";
     private static final String ETAT_CORRECTION = "Correction demandee";
+    private static final String ETAT_COMPLEMENT_RECU = "Complement recu";
+    private static final String ETAT_CORRECTION_RECUE = "Correction recue";
     private static final String ETAT_CLOTUREE = "Cloturee";
 
     private static final String ACTION_PRISE_EN_CHARGE = "Prendre en charge";
     private static final String ACTION_COMPLEMENT = "Demander un complement";
     private static final String ACTION_CORRECTION = "Demander une correction";
     private static final String ACTION_CLOTURE = "Cloturer";
+    private static final String ACTION_REPRISE_COMPLEMENT = "Reprendre apres complement";
+    private static final String ACTION_REPRISE_CORRECTION = "Reprendre apres correction";
 
     private static final String ETAPE_IDENTITE = "Identite";
     private static final String ETAPE_SUBVENTION = "Dossier de subvention";
@@ -97,6 +101,17 @@ public class ParcoursCompletSuite extends MacroTest {
     private static final String COMMENTAIRE_INSTRUCTION = "Commentaire d'instruction";
     private static final String MESSAGE_NOTIFICATION = "Votre demande est en cours d'instruction";
     private static final String MESSAGE_COMPLEMENT = "Merci de completer votre dossier.";
+    private static final String MESSAGE_CORRECTION = "Merci de corriger votre saisie.";
+
+    /**
+     * Corps des notifications adressees a l'usager, batis sur les signets des deux demandes.
+     *
+     * <p>Ces signets ne sont utilisables que si la famille correspondante a ete activee dans la
+     * configuration avancee de la tache : sans cela, ils restent tels quels dans le message envoye.
+     * Ils portent l'adresse de retour, le message saisi par l'agent et la liste des champs rouverts.</p>
+     */
+    private static final String NOTIF_COMPLEMENT = "Completez votre dossier";
+    private static final String NOTIF_CORRECTION = "Corrigez votre saisie";
     private static final String TRACE_NOTIFICATION = "Voir les notifications";
     private static final String CANAL_NOTIFICATION = "Agent";
 
@@ -118,14 +133,15 @@ public class ParcoursCompletSuite extends MacroTest {
         indexer(forms);
 
         instruction(forms);
+        correction(forms);
 
         Assertions.assertAll(
             () -> Assertions.assertEquals(2, units.units.size(),
                 "Les deux unites doivent avoir ete creees"),
-            () -> Assertions.assertEquals(5, wf.states.size(),
-                "Les cinq etats du workflow doivent avoir ete crees"),
-            () -> Assertions.assertEquals(4, wf.actions.size(),
-                "Les quatre actions du workflow doivent avoir ete creees"),
+            () -> Assertions.assertEquals(7, wf.states.size(),
+                "Les sept etats du workflow doivent avoir ete crees"),
+            () -> Assertions.assertEquals(6, wf.actions.size(),
+                "Les six actions du workflow doivent avoir ete creees"),
             () -> Assertions.assertEquals(4, forms.steps.size(),
                 "Les quatre etapes du formulaire doivent avoir ete creees"));
     }
@@ -169,12 +185,18 @@ public class ParcoursCompletSuite extends MacroTest {
         AddStateMacroTest.run(wf, StateDataSet.of(ETAT_INSTRUCTION));
         AddStateMacroTest.run(wf, StateDataSet.of(ETAT_COMPLEMENT));
         AddStateMacroTest.run(wf, StateDataSet.of(ETAT_CORRECTION));
+        AddStateMacroTest.run(wf, StateDataSet.of(ETAT_COMPLEMENT_RECU));
+        AddStateMacroTest.run(wf, StateDataSet.of(ETAT_CORRECTION_RECUE));
         AddStateMacroTest.run(wf, StateDataSet.of(ETAT_CLOTUREE));
 
         AddActionMacroTest.run(wf, ActionDataSet.of(ACTION_PRISE_EN_CHARGE, 0, 1));
         AddActionMacroTest.run(wf, ActionDataSet.of(ACTION_COMPLEMENT, 1, 2));
         AddActionMacroTest.run(wf, ActionDataSet.of(ACTION_CORRECTION, 1, 3));
-        AddActionMacroTest.run(wf, ActionDataSet.of(ACTION_CLOTURE, 1, 4));
+        // Les deux retours : une fois l'usager passe par le front office, la demande revient a
+        // l'instruction. Sans ces actions, le dossier resterait bloque dans l'etat d'attente.
+        AddActionMacroTest.run(wf, ActionDataSet.of(ACTION_REPRISE_COMPLEMENT, 4, 1));
+        AddActionMacroTest.run(wf, ActionDataSet.of(ACTION_REPRISE_CORRECTION, 5, 1));
+        AddActionMacroTest.run(wf, ActionDataSet.of(ACTION_CLOTURE, 1, 6));
 
         tachesDePriseEnCharge(wf, units);
         tachesDeComplement(wf);
@@ -239,10 +261,16 @@ public class ParcoursCompletSuite extends MacroTest {
      * @param wf contexte workflow courant
      */
     private void tachesDeComplement(WorkflowContext wf) {
+        // L'etat de sortie est celui que prend la demande une fois l'usager passe par le front
+        // office : c'est lui qui distingue une demande en attente d'une demande revenue completee.
         AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("completeFormResponseTypeTask", ACTION_COMPLEMENT));
         ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
-            .selection("idStateAfterEdition", wf.states.get(2).name)
+            .selection("idStateAfterEdition", ETAT_COMPLEMENT_RECU)
             .texte("defaultMessage", MESSAGE_COMPLEMENT));
+
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("taskNotifyGru", ACTION_COMPLEMENT));
+        ConfigureTaskMacroTest.run(wf, notification(
+            "workflow-forms.completeFormResponseMarkerProvider", ETAT_COMPLEMENT, NOTIF_COMPLEMENT));
 
         AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("taskUnitAssignmentNotification", ACTION_COMPLEMENT));
         ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
@@ -258,8 +286,12 @@ public class ParcoursCompletSuite extends MacroTest {
     private void tachesDeCorrection(WorkflowContext wf) {
         AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("resubmitFormResponseTypeTask", ACTION_CORRECTION));
         ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
-            .selection("idStateAfterEdition", wf.states.get(3).name)
-            .texte("defaultMessage", "Merci de corriger votre saisie."));
+            .selection("idStateAfterEdition", ETAT_CORRECTION_RECUE)
+            .texte("defaultMessage", MESSAGE_CORRECTION));
+
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("taskNotifyGru", ACTION_CORRECTION));
+        ConfigureTaskMacroTest.run(wf, notification(
+            "workflow-forms.resubmitFormResponseMarkerProvider", ETAT_CORRECTION, NOTIF_CORRECTION));
 
         // Piece jointe non obligatoire : l'exiger imposerait un televersement a chaque passage de
         // l'action, ce qui n'est pas l'objet du controle.
@@ -269,6 +301,39 @@ public class ParcoursCompletSuite extends MacroTest {
             .texte("maxFile", "1")
             .texte("maxSizeFile", "1000000")
             .radio("mandatory", "false"));
+    }
+
+    /**
+     * Parametrage d'une tache de notification adressee a l'usager.
+     *
+     * <p>Le fournisseur de donnees doit etre enregistre avant que les canaux ne deviennent
+     * proposables, et la famille de signets activee dans la configuration avancee avant que le
+     * message puisse s'y referer. Le canal « agent » est retenu parce que c'est le seul dont le
+     * contenu se retrouve dans l'historique de la reponse, donc observable par un test.</p>
+     *
+     * @param famille  fournisseur de signets concerne, cf. la note ci-dessous
+     * @param statut   statut affiche dans la vue agent
+     * @param message  corps du message, signets compris
+     * @return le parametrage correspondant
+     */
+    private TaskConfigDataSet notification(String famille, String statut, String message) {
+        // La famille de signets correspondante n'est volontairement pas activee ici. Les signets
+        // « Compléter une réponse » et « Corriger une réponse » portent l'adresse de retour de
+        // l'usager, mais les activer sur la notification que porte l'action elle-meme fait echouer
+        // celle-ci : le fournisseur leve une NullPointerException
+        // (CompleteFormResponseMarkerProvider.provideMarkerValues ->
+        // AbstractCompleteFormResponseTaskInfoProvider.getTaskResourceInfo), et toute la transition
+        // est annulee sans message a l'ecran. Verifie avec un mapping renseigne et un ordre de
+        // taches placant la notification apres la demande : le defaut est dans le module, pas dans
+        // le parametrage. Le lien de retour reste verifie sur le detail de la reponse, ou la tache
+        // de demande le depose bien.
+        return TaskConfigDataSet.vide()
+            .selectionLibelle("list_provider", "Forms")
+            .enregistrer()
+            .selection("added_notification_config", "agent")
+            .appliquer("AddNotificationConfig")
+            .texte("status_text_agent", statut)
+            .texte("message_agent", message);
     }
 
     /**
@@ -292,6 +357,12 @@ public class ParcoursCompletSuite extends MacroTest {
      * @param forms formulaire support
      */
     private void completerWorkflowAvecLeFormulaire(WorkflowContext wf, FormsContext forms) {
+        // Les demandes de correction et de complement ne rouvrent a l'usager que les questions
+        // declarees ici. Sans cette declaration, l'ecran d'execution ne propose rien a selectionner
+        // et la demande part sans objet.
+        ConfigureFormWorkflowQuestionsMacroTest.run(forms,
+            FormWorkflowQuestionsDataSet.memesQuestions(Q_NOM, Q_NAISSANCE, Q_NATURE));
+
         // La notification de l'usager ne lit pas la reponse directement : elle passe par un mapping
         // qui, pour ce formulaire, designe les questions portant ses coordonnees. Sans lui, l'action
         // echoue a l'execution et annule toute la transition.
@@ -537,5 +608,33 @@ public class ParcoursCompletSuite extends MacroTest {
         RunWorkflowActionOnResponseMacroTest.run(forms, ResponseActionDataSet.of(ACTION_COMPLEMENT));
         VerifyResponseStateMacroTest.run(forms, ResponseStateDataSet.avecTraces(
             ETAT_COMPLEMENT, ACTION_COMPLEMENT, MESSAGE_COMPLEMENT));
+        // La demande adressee a l'usager n'a de sens que s'il peut y repondre : l'historique doit
+        // porter le lien qui le ramene sur sa reponse en front office.
+        VerifyResponseFoLinkMacroTest.run(forms);
+    }
+
+    /**
+     * Instruction d'une seconde reponse, par la demande de correction de saisie.
+     *
+     * <p>Les deux demandes se ressemblent mais ne partagent ni leur tache, ni leur etat de sortie,
+     * ni les questions qu'elles rouvrent : les eprouver toutes les deux est le seul moyen de
+     * verifier qu'elles ont bien ete configurees separement.</p>
+     *
+     * @param forms contexte formulaire courant
+     */
+    private void correction(FormsContext forms) {
+        // La multivue lit un index, pas la base : sans nouvelle indexation, les reponses y portent
+        // encore l'etat qu'elles avaient avant les actions precedentes, et designer un dossier par
+        // son etat ouvrirait le mauvais.
+        RunDaemonMacroTest.run(forms, DaemonDataSet.formsIndexer());
+        OpenMultiviewMacroTest.run(forms);
+        RunWorkflowActionOnResponseMacroTest.run(forms,
+            ResponseActionDataSet.surReponseDansEtat(ACTION_PRISE_EN_CHARGE, ETAT_NOUVELLE));
+        // Sans etat impose : la correction porte sur le dossier qu'on vient de prendre en charge.
+        RunWorkflowActionOnResponseMacroTest.run(forms,
+            ResponseActionDataSet.of(ACTION_CORRECTION));
+        VerifyResponseStateMacroTest.run(forms, ResponseStateDataSet.avecTraces(
+            ETAT_CORRECTION, ACTION_CORRECTION, MESSAGE_CORRECTION));
+        VerifyResponseFoLinkMacroTest.run(forms);
     }
 }

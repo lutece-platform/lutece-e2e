@@ -22,7 +22,10 @@ public final class WorkflowSupport {
      * Navigue vers la liste des workflows et retourne l'id du workflow dont le nom correspond, ou -1.
      */
     public static int extractWorkflowId(WorkflowContext ctx, String workflowName) {
-        navigate(ctx, WF + "ManageWorkflow.jsp");
+        // La liste est paginee cote serveur : sur un site ou les workflows s'accumulent, le
+        // dernier cree se retrouve au-dela de la premiere page et parait introuvable. On demande
+        // donc une page assez grande pour que tous soient dans le document.
+        navigate(ctx, WF + "ManageWorkflow.jsp?items_per_page=100000");
         Locator link = ctx.page.locator(
             "a[href*='id_workflow=']:has-text('" + workflowName + "')").first();
         try {

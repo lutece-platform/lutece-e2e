@@ -54,9 +54,22 @@ public class RunWorkflowActionOnResponseMacroTest extends MacroTest {
 
     @Step("Declencher une action de workflow sur la reponse")
     public static void run(FormsContext ctx, ResponseActionDataSet data) {
-        boolean opened = OpenResponseDetailMacroTest.openFirstResponseDetail(ctx);
+        // Enchainer deux actions sur un dossier suppose de rester sur ce dossier. Le retrouver par
+        // son etat n'est possible qu'apres une nouvelle indexation : la multivue lit un index que
+        // les actions ne mettent pas a jour, et designer le dossier par son etat precedent
+        // ouvrirait celui d'a cote. On repart donc de la reponse deja ouverte, sauf si un etat est
+        // explicitement demande.
+        boolean opened;
+        if (data.etatReponse() != null) {
+            opened = OpenResponseDetailMacroTest.openResponseInState(ctx, data.etatReponse());
+        } else {
+            opened = OpenResponseDetailMacroTest.reopenLastResponse(ctx)
+                || OpenResponseDetailMacroTest.openFirstResponseDetail(ctx);
+        }
         Assumptions.assumeTrue(opened,
-            "aucune reponse sur laquelle declencher une action (multivue vide)");
+            "aucune reponse a instruire"
+                + (data.etatReponse() == null ? " (multivue vide)"
+                    : " dans l'etat '" + data.etatReponse() + "'"));
 
         Page page = ctx.page;
         // Le libelle est passe tel quel, sans Pattern.quote : celui-ci produit une sequence
@@ -106,11 +119,33 @@ public class RunWorkflowActionOnResponseMacroTest extends MacroTest {
         if (valider.count() == 0) {
             return;
         }
+        designerQuestions(page);
         renseignerSaisies(page);
         renseignerListes(page);
         cocherChoixUniques(page);
         valider.first().click();
         page.waitForLoadState();
+    }
+
+    /**
+     * Designe les questions sur lesquelles porte une demande de correction ou de complement.
+     *
+     * <p>Ces deux actions rouvrent a l'usager les seules questions qu'on leur designe ici, parmi
+     * celles que la configuration du formulaire autorise. N'en cocher aucune fait partir une
+     * demande sans objet : l'usager recoit un message, mais aucun champ a corriger ou completer,
+     * et le lien qui lui est adresse ne lui presente rien.</p>
+     *
+     * @param page formulaire de taches ouvert
+     */
+    private static void designerQuestions(Page page) {
+        Locator questions = page.locator("input[type='checkbox'][name='ids_entry']");
+        int total = questions.count();
+        for (int i = 0; i < total; i++) {
+            Locator question = questions.nth(i);
+            if (!question.isChecked()) {
+                question.check();
+            }
+        }
     }
 
     /**

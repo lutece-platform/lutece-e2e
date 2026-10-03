@@ -38,7 +38,11 @@ public class VerifyResponseStateMacroTest extends MacroTest {
 
     @Step("Verifier l'etat et l'historique de la reponse")
     public static void run(FormsContext ctx, ResponseStateDataSet data) {
-        boolean ouvert = OpenResponseDetailMacroTest.openFirstResponseDetail(ctx);
+        // On rouvre la reponse effectivement instruite plutot que la premiere de la liste : des
+        // qu'un formulaire en compte plusieurs, controler l'etat d'un autre dossier reviendrait a
+        // valider une action qui ne s'est jamais appliquee a celui qu'on vient de traiter.
+        boolean ouvert = OpenResponseDetailMacroTest.reopenLastResponse(ctx)
+            || OpenResponseDetailMacroTest.openFirstResponseDetail(ctx);
         Assumptions.assumeTrue(ouvert,
             "aucune reponse a inspecter dans la multivue : etat et historique non verifiables");
 

@@ -52,6 +52,71 @@ public class OpenResponseDetailMacroTest extends MacroTest {
      * Navigue vers la multivue et ouvre le detail de la premiere reponse si une ligne existe.
      * Toutes les recherches sont gated. Retourne {@code true} si un detail a ete ouvert.
      */
+    /**
+     * Ouvre le detail d'une reponse du formulaire courant se trouvant dans l'etat indique.
+     *
+     * <p>Memorise l'identifiant de la reponse ouverte, pour que les controles qui suivent portent
+     * sur ce dossier precis et non sur le premier de la liste.</p>
+     *
+     * @param ctx  contexte formulaire courant
+     * @param etat libelle de l'etat recherche
+     * @return true si une reponse dans cet etat a ete ouverte
+     */
+    static boolean openResponseInState(FormsContext ctx, String etat) {
+        Page page = ctx.page;
+        MacroSupport.navigate(ctx,
+            MacroSupport.FORMS + "MultiviewForms.jsp?plugin_name=forms&selected_panel=forms&change_panel=true");
+        page.waitForLoadState();
+
+        Locator lignes = page.locator("table tbody tr[data-url]");
+        if (ctx.formTitle != null && !ctx.formTitle.isBlank()) {
+            lignes = lignes.filter(new Locator.FilterOptions().setHasText(ctx.formTitle));
+        }
+        Locator dansEtat = lignes.filter(new Locator.FilterOptions().setHasText(etat));
+        if (dansEtat.count() == 0) {
+            return false;
+        }
+        dansEtat.first().click();
+        page.waitForLoadState();
+        memoriserReponse(ctx);
+        return true;
+    }
+
+    /**
+     * Rouvre le detail de la derniere reponse instruite.
+     *
+     * @param ctx contexte formulaire courant
+     * @return true si une reponse etait memorisee et a pu etre rouverte
+     */
+    static boolean reopenLastResponse(FormsContext ctx) {
+        if (ctx.lastResponseId == null) {
+            return false;
+        }
+        MacroSupport.navigate(ctx, MacroSupport.FORMS
+            + "ManageDirectoryFormResponseDetails.jsp?view=view_form_response_details&id_form_response="
+            + ctx.lastResponseId);
+        return true;
+    }
+
+    /**
+     * Retient l'identifiant de la reponse dont le detail est affiche.
+     *
+     * @param ctx contexte formulaire courant
+     */
+    static void memoriserReponse(FormsContext ctx) {
+        String url = ctx.page.url();
+        if (!url.contains("id_form_response=")) {
+            return;
+        }
+        try {
+            ctx.lastResponseId = Integer.valueOf(
+                url.split("id_form_response=")[1].split("&")[0].split("#")[0]);
+        } catch (RuntimeException sansIdentifiant) {
+            // detail ouvert sans identifiant exploitable : les controles suivants retomberont
+            // sur la premiere reponse du formulaire
+        }
+    }
+
     static boolean openFirstResponseDetail(FormsContext ctx) {
         Page page = ctx.page;
         // Selectionner le panneau "Toutes les reponses". Par defaut la multivue ouvre le panneau
@@ -74,12 +139,14 @@ public class OpenResponseDetailMacroTest extends MacroTest {
             if (duFormulaire.count() > 0 && duFormulaire.first().isVisible()) {
                 duFormulaire.first().click();
                 page.waitForLoadState();
+                memoriserReponse(ctx);
                 return true;
             }
         }
         if (lignesCliquables.count() > 0 && lignesCliquables.first().isVisible()) {
             lignesCliquables.first().click();
             page.waitForLoadState();
+            memoriserReponse(ctx);
             return true;
         }
 

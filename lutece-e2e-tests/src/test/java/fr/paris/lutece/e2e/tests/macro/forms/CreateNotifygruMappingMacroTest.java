@@ -44,6 +44,12 @@ public class CreateNotifygruMappingMacroTest extends MacroTest {
     /** Chemin du module de gestion des mappings de notification. */
     private static final String MAPPING = "/jsp/admin/plugins/modulenotifygrumappingmanager/";
 
+    /** Correspondances attendues par la notification entre le formulaire et l'usager. */
+    private static final String[] CORRESPONDANCES = {
+        "demandreference", "connectionid", "customerid", "email", "mobilephonenumber",
+        "fixedphonenumber"
+    };
+
     /** Delai de rechargement des listes apres le choix du fournisseur, en millisecondes. */
     private static final double RECHARGEMENT_MS = 5000;
 
@@ -66,6 +72,7 @@ public class CreateNotifygruMappingMacroTest extends MacroTest {
 
         choisirFournisseur(page, ctx.formTitle);
         page.locator("input[name='demandetype']").first().fill("1");
+        designerQuestions(page);
 
         page.locator("button[name='action_createNotifygruMappingManager'], "
             + "input[name='action_createNotifygruMappingManager']").first().click();
@@ -75,6 +82,29 @@ public class CreateNotifygruMappingMacroTest extends MacroTest {
         Assertions.assertTrue(contenu.contains(ctx.formTitle),
             "Le mapping du formulaire '" + ctx.formTitle + "' devrait figurer dans la liste apres "
                 + "enregistrement. Contenu lu : " + contenu.substring(0, Math.min(200, contenu.length())));
+    }
+
+    /**
+     * Rattache une question du formulaire a chaque correspondance attendue par la notification.
+     *
+     * <p>Les laisser sur « Aucun » suffit a enregistrer le mapping, mais prive la notification des
+     * identifiants de l'usager. Les fournisseurs de signets qui construisent une adresse de retour
+     * — correction et complement — echouent alors a l'execution de l'action, par une erreur serveur
+     * qui annule toute la transition.</p>
+     *
+     * @param page formulaire de creation du mapping
+     */
+    private static void designerQuestions(Page page) {
+        for (String champ : CORRESPONDANCES) {
+            Locator liste = page.locator("select[name='" + champ + "']");
+            if (liste.count() == 0) {
+                continue;
+            }
+            Locator options = liste.first().locator("option[value]:not([value='-1'])");
+            if (options.count() > 0) {
+                liste.first().selectOption(options.first().getAttribute("value"));
+            }
+        }
     }
 
     /**

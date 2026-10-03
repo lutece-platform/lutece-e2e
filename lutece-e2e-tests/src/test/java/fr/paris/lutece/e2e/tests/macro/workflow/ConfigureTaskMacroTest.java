@@ -66,6 +66,18 @@ public class ConfigureTaskMacroTest extends MacroTest {
     /** Delai d'initialisation de l'editeur riche, en millisecondes. */
     private static final double EDITEUR_TIMEOUT_MS = 5000;
 
+    /** Nombre de tentatives de depot d'une valeur dans un editeur riche. */
+    private static final int ESSAIS_SAISIE = 3;
+
+    /** Pause entre deux tentatives de saisie dans un editeur riche, en millisecondes. */
+    private static final double PAUSE_SAISIE_MS = 800;
+
+    /** Panneau de configuration avancee d'une tache de notification. */
+    private static final String PANNEAU_AVANCE = "#config_global";
+
+    /** Delai d'ouverture du panneau de configuration avancee, en millisecondes. */
+    private static final double PANNEAU_TIMEOUT_MS = 5000;
+
     @Step("Parametrer la tache")
     public static void run(WorkflowContext ctx, TaskConfigDataSet data) {
         Assertions.assertFalse(ctx.taskIds.isEmpty(),
@@ -217,6 +229,15 @@ public class ConfigureTaskMacroTest extends MacroTest {
                 exigerPresence(liste, reglage);
                 selectionnerParFragment(liste.first(), reglage);
             }
+            case OUVRIR_AVANCE -> {
+                Locator declencheur = page.locator("[data-bs-target='" + PANNEAU_AVANCE + "']");
+                Assertions.assertTrue(declencheur.count() > 0,
+                    "La tache ne propose pas de configuration avancee");
+                declencheur.first().click();
+                page.locator(PANNEAU_AVANCE).waitFor(new Locator.WaitForOptions()
+                    .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE)
+                    .setTimeout(PANNEAU_TIMEOUT_MS));
+            }
             case ENREGISTRER -> {
                 page.locator("button[name='save'], input[name='save']").first().click();
                 page.waitForLoadState();
@@ -244,7 +265,17 @@ public class ConfigureTaskMacroTest extends MacroTest {
             return;
         }
         attendreEditeur(page, champ);
-        champ.evaluate(EDITEUR_RICHE, reglage.valeur());
+        // L'editeur peut achever son initialisation juste apres la saisie et reprendre la main sur
+        // le champ, effacant ce qu'on vient d'y deposer. On confirme donc que la valeur a tenu, et
+        // on la repose sinon : sans cela, la tache s'enregistre avec un message vide, et c'est
+        // seulement a l'execution de l'action que son absence se remarque.
+        for (int essai = 0; essai < ESSAIS_SAISIE; essai++) {
+            champ.evaluate(EDITEUR_RICHE, reglage.valeur());
+            if (champ.inputValue().contains(reglage.valeur())) {
+                return;
+            }
+            page.waitForTimeout(PAUSE_SAISIE_MS);
+        }
     }
 
     /**

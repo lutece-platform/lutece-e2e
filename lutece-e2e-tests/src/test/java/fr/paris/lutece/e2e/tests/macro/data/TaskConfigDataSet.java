@@ -40,7 +40,9 @@ public record TaskConfigDataSet(List<Reglage> reglages) {
         /** Liste deroulante, par fragment du libelle d'une option. */
         SELECTION_LIBELLE,
         /** Enregistrement intermediaire, le formulaire se poursuivant ensuite. */
-        ENREGISTRER
+        ENREGISTRER,
+        /** Ouverture du panneau de configuration avancee de la tache. */
+        OUVRIR_AVANCE
     }
 
     /**
@@ -171,6 +173,19 @@ public record TaskConfigDataSet(List<Reglage> reglages) {
      */
     public TaskConfigDataSet enregistrer() {
         return avec(new Reglage(Nature.ENREGISTRER, "", ""));
+    }
+
+    /**
+     * Ouvre le panneau de configuration avancee de la tache.
+     *
+     * <p>La notification y range ce qui ne concerne pas la redaction du message : le choix des
+     * familles de signets utilisables. Ces cases ne sont pas simplement repliees mais hors de
+     * portee tant que le panneau n'est pas ouvert.</p>
+     *
+     * @return un nouveau parametrage incluant ce reglage
+     */
+    public TaskConfigDataSet avance() {
+        return avec(new Reglage(Nature.OUVRIR_AVANCE, "", ""));
     }
 
     /**
