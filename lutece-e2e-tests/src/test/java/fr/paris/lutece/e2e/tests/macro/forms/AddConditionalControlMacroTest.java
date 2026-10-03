@@ -11,6 +11,8 @@ import fr.paris.lutece.e2e.tests.macro.data.FormDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionType;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -53,7 +55,7 @@ import org.junit.jupiter.api.Test;
 public class AddConditionalControlMacroTest extends MacroTest {
 
     @Step("Ajouter un controle conditionnel")
-    public static void run(FormsContext ctx, ControlDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, ControlDataSet data) {
         Assertions.assertTrue(ctx.formId > 0 && !ctx.steps.isEmpty() && ctx.questions.size() >= 2,
             "Un formulaire, une etape et au moins deux questions (pilote + cible) doivent exister");
 

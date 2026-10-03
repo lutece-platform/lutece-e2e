@@ -14,6 +14,8 @@ import fr.paris.lutece.e2e.tests.macro.data.PublishDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionType;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -48,7 +50,7 @@ import org.junit.jupiter.api.Test;
 public class VerifyConditionalDisplayFOMacroTest extends MacroTest {
 
     @Step("Verifier l'affichage conditionnel en front office")
-    public static void run(FormsContext ctx, ConditionalCheckDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, ConditionalCheckDataSet data) {
         Assertions.assertTrue(ctx.formId > 0,
             "Un formulaire publie doit exister (ctx.formId) avant la verification FO");
 

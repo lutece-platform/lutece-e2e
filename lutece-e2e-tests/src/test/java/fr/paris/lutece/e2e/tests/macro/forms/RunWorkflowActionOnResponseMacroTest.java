@@ -11,6 +11,8 @@ import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionType;
 import fr.paris.lutece.e2e.tests.macro.data.ResponseActionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -53,7 +55,7 @@ public class RunWorkflowActionOnResponseMacroTest extends MacroTest {
     private static final String SAISIE_PAR_DEFAUT = "Renseigne par le test E2E";
 
     @Step("Declencher une action de workflow sur la reponse")
-    public static void run(FormsContext ctx, ResponseActionDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, ResponseActionDataSet data) {
         // Enchainer deux actions sur un dossier suppose de rester sur ce dossier. Le retrouver par
         // son etat n'est possible qu'apres une nouvelle indexation : la multivue lit un index que
         // les actions ne mettent pas a jour, et designer le dossier par son etat precedent

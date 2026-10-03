@@ -11,6 +11,8 @@ import fr.paris.lutece.e2e.tests.macro.data.FormDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionType;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -45,7 +47,7 @@ import org.junit.jupiter.api.Test;
 public class RemoveControlMacroTest extends MacroTest {
 
     @Step("Supprimer un controle")
-    public static void run(FormsContext ctx) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx) {
         Assertions.assertFalse(ctx.controlIds.isEmpty(),
             "Au moins un controle (ctx.controlIds) doit exister avant suppression");
 

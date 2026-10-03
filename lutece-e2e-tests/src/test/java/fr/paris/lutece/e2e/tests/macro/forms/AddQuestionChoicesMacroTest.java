@@ -9,6 +9,8 @@ import fr.paris.lutece.e2e.tests.macro.data.QuestionChoicesDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionType;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -37,7 +39,7 @@ import org.junit.jupiter.api.Test;
 public class AddQuestionChoicesMacroTest extends MacroTest {
 
     @Step("Ajouter les choix d'une question de type liste")
-    public static void run(FormsContext ctx, QuestionChoicesDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, QuestionChoicesDataSet data) {
         FormsContext.QuestionRef question = ctx.questions.stream()
             .filter(q -> data.questionTitle().equals(q.title))
             .reduce((premier, dernier) -> dernier)

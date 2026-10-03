@@ -7,6 +7,8 @@ import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.MacroSupport;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.data.DaemonDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -52,7 +54,7 @@ public class RunDaemonMacroTest extends MacroTest {
     private static final double SETTLE_MS = 2000;
 
     @Step("Declencher le daemon")
-    public static void run(FormsContext ctx, DaemonDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, DaemonDataSet data) {
         Page page = ctx.page;
         MacroSupport.navigate(ctx, MANAGE_DAEMONS);
 

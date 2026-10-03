@@ -11,6 +11,8 @@ import fr.paris.lutece.e2e.tests.macro.data.FormDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.StepTargetDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.TransitionDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -37,7 +39,7 @@ import org.junit.jupiter.api.Test;
 public class CreateTransitionMacroTest extends MacroTest {
 
     @Step("Creer une transition entre deux etapes")
-    public static void run(FormsContext ctx, TransitionDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, TransitionDataSet data) {
         Assertions.assertTrue(ctx.formId > 0, "Un formulaire doit exister (ctx.formId) avant de creer une transition");
         int maxIndex = Math.max(data.fromStepIndex(), data.toStepIndex());
         Assertions.assertTrue(ctx.steps.size() > maxIndex,

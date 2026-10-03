@@ -9,6 +9,8 @@ import fr.paris.lutece.e2e.tests.macro.MacroSupport;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.data.FormDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.FormOptionsDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -37,7 +39,7 @@ import org.junit.jupiter.api.Test;
 public class ConfigureFormOptionsMacroTest extends MacroTest {
 
     @Step("Configurer les options du formulaire")
-    public static void run(FormsContext ctx, FormOptionsDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, FormOptionsDataSet data) {
         Assertions.assertTrue(ctx.formId > 0,
             "Un formulaire doit exister (ctx.formId) avant de configurer ses options");
 

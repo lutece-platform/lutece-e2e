@@ -7,6 +7,8 @@ import fr.paris.lutece.e2e.tests.macro.WorkflowContext;
 import fr.paris.lutece.e2e.tests.macro.WorkflowSupport;
 import fr.paris.lutece.e2e.tests.macro.data.StateDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.WorkflowDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -33,7 +35,7 @@ import org.junit.jupiter.api.Test;
 public class ActivateWorkflowMacroTest extends MacroTest {
 
     @Step("Activer le workflow")
-    public static void run(WorkflowContext ctx) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) WorkflowContext ctx) {
         Assertions.assertTrue(ctx.workflowId > 0, "Un workflow doit exister (ctx.workflowId) avant activation");
         Assertions.assertNotNull(ctx.workflowName, "Le nom du workflow doit etre connu (ctx.workflowName)");
 

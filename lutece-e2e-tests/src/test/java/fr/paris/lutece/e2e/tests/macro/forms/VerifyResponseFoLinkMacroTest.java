@@ -3,6 +3,8 @@ package fr.paris.lutece.e2e.tests.macro.forms;
 import com.microsoft.playwright.Locator;
 import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -32,7 +34,7 @@ import org.junit.jupiter.api.Test;
 public class VerifyResponseFoLinkMacroTest extends MacroTest {
 
     @Step("Verifier le lien de retour vers le front office")
-    public static void run(FormsContext ctx) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx) {
         boolean ouvert = OpenResponseDetailMacroTest.reopenLastResponse(ctx)
             || OpenResponseDetailMacroTest.openFirstResponseDetail(ctx);
         Assumptions.assumeTrue(ouvert,

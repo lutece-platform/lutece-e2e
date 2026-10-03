@@ -7,6 +7,8 @@ import fr.paris.lutece.e2e.tests.macro.MacroSupport;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.data.FormDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -33,7 +35,7 @@ import org.junit.jupiter.api.Test;
 public class ModifyStepMacroTest extends MacroTest {
 
     @Step("Renommer l'etape")
-    public static void run(FormsContext ctx, StepDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, StepDataSet data) {
         Assertions.assertTrue(ctx.formId > 0 && !ctx.steps.isEmpty(),
             "Un formulaire et au moins une etape doivent exister avant de renommer une etape");
 

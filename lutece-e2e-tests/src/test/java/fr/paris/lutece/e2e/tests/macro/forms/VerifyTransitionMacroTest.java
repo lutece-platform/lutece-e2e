@@ -9,6 +9,8 @@ import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.data.FormDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.TransitionDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -34,7 +36,7 @@ import org.junit.jupiter.api.Test;
 public class VerifyTransitionMacroTest extends MacroTest {
 
     @Step("Verifier la transition entre deux etapes")
-    public static void run(FormsContext ctx, TransitionDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, TransitionDataSet data) {
         int maxIndex = Math.max(data.fromStepIndex(), data.toStepIndex());
         Assertions.assertTrue(ctx.steps.size() > maxIndex,
             "Les etapes source et cible doivent exister (ctx.steps) avant de verifier une transition");
@@ -60,7 +62,7 @@ public class VerifyTransitionMacroTest extends MacroTest {
      *
      * <p>Reutilisable par les briques amont/aval.</p>
      */
-    public static boolean isTransitionListed(FormsContext ctx, int fromStepId, String toStepTitle) {
+    public static boolean isTransitionListed(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, int fromStepId, String toStepTitle) {
         MacroSupport.navigate(ctx,
             MacroSupport.FORMS + "ManageTransitions.jsp?view=manageTransitions&id_step=" + fromStepId);
         Page page = ctx.page;

@@ -12,6 +12,8 @@ import fr.paris.lutece.e2e.tests.macro.data.PublishDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionType;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -39,7 +41,7 @@ import org.junit.jupiter.api.Test;
 public class ExportResponsesMacroTest extends MacroTest {
 
     @Step("Exporter les reponses depuis la multivue")
-    public static void run(FormsContext ctx, ExportDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, ExportDataSet data) {
         Page page = ctx.page;
         MacroSupport.navigate(ctx, MacroSupport.FORMS + "MultiviewForms.jsp");
 

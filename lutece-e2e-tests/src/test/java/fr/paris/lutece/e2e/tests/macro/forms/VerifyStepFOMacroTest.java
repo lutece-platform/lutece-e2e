@@ -8,6 +8,8 @@ import fr.paris.lutece.e2e.tests.macro.data.PublishDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionType;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -36,7 +38,7 @@ import org.junit.jupiter.api.Test;
 public class VerifyStepFOMacroTest extends MacroTest {
 
     @Step("Verifier l'etape affichee en front office")
-    public static void run(FormsContext ctx, String titreAttendu) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, String titreAttendu) {
         // Assertion web-first : l'etape vient d'etre atteinte par une navigation, la page peut
         // encore etre en cours de rendu. Lire le texte une fois jugerait l'instant du test.
         MacroSupport.exigerVisible(ctx.page.getByText(titreAttendu),
@@ -54,7 +56,7 @@ public class VerifyStepFOMacroTest extends MacroTest {
      * @param titreAbsent titre de l'etape qui ne doit pas etre affichee
      */
     @Step("Verifier qu'une etape n'est pas affichee en front office")
-    public static void absente(FormsContext ctx, String titreAbsent) {
+    public static void absente(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, String titreAbsent) {
         ctx.page.waitForLoadState();
         String contenu = ctx.page.locator("body").innerText().replaceAll("\\s+", " ");
         Assertions.assertFalse(contenu.contains(titreAbsent),

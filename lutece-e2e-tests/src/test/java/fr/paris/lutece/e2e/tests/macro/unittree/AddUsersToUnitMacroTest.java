@@ -7,6 +7,8 @@ import fr.paris.lutece.e2e.tests.macro.UnittreeContext;
 import fr.paris.lutece.e2e.tests.macro.UnittreeSupport;
 import fr.paris.lutece.e2e.tests.macro.data.UnitDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.UserAssignmentDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -27,7 +29,7 @@ import org.junit.jupiter.api.Test;
 public class AddUsersToUnitMacroTest extends MacroTest {
 
     @Step("Affecter un utilisateur a une unite")
-    public static void run(UnittreeContext ctx, UserAssignmentDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) UnittreeContext ctx, UserAssignmentDataSet data) {
         Assertions.assertFalse(ctx.units.isEmpty(), "Une unite doit exister avant d'y affecter un utilisateur");
         UnittreeContext.UnitRef u = ctx.lastUnit();
         Page page = ctx.page;

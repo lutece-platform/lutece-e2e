@@ -2,9 +2,12 @@ package fr.paris.lutece.e2e.tests.macro.forms;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import fr.paris.lutece.e2e.tests.macro.Evidence;
 import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.MacroSupport;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -38,7 +41,8 @@ import org.junit.jupiter.api.Test;
 public class VerifyResponseSubmittedMacroTest extends MacroTest {
 
     @Step("Prouver qu'une reponse est enregistree")
-    public static void run(FormsContext ctx) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx) {
+        Evidence.capture(ctx.page, "Multivue apres soumission");
         Assertions.assertTrue(ctx.formId > 0,
             "Un formulaire doit exister (ctx.formId) avant de verifier l'enregistrement d'une reponse");
 

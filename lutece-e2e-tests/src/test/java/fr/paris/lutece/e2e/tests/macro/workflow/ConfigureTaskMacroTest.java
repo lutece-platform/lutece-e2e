@@ -11,6 +11,8 @@ import fr.paris.lutece.e2e.tests.macro.data.StateDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.TaskConfigDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.TaskDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.WorkflowDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -93,7 +95,7 @@ public class ConfigureTaskMacroTest extends MacroTest {
      * @param data        reglages a appliquer
      */
     @Step("Parametrer la tache designee par son type")
-    public static void run(WorkflowContext ctx, String taskTypeKey, TaskConfigDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) WorkflowContext ctx, String taskTypeKey, TaskConfigDataSet data) {
         WorkflowContext.TaskRef tache = ctx.tasks.stream()
             .filter(t -> taskTypeKey.equals(t.typeKey))
             .reduce((premiere, derniere) -> derniere)
@@ -105,7 +107,7 @@ public class ConfigureTaskMacroTest extends MacroTest {
     }
 
     @Step("Parametrer la tache")
-    public static void run(WorkflowContext ctx, TaskConfigDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) WorkflowContext ctx, TaskConfigDataSet data) {
         Assertions.assertFalse(ctx.tasks.isEmpty(),
             "Une tache doit avoir ete ajoutee (ctx.tasks) avant d'etre parametree");
 

@@ -7,6 +7,8 @@ import fr.paris.lutece.e2e.tests.macro.WorkflowContext;
 import fr.paris.lutece.e2e.tests.macro.WorkflowSupport;
 import fr.paris.lutece.e2e.tests.macro.data.StateDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.WorkflowDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -35,7 +37,7 @@ import org.junit.jupiter.api.Test;
 public class ModifyStateMacroTest extends MacroTest {
 
     @Step("Renommer l'etat")
-    public static void run(WorkflowContext ctx, StateDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) WorkflowContext ctx, StateDataSet data) {
         Assertions.assertTrue(ctx.workflowId > 0 && !ctx.states.isEmpty(),
             "Un workflow et au moins un etat doivent exister avant de renommer un etat");
 

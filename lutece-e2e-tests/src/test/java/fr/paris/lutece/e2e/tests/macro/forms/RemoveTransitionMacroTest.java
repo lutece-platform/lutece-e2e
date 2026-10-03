@@ -10,6 +10,8 @@ import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.data.FormDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.TransitionDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -36,7 +38,7 @@ import org.junit.jupiter.api.Test;
 public class RemoveTransitionMacroTest extends MacroTest {
 
     @Step("Supprimer une transition entre deux etapes")
-    public static void run(FormsContext ctx, TransitionDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, TransitionDataSet data) {
         int maxIndex = Math.max(data.fromStepIndex(), data.toStepIndex());
         Assertions.assertTrue(ctx.steps.size() > maxIndex,
             "Les etapes source et cible doivent exister (ctx.steps) avant de supprimer une transition");

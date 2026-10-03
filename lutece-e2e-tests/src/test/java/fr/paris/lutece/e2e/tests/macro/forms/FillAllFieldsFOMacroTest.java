@@ -10,6 +10,8 @@ import fr.paris.lutece.e2e.tests.macro.data.PublishDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionType;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -58,7 +60,7 @@ public class FillAllFieldsFOMacroTest extends MacroTest {
     private static final int JOUR_CIBLE = 14;
 
     @Step("Renseigner toutes les reponses de l'etape")
-    public static int run(FormsContext ctx) {
+    public static int run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx) {
         Page page = ctx.page;
         page.waitForLoadState();
 

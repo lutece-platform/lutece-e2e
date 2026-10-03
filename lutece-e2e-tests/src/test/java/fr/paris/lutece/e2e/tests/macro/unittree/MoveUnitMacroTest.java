@@ -7,6 +7,8 @@ import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.UnittreeContext;
 import fr.paris.lutece.e2e.tests.macro.UnittreeSupport;
 import fr.paris.lutece.e2e.tests.macro.data.UnitDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -27,7 +29,7 @@ import org.junit.jupiter.api.Test;
 public class MoveUnitMacroTest extends MacroTest {
 
     @Step("Deplacer une unite sous un autre parent")
-    public static void run(UnittreeContext ctx, int movedIndex, int newParentIndex) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) UnittreeContext ctx, int movedIndex, int newParentIndex) {
         Assertions.assertTrue(ctx.units.size() > Math.max(movedIndex, newParentIndex),
             "Les unites a deplacer et le nouveau parent doivent exister");
         UnittreeContext.UnitRef moved = ctx.units.get(movedIndex);

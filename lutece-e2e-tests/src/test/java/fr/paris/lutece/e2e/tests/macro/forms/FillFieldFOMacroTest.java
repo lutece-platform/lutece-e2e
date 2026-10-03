@@ -12,6 +12,8 @@ import fr.paris.lutece.e2e.tests.macro.data.PublishDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionType;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -47,7 +49,7 @@ public class FillFieldFOMacroTest extends MacroTest {
     private static final int JOUR_CIBLE = 14;
 
     @Step("Remplir un champ en front-office")
-    public static void run(FormsContext ctx, FieldValueDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, FieldValueDataSet data) {
         Assertions.assertTrue(ctx.formId > 0,
             "Un formulaire doit exister (ctx.formId) avant de remplir un champ en front-office");
 

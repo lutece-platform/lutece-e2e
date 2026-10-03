@@ -14,6 +14,8 @@ import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionType;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.ValidationCheckDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -51,7 +53,7 @@ public class VerifyValidationErrorFOMacroTest extends MacroTest {
     };
 
     @Step("Verifier une erreur de validation en front office")
-    public static void run(FormsContext ctx, ValidationCheckDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, ValidationCheckDataSet data) {
         Assertions.assertTrue(ctx.formId > 0,
             "Un formulaire publie doit exister (ctx.formId) avant la verification FO");
 

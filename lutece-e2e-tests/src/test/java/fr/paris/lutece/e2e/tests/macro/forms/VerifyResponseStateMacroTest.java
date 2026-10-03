@@ -2,9 +2,12 @@ package fr.paris.lutece.e2e.tests.macro.forms;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import fr.paris.lutece.e2e.tests.macro.Evidence;
 import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.data.ResponseStateDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -37,7 +40,7 @@ public class VerifyResponseStateMacroTest extends MacroTest {
     private static final String SECTION_HISTORIQUE = "Historique";
 
     @Step("Verifier l'etat et l'historique de la reponse")
-    public static void run(FormsContext ctx, ResponseStateDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, ResponseStateDataSet data) {
         // On rouvre la reponse effectivement instruite plutot que la premiere de la liste : des
         // qu'un formulaire en compte plusieurs, controler l'etat d'un autre dossier reviendrait a
         // valider une action qui ne s'est jamais appliquee a celui qu'on vient de traiter.
@@ -48,6 +51,11 @@ public class VerifyResponseStateMacroTest extends MacroTest {
 
         Page page = ctx.page;
         String contenu = page.locator("body").innerText().replaceAll("\\s+", " ");
+
+        // C'est cet ecran qui fonde le verdict : sans lui, un rapport vert ne dit pas dans quel
+        // etat la reponse se trouvait, ni ce que les taches y ont depose.
+        Evidence.capture(page, "Detail de la reponse instruite");
+        Evidence.texte("Etat et historique de la reponse", extrait(contenu));
 
         if (data.expectedState() != null) {
             Assertions.assertTrue(contenu.contains(data.expectedState()),

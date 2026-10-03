@@ -6,6 +6,8 @@ import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.WorkflowContext;
 import fr.paris.lutece.e2e.tests.macro.WorkflowSupport;
 import fr.paris.lutece.e2e.tests.macro.data.WorkflowDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -29,7 +31,7 @@ import org.junit.jupiter.api.Test;
 public class CreateWorkflowMacroTest extends MacroTest {
 
     @Step("Creer le workflow")
-    public static void run(WorkflowContext ctx, WorkflowDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) WorkflowContext ctx, WorkflowDataSet data) {
         String name = data.name() + " " + ctx.runSuffix;
 
         WorkflowListPage list = new WorkflowListPage(ctx.page, ctx.baseUrl);

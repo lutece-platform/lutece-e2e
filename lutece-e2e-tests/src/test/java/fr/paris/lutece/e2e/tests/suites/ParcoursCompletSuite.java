@@ -1,5 +1,6 @@
 package fr.paris.lutece.e2e.tests.suites;
 
+import fr.paris.lutece.e2e.tests.macro.Evidence;
 import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.UnittreeContext;
@@ -16,6 +17,7 @@ import static fr.paris.lutece.e2e.tests.macro.scenarios.FormulaireBranchantScena
 import static fr.paris.lutece.e2e.tests.macro.scenarios.OrganisationScenario.UNITE_DIRECTION;
 import static fr.paris.lutece.e2e.tests.macro.scenarios.WorkflowInstructionScenario.*;
 import io.qameta.allure.Epic;
+import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
@@ -72,8 +74,17 @@ public class ParcoursCompletSuite extends MacroTest {
 
     @Test
     @Severity(SeverityLevel.CRITICAL)
+    @Description("Instruit deux dossiers issus des deux branches d'un meme formulaire : le premier "
+        + "par une demande de complement, le second par une demande de correction. Verifie a "
+        + "chaque fois que la reponse change d'etat, que les taches de l'action ont laisse leur "
+        + "trace dans l'historique, et que l'usager y trouve le lien qui le ramene sur sa reponse.")
     @DisplayName("Organisation, workflow outille, formulaire a embranchement, deux soumissions et instruction")
     void parcoursComplet() {
+        // Ce meme parcours ne se comporte pas pareil d'un site a l'autre : droits ouverts ou non,
+        // profil de configuration, URL publique declaree. Les porter dans le rapport evite de
+        // relire les logs pour savoir sur quoi un echec s'est produit.
+        Evidence.contexteDExecution(BASE_URL);
+
         String suffix = newSuffix();
         login();
 

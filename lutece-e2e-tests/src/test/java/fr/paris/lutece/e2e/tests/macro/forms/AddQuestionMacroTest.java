@@ -7,6 +7,8 @@ import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.MacroSupport;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -31,7 +33,7 @@ public class AddQuestionMacroTest extends MacroTest {
 
     /** Ajout strict : échoue (assertion) si la question ne peut pas être créée. */
     @Step("Ajouter une question")
-    public static void run(FormsContext ctx, QuestionDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, QuestionDataSet data) {
         doAdd(ctx, data);
     }
 
@@ -41,7 +43,7 @@ public class AddQuestionMacroTest extends MacroTest {
      * externe (session, créneau, géoloc, attribut MyLutece…) et s'ignorent proprement via
      * {@code Assumptions} plutôt que d'échouer.
      */
-    public static boolean tryAdd(FormsContext ctx, QuestionDataSet data) {
+    public static boolean tryAdd(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, QuestionDataSet data) {
         try {
             doAdd(ctx, data);
             return true;

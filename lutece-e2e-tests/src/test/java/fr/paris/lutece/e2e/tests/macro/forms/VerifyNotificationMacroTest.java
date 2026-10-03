@@ -1,9 +1,12 @@
 package fr.paris.lutece.e2e.tests.macro.forms;
 
 import com.microsoft.playwright.Locator;
+import fr.paris.lutece.e2e.tests.macro.Evidence;
 import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.data.NotificationDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -40,7 +43,7 @@ public class VerifyNotificationMacroTest extends MacroTest {
     private static final String ATTRIBUT_CANAL = "data-bs-original-title";
 
     @Step("Verifier le contenu de la notification deposee sur la reponse")
-    public static void run(FormsContext ctx, NotificationDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, NotificationDataSet data) {
         boolean ouvert = OpenResponseDetailMacroTest.openFirstResponseDetail(ctx);
         Assumptions.assumeTrue(ouvert,
             "aucune reponse a inspecter dans la multivue : notification non verifiable");
@@ -58,9 +61,11 @@ public class VerifyNotificationMacroTest extends MacroTest {
             lus.append('[').append(canal).append(" : ").append(contenu).append(']');
             if (canal != null && canal.contains(data.canal())
                 && contenu.contains(data.message())) {
+                Evidence.texte("Notification " + canal, contenu);
                 return;
             }
         }
+        Evidence.texte("Notifications lues sur la reponse", lus.toString());
         Assertions.fail("Aucune notification '" + data.canal() + "' ne porte le message '"
             + data.message() + "'. Notifications lues : " + lus);
     }

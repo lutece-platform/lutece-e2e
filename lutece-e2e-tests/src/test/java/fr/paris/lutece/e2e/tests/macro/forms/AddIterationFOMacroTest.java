@@ -14,6 +14,8 @@ import fr.paris.lutece.e2e.tests.macro.data.PublishDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionType;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -60,7 +62,7 @@ public class AddIterationFOMacroTest extends MacroTest {
     private static final Pattern ADD = Pattern.compile("ajouter", Pattern.CASE_INSENSITIVE);
 
     @Step("Ajouter une iteration de groupe repetable en front office")
-    public static void run(FormsContext ctx) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx) {
         Assertions.assertTrue(ctx.formId > 0,
             "Un formulaire publie doit exister (ctx.formId) avant la verification FO");
 

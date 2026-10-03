@@ -7,6 +7,8 @@ import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.MacroSupport;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.data.ImportDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -39,7 +41,7 @@ public class ImportFormJsonMacroTest extends MacroTest {
     private static final Pattern IMPORT = Pattern.compile("Importer", Pattern.CASE_INSENSITIVE);
 
     @Step("Importer un formulaire au format JSON")
-    public static void run(FormsContext ctx, ImportDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, ImportDataSet data) {
         // Un fichier JSON est indispensable pour piloter l'import
         Assumptions.assumeTrue(data.filePath() != null && !data.filePath().isBlank(),
             "Aucun fichier JSON fourni : l'import necessite un fichier (ImportDataSet.of(path))");

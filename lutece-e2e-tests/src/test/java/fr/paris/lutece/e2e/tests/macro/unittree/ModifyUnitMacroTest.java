@@ -5,6 +5,8 @@ import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.UnittreeContext;
 import fr.paris.lutece.e2e.tests.macro.UnittreeSupport;
 import fr.paris.lutece.e2e.tests.macro.data.UnitDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -24,7 +26,7 @@ import org.junit.jupiter.api.Test;
 public class ModifyUnitMacroTest extends MacroTest {
 
     @Step("Modifier une unite")
-    public static void run(UnittreeContext ctx, UnitDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) UnittreeContext ctx, UnitDataSet data) {
         Assertions.assertFalse(ctx.units.isEmpty(), "Une unite doit exister avant modification");
         UnittreeContext.UnitRef u = ctx.lastUnit();
         String newLabel = data.label() + " " + ctx.runSuffix;

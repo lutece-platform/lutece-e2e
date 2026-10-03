@@ -11,6 +11,8 @@ import fr.paris.lutece.e2e.tests.macro.data.GroupTargetDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionType;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -36,7 +38,7 @@ import org.junit.jupiter.api.Test;
 public class VerifyGroupHierarchyMacroTest extends MacroTest {
 
     @Step("Verifier la hierarchie du groupe")
-    public static void run(FormsContext ctx, GroupTargetDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, GroupTargetDataSet data) {
         Assertions.assertTrue(!ctx.groups.isEmpty() && !ctx.questions.isEmpty(),
             "Au moins un groupe et une question doivent exister pour verifier la hierarchie");
 

@@ -10,6 +10,8 @@ import fr.paris.lutece.e2e.tests.macro.data.PublishDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionType;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -36,7 +38,7 @@ import org.junit.jupiter.api.Test;
 public class OpenResponseDetailMacroTest extends MacroTest {
 
     @Step("Ouvrir le detail de la premiere reponse")
-    public static void run(FormsContext ctx) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx) {
         boolean opened = openFirstResponseDetail(ctx);
         Assumptions.assumeTrue(opened,
             "aucune reponse a ouvrir dans la multivue (multivue vide) : detail non pilotable");

@@ -12,6 +12,8 @@ import fr.paris.lutece.e2e.tests.macro.data.ActionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.StateDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.TaskDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.WorkflowDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -48,7 +50,7 @@ public class AddTaskToActionMacroTest extends MacroTest {
     private static final double ACTION_LINK_TIMEOUT_MS = 5000;
 
     @Step("Ajouter une tache a une action")
-    public static void run(WorkflowContext ctx, TaskDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) WorkflowContext ctx, TaskDataSet data) {
         Assertions.assertTrue(ctx.workflowId > 0, "Un workflow doit exister (ctx.workflowId)");
         Assertions.assertFalse(ctx.actions.isEmpty(),
             "Une action doit exister (ctx.actions) avant d'ajouter une tache");

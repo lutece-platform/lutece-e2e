@@ -13,6 +13,8 @@ import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.StepTargetDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.TransitionControlDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.TransitionDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -50,7 +52,7 @@ public class AddTransitionControlMacroTest extends MacroTest {
     private static final String TYPE_CONTROLE = "TRANSITION";
 
     @Step("Conditionner la transition")
-    public static void run(FormsContext ctx, TransitionControlDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, TransitionControlDataSet data) {
         Assertions.assertTrue(ctx.formId > 0 && ctx.steps.size() > data.fromStepIndex(),
             "Un formulaire et l'etape source doivent exister avant de conditionner une transition");
         Assertions.assertTrue(ctx.questions.size() > data.pilotQuestionIndex(),

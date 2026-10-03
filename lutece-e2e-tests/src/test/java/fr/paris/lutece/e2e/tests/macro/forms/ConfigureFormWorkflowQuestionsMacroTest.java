@@ -10,6 +10,8 @@ import fr.paris.lutece.e2e.tests.macro.data.FormWorkflowQuestionsDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.QuestionType;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import io.qameta.allure.Param;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
@@ -44,7 +46,7 @@ public class ConfigureFormWorkflowQuestionsMacroTest extends MacroTest {
     private static final String COMPLEMENT = "used_in_complete_form_response_";
 
     @Step("Declarer les questions rouvertes en correction et en complement")
-    public static void run(FormsContext ctx, FormWorkflowQuestionsDataSet data) {
+    public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, FormWorkflowQuestionsDataSet data) {
         Assertions.assertTrue(ctx.formId > 0,
             "Un formulaire doit exister avant de declarer ses questions de correction et de complement");
 
