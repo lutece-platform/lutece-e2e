@@ -41,8 +41,22 @@ public class LuteceContainer extends GenericContainer<LuteceContainer> {
         // Exposer les ports HTTP et HTTPS
         withExposedPorts(HTTP_PORT, HTTPS_PORT);
 
-        // Proprietes systeme Java pour OpenLiberty (via JVM_ARGS)
-        withEnv("JVM_ARGS", "-Dotel.sdk.disabled=true -Dmp.config.profile=test");
+        // Proprietes systeme Java pour OpenLiberty (via JVM_ARGS).
+        //
+        // L'URL publique du site doit etre declaree sous le profil actif. L'image ne connait que
+        // les profils « rec » et « prod », dont le premier pointe sur une adresse publique qui
+        // n'a pas de sens pour un conteneur ephemere : sous le profil « test », aucune surcharge
+        // ne s'applique et lutece.prod.url reste vide. Les traitements qui batissent une adresse
+        // de retour vers le front office — les signets de demande de correction ou de complement
+        // — echouent alors a l'execution de l'action, par une NullPointerException serveur qui
+        // annule toute la transition sans message a l'ecran.
+        //
+        // L'adresse declaree est celle du site vu de l'interieur du conteneur : le port publie sur
+        // l'hote n'est attribue qu'au demarrage, donc apres la construction de cette commande.
+        String urlInterne = "http://localhost:" + HTTP_PORT + contextRoot;
+        withEnv("JVM_ARGS", "-Dotel.sdk.disabled=true -Dmp.config.profile=test"
+            + " -D%test.lutece.prod.url=" + urlInterne
+            + " -D%test.workflow-forms.url_return=" + urlInterne);
 
         // Attendre que Liberty soit prêt (message CWWKF0011I = Server ready)
         // 5 minutes pour permettre à Liquibase de terminer les migrations
