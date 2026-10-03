@@ -48,8 +48,7 @@ public class NextStepFOMacroTest extends MacroTest {
         Page page = ctx.page;
         page.waitForLoadState();
 
-        Locator next = page.getByRole(AriaRole.BUTTON,
-            new Page.GetByRoleOptions().setName("Etape suivante"));
+        Locator next = nextStepButton(page);
         boolean present = next.count() > 0 && next.first().isVisible();
         Assumptions.assumeTrue(present,
             "Bouton 'Etape suivante' absent (formulaire mono-etape ou etape finale) : brique ignoree");
@@ -64,12 +63,27 @@ public class NextStepFOMacroTest extends MacroTest {
                 + "un blocage de validation laisse la page inchangee)");
     }
 
+    /**
+     * Localise le bouton de passage a l'etape suivante.
+     *
+     * <p>Cible l'identifiant de l'action plutot que son libelle. Le libelle rendu est
+     * "Étape suivante", avec un E accentue : {@code getByRole} ne normalise pas les accents, si
+     * bien qu'une recherche sur "Etape suivante" ne correspondait a rien et faisait ignorer la
+     * brique sans que rien ne le signale. L'identifiant, lui, est stable et porte par le
+     * formulaire quel que soit le theme.</p>
+     *
+     * @param page page front-office courante
+     * @return le localisateur du bouton d'etape suivante
+     */
+    private static Locator nextStepButton(Page page) {
+        return page.locator("button#action_doSaveStep");
+    }
+
     /** Signature best-effort de l'etat de page : URL + 1er titre visible + comptes de boutons de flux. */
     private static String signature(Page page) {
         String url = page.url();
         String heading = firstText(page, "h1, h2, h3, legend");
-        int nextCount = page.getByRole(AriaRole.BUTTON,
-            new Page.GetByRoleOptions().setName("Etape suivante")).count();
+        int nextCount = nextStepButton(page).count();
         int summaryCount = page.getByRole(AriaRole.BUTTON,
             new Page.GetByRoleOptions().setName("Voir le récapitulatif")).count();
         int validateCount = page.getByRole(AriaRole.BUTTON,

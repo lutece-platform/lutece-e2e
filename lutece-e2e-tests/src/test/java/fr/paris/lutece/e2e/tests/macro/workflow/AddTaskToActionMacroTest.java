@@ -3,6 +3,7 @@ package fr.paris.lutece.e2e.tests.macro.workflow;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
+import com.microsoft.playwright.options.WaitForSelectorState;
 import fr.paris.lutece.e2e.pages.bo.WorkflowEditPage;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.WorkflowContext;
@@ -38,6 +39,14 @@ import org.junit.jupiter.api.Test;
 @Tag("brick")
 public class AddTaskToActionMacroTest extends MacroTest {
 
+    /**
+     * Delai d'apparition des liens d'action apres activation de l'onglet, en millisecondes.
+     *
+     * <p>Couvre l'initialisation des onglets Bootstrap sans allonger le cas ou le workflow ne
+     * porte reellement aucune action modifiable.</p>
+     */
+    private static final double ACTION_LINK_TIMEOUT_MS = 5000;
+
     @Step("Ajouter une tache a une action")
     public static void run(WorkflowContext ctx, TaskDataSet data) {
         Assertions.assertTrue(ctx.workflowId > 0, "Un workflow doit exister (ctx.workflowId)");
@@ -56,8 +65,17 @@ public class AddTaskToActionMacroTest extends MacroTest {
         }
 
         // Ouvrir ModifyAction.jsp : lien porteur de token, on garde sa presence pour eviter un hang.
+        // Les liens vivent dans l'onglet Actions : tant qu'il n'est pas reellement active, ils ne
+        // sont pas exposes (count = 0). Le clic ci-dessus depend de l'initialisation des onglets
+        // Bootstrap, donc d'un chargement JS : on attend leur apparition au lieu de la supposer.
         Locator modifyActionLink = ctx.page.getByRole(AriaRole.LINK,
             new Page.GetByRoleOptions().setName("Modifier l'action"));
+        try {
+            modifyActionLink.first().waitFor(new Locator.WaitForOptions()
+                .setState(WaitForSelectorState.VISIBLE).setTimeout(ACTION_LINK_TIMEOUT_MS));
+        } catch (RuntimeException notShown) {
+            // Laisse l'assomption ci-dessous statuer avec son message explicite.
+        }
         boolean actionModifiable = modifyActionLink.count() > 0 && modifyActionLink.first().isVisible();
         Assumptions.assumeTrue(actionModifiable,
             "Aucun lien 'Modifier l'action' visible : impossible d'ouvrir la configuration des taches, test ignore");

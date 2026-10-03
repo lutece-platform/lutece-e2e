@@ -62,7 +62,16 @@ public class OpenResponseDetailMacroTest extends MacroTest {
             MacroSupport.FORMS + "MultiviewForms.jsp?plugin_name=forms&selected_panel=forms&change_panel=true");
         page.waitForLoadState();
 
-        // 1) Liens de detail explicites (view_form_response_details / ManageDirectoryFormResponseDetails)
+        // 1) Ligne porteuse de son URL de detail : la multivue ne rend pas de lien dans ses
+        // cellules, c'est le <tr> qui porte data-url et le clic sur la ligne qui ouvre le detail.
+        Locator lignesCliquables = page.locator("table tbody tr[data-url]");
+        if (lignesCliquables.count() > 0 && lignesCliquables.first().isVisible()) {
+            lignesCliquables.first().click();
+            page.waitForLoadState();
+            return true;
+        }
+
+        // 2) Liens de detail explicites (view_form_response_details / ManageDirectoryFormResponseDetails)
         for (String hint : new String[] {"view_form_response_details", "ManageDirectoryFormResponseDetails"}) {
             Locator links = page.locator("a[href*='" + hint + "']");
             if (links.count() > 0 && links.first().isVisible()) {
@@ -72,7 +81,7 @@ public class OpenResponseDetailMacroTest extends MacroTest {
             }
         }
 
-        // 2) Repli : premier lien d'une ligne du tableau des reponses
+        // 3) Repli : premier lien d'une ligne du tableau des reponses
         Locator rowLinks = page.locator("table tbody tr a");
         if (rowLinks.count() > 0 && rowLinks.first().isVisible()) {
             rowLinks.first().click();
