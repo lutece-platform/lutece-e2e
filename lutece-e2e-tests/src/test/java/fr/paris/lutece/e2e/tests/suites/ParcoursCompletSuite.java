@@ -14,12 +14,13 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
- * Parcours metier complet, de l'organisation jusqu'a l'instruction d'une reponse.
+ * Parcours metier complet, de l'organisation jusqu'a l'instruction de deux reponses.
  *
  * <p>Couvre en une seule execution les quatre briques fonctionnelles du socle, chacune dans sa
  * version non triviale, et surtout leurs points de jonction — c'est la ou les regressions
@@ -27,29 +28,28 @@ import org.junit.jupiter.api.Test;
  *
  * <ol>
  *   <li><b>Unittree</b> : deux entites organisationnelles et l'affectation d'un agent.</li>
- *   <li><b>Workflow</b> : quatre etats, trois actions formant un graphe branchant (prise en
- *       charge, puis complement <i>ou</i> cloture), et cinq taches sur l'action d'entree,
- *       <i>chacune reellement parametree</i> : une tache inseree sans configuration est inoperante
- *       — une mise a jour de statut sans choix publie/depublie, une affectation sans mode
- *       d'assignation ni strategie de selection d'entite. C'est cette derniere qui raccroche le
- *       workflow aux entites creees au point 1. Puis activation.</li>
- *   <li><b>Formulaire</b> : trois etapes enchainees par transitions, portant ensemble quatorze
- *       types de question differents — du texte au creneau horaire en passant par les listes, le
- *       fichier et l'attribut d'utilisateur —, association au workflow, publication.</li>
- *   <li><b>Front office puis instruction</b> : saisie etape par etape, recapitulatif, validation,
- *       puis execution d'une action du workflow sur la reponse recue.</li>
+ *   <li><b>Workflow</b> : cinq etats et quatre actions formant un graphe branchant, portant
+ *       ensemble onze types de taches differents repartis sur les quatre actions —
+ *       publication, commentaire, affectation a une entite, confirmation, notification de l'usager,
+ *       demande de complement, demande de correction, piece jointe, notification de l'entite.
+ *       <i>Chacune est reellement parametree et sa configuration relue</i> : une tache inseree sans
+ *       configuration n'echoue pas a l'enregistrement, elle fait echouer l'action bien plus tard,
+ *       par une erreur serveur qui annule la transition sans aucun message a l'ecran.</li>
+ *   <li><b>Formulaire</b> : quatre etapes dont un embranchement — l'etape d'identite mene a l'une
+ *       ou l'autre des deux etapes de detail selon la nature de la demande, et les deux branches se
+ *       rejoignent sur une etape finale de confirmation. Les questions couvrent quinze
+ *       types differents, listes reellement pourvues de leurs choix. Puis association au workflow et
+ *       publication.</li>
+ *   <li><b>Front office puis instruction</b> : <i>deux</i> soumissions, une par branche, chacune
+ *       verifiant l'etape atteinte et celle qui a ete ecartee, puis l'enchainement de deux actions
+ *       de workflow sur la reponse recue, avec controle de l'etat, de l'historique, du
+ *       contenu de la notification adressee a l'usager et de ce que les taches y ont depose.</li>
  * </ol>
  *
  * <p>L'ordre n'est pas arbitraire : le workflow doit etre actif avant d'etre associe, le
  * formulaire publie avant d'etre ouvert en front office, et une reponse soumise avant qu'une
- * action puisse s'y appliquer.</p>
- *
- * <p><b>Etapes conditionnelles.</b> Conditionner une transition, pour faire bifurquer le parcours
- * selon une reponse, demande d'attacher un controle a cette transition — ce que fait
- * {@code AddTransitionControlMacroTest}. L'ecran exige un « type de controle », dont la liste est
- * vide sur les sites d'integration eprouves : aucun validateur n'y est expose, et l'enregistrement
- * est refuse. La brique existe et s'ignore avec ce diagnostic ; elle n'est pas appelee ici pour ne
- * pas rendre tout le parcours tributaire de cette absence.</p>
+ * action puisse s'y appliquer. Les taches qui se branchent sur un formulaire font exception et
+ * sont ajoutees apres sa creation, d'ou le retour sur le workflow en milieu de parcours.</p>
  *
  * <p>Execution :</p>
  * <pre>
@@ -62,7 +62,7 @@ import org.junit.jupiter.api.Test;
 @Feature("Parcours complet")
 @Tag("macro")
 @Tag("suite")
-@DisplayName("Parcours complet : unites, workflow multi-etats, formulaire multi-etapes, soumission FO et instruction")
+@DisplayName("Parcours complet : unites, workflow multi-etats, formulaire a embranchement, deux soumissions FO et instruction")
 public class ParcoursCompletSuite extends MacroTest {
 
     private static final String UNITE_DIRECTION = "Direction des demarches";
@@ -71,37 +71,63 @@ public class ParcoursCompletSuite extends MacroTest {
     private static final String ETAT_NOUVELLE = "Nouvelle demande";
     private static final String ETAT_INSTRUCTION = "En cours d'instruction";
     private static final String ETAT_COMPLEMENT = "Complement demande";
+    private static final String ETAT_CORRECTION = "Correction demandee";
     private static final String ETAT_CLOTUREE = "Cloturee";
-    private static final String ACTION_PRISE_EN_CHARGE = "Prendre en charge";
 
+    private static final String ACTION_PRISE_EN_CHARGE = "Prendre en charge";
+    private static final String ACTION_COMPLEMENT = "Demander un complement";
+    private static final String ACTION_CORRECTION = "Demander une correction";
+    private static final String ACTION_CLOTURE = "Cloturer";
+
+    private static final String ETAPE_IDENTITE = "Identite";
+    private static final String ETAPE_SUBVENTION = "Dossier de subvention";
+    private static final String ETAPE_INFORMATION = "Demande d'information";
+    private static final String ETAPE_CONFIRMATION = "Confirmation";
+
+    private static final String Q_NATURE = "Nature de la demande";
     private static final String Q_NOM = "Nom du demandeur";
     private static final String Q_NAISSANCE = "Date de naissance";
     private static final String Q_OBJET = "Objet de la demande";
     private static final String Q_MONTANT = "Montant demande";
-    private static final String Q_PRECISIONS = "Precisions complementaires";
+    private static final String Q_SUJET = "Sujet de la question";
+
+    private static final String CHOIX_SUBVENTION = "Subvention";
+    private static final String CHOIX_INFORMATION = "Information";
+
+    private static final String COMMENTAIRE_INSTRUCTION = "Commentaire d'instruction";
+    private static final String MESSAGE_NOTIFICATION = "Votre demande est en cours d'instruction";
+    private static final String MESSAGE_COMPLEMENT = "Merci de completer votre dossier.";
+    private static final String TRACE_NOTIFICATION = "Voir les notifications";
+    private static final String CANAL_NOTIFICATION = "Agent";
 
     @Test
     @Severity(SeverityLevel.CRITICAL)
-    @DisplayName("Organisation, workflow, formulaire multi-etapes, soumission front office et instruction")
+    @DisplayName("Organisation, workflow outille, formulaire a embranchement, deux soumissions et instruction")
     void parcoursComplet() {
         String suffix = newSuffix();
         login();
 
         UnittreeContext units = organisation(suffix);
-        WorkflowContext wf = workflow(suffix);
-        FormsContext forms = formulaire(suffix, wf);
-        soumissionFrontOffice(forms);
+        WorkflowContext wf = workflow(suffix, units);
+        FormsContext forms = formulaire(suffix);
+        completerWorkflowAvecLeFormulaire(wf, forms);
+        mettreEnService(forms, wf);
+
+        soumettre(forms, CHOIX_SUBVENTION, ETAPE_SUBVENTION, ETAPE_INFORMATION);
+        soumettre(forms, CHOIX_INFORMATION, ETAPE_INFORMATION, ETAPE_SUBVENTION);
+        indexer(forms);
+
         instruction(forms);
 
-        org.junit.jupiter.api.Assertions.assertAll(
-            () -> org.junit.jupiter.api.Assertions.assertEquals(2, units.units.size(),
+        Assertions.assertAll(
+            () -> Assertions.assertEquals(2, units.units.size(),
                 "Les deux unites doivent avoir ete creees"),
-            () -> org.junit.jupiter.api.Assertions.assertEquals(4, wf.states.size(),
-                "Les quatre etats du workflow doivent avoir ete crees"),
-            () -> org.junit.jupiter.api.Assertions.assertEquals(3, wf.actions.size(),
-                "Les trois actions du workflow doivent avoir ete creees"),
-            () -> org.junit.jupiter.api.Assertions.assertEquals(3, forms.steps.size(),
-                "Les trois etapes du formulaire doivent avoir ete creees"));
+            () -> Assertions.assertEquals(5, wf.states.size(),
+                "Les cinq etats du workflow doivent avoir ete crees"),
+            () -> Assertions.assertEquals(4, wf.actions.size(),
+                "Les quatre actions du workflow doivent avoir ete creees"),
+            () -> Assertions.assertEquals(4, forms.steps.size(),
+                "Les quatre etapes du formulaire doivent avoir ete creees"));
     }
 
     /**
@@ -124,49 +150,36 @@ public class ParcoursCompletSuite extends MacroTest {
     }
 
     /**
-     * Workflow d'instruction : quatre etats et trois actions formant un graphe branchant, plusieurs
-     * taches portees par la premiere action, puis activation.
+     * Workflow d'instruction : cinq etats, quatre actions, et les taches qui ne dependent que du
+     * workflow lui-meme.
+     *
+     * <p>Les taches sont volontairement reparties sur les quatre actions plutot que concentrees sur
+     * l'action d'entree : c'est ce que fait un workflow reel, et seul cet eclatement verifie que
+     * chaque transition execute bien les siennes.</p>
      *
      * @param suffix suffixe unique du run
+     * @param units  entites organisationnelles sur lesquelles s'appuie la tache d'affectation
      * @return le contexte workflow alimente
      */
-    private WorkflowContext workflow(String suffix) {
+    private WorkflowContext workflow(String suffix, UnittreeContext units) {
         WorkflowContext wf = new WorkflowContext(page, BASE_URL, suffix);
         CreateWorkflowMacroTest.run(wf, WorkflowDataSet.defaults().withName("Instruction demande"));
 
         AddStateMacroTest.run(wf, StateDataSet.initial(ETAT_NOUVELLE));
         AddStateMacroTest.run(wf, StateDataSet.of(ETAT_INSTRUCTION));
         AddStateMacroTest.run(wf, StateDataSet.of(ETAT_COMPLEMENT));
+        AddStateMacroTest.run(wf, StateDataSet.of(ETAT_CORRECTION));
         AddStateMacroTest.run(wf, StateDataSet.of(ETAT_CLOTUREE));
 
         AddActionMacroTest.run(wf, ActionDataSet.of(ACTION_PRISE_EN_CHARGE, 0, 1));
-        AddActionMacroTest.run(wf, ActionDataSet.of("Demander un complement", 1, 2));
-        AddActionMacroTest.run(wf, ActionDataSet.of("Cloturer", 1, 3));
+        AddActionMacroTest.run(wf, ActionDataSet.of(ACTION_COMPLEMENT, 1, 2));
+        AddActionMacroTest.run(wf, ActionDataSet.of(ACTION_CORRECTION, 1, 3));
+        AddActionMacroTest.run(wf, ActionDataSet.of(ACTION_CLOTURE, 1, 4));
 
-        AddTaskToActionMacroTest.run(wf, TaskDataSet.of("modifyUpdateStatusTask"));
-        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
-            .radio("published", "true"));
-
-        AddTaskToActionMacroTest.run(wf, TaskDataSet.of("taskTypeComment"));
-        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
-            .texte("title", "Commentaire d'instruction")
-            .radio("mandatory", "false")
-            .radio("richText", "true"));
-
-        AddTaskToActionMacroTest.run(wf, TaskDataSet.of("taskUnitAssignmentManual"));
-        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
-            .radio("assignment_type", "create")
-            .selection("unit_selection_id_to_add", "ParametrableUnitSelection")
-            .appliquer());
-
-        AddTaskToActionMacroTest.run(wf, TaskDataSet.of("taskTypeConfirmAction"));
-        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
-            .texte("message", "Confirmez-vous la prise en charge de cette demande ?"));
-
-        AddTaskToActionMacroTest.run(wf, TaskDataSet.of("completeFormResponseTypeTask"));
-        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
-            .selection("idStateAfterEdition", wf.states.get(2).name)
-            .texte("defaultMessage", "Merci de completer votre dossier."));
+        tachesDePriseEnCharge(wf, units);
+        tachesDeComplement(wf);
+        tachesDeCorrection(wf);
+        tachesDeCloture(wf);
 
         ActivateWorkflowMacroTest.run(wf);
         VerifyWorkflowActiveMacroTest.run(wf);
@@ -174,96 +187,355 @@ public class ParcoursCompletSuite extends MacroTest {
     }
 
     /**
-     * Formulaire a trois etapes enchainees par transitions, chacune portant plusieurs questions de
-     * types differents, associe au workflow actif puis publie.
+     * Taches de l'action d'entree : publication, commentaire, affectation, notification, confirmation.
      *
-     * @param suffix suffixe unique du run
-     * @param wf     workflow actif a associer
-     * @return le contexte formulaire alimente
+     * @param wf    contexte workflow courant
+     * @param units entites organisationnelles disponibles
      */
-    private FormsContext formulaire(String suffix, WorkflowContext wf) {
-        FormsContext forms = new FormsContext(page, BASE_URL, suffix);
+    private void tachesDePriseEnCharge(WorkflowContext wf, UnittreeContext units) {
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("modifyUpdateStatusTask", ACTION_PRISE_EN_CHARGE));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .radio("published", "true"));
+
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("taskTypeComment", ACTION_PRISE_EN_CHARGE));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .texte("title", COMMENTAIRE_INSTRUCTION)
+            .radio("mandatory", "false")
+            .radio("richText", "true"));
+
+        // Le mode de selection retenu est celui qui se suffit a lui-meme. « Assigner une entite
+        // selon le parametrage defini » exige, apres l'ajout du mode, de designer une configuration
+        // parametrable puis un formulaire support, et ce parametrage se fait sur le formulaire
+        // lui-meme : il est couvert plus loin, une fois le formulaire cree.
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("taskUnitAssignmentManual", ACTION_PRISE_EN_CHARGE));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .radio("assignment_type", "create")
+            .selection("unit_selection_id_to_add", "UnitSelectionSpecificUnit")
+            .appliquer("addUnitSelection")
+            .selection("task_unit_assignment_config_selection_specific_unit_id",
+                String.valueOf(units.unit(0).id)));
+
+        // La notification se parametre en deux temps : le fournisseur de donnees doit etre
+        // enregistre avant que les canaux ne deviennent proposables. Le canal « agent » est celui
+        // dont le contenu se retrouve dans l'historique de la reponse, donc observable.
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("taskNotifyGru", ACTION_PRISE_EN_CHARGE));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .selectionLibelle("list_provider", "Forms")
+            .case_("marker_providers", "workflow-notifygru.commentMarkerProvider")
+            .enregistrer()
+            .selection("added_notification_config", "agent")
+            .appliquer("AddNotificationConfig")
+            .texte("status_text_agent", ETAT_INSTRUCTION)
+            .texte("message_agent", MESSAGE_NOTIFICATION));
+
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("taskTypeConfirmAction", ACTION_PRISE_EN_CHARGE));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .texte("message", "Confirmez-vous la prise en charge de cette demande ?"));
+    }
+
+    /**
+     * Taches de l'action de demande de complement.
+     *
+     * @param wf contexte workflow courant
+     */
+    private void tachesDeComplement(WorkflowContext wf) {
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("completeFormResponseTypeTask", ACTION_COMPLEMENT));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .selection("idStateAfterEdition", wf.states.get(2).name)
+            .texte("defaultMessage", MESSAGE_COMPLEMENT));
+
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("taskUnitAssignmentNotification", ACTION_COMPLEMENT));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .texte("subject", "Complement demande sur un dossier")
+            .texte("message", "Un complement a ete demande a l'usager."));
+    }
+
+    /**
+     * Taches de l'action de demande de correction.
+     *
+     * @param wf contexte workflow courant
+     */
+    private void tachesDeCorrection(WorkflowContext wf) {
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("resubmitFormResponseTypeTask", ACTION_CORRECTION));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .selection("idStateAfterEdition", wf.states.get(3).name)
+            .texte("defaultMessage", "Merci de corriger votre saisie."));
+
+        // Piece jointe non obligatoire : l'exiger imposerait un televersement a chaque passage de
+        // l'action, ce qui n'est pas l'objet du controle.
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("taskTypeUpload", ACTION_CORRECTION));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .texte("title", "Piece a l'appui de la correction")
+            .texte("maxFile", "1")
+            .texte("maxSizeFile", "1000000")
+            .radio("mandatory", "false"));
+    }
+
+    /**
+     * Taches de l'action de cloture.
+     *
+     * @param wf contexte workflow courant
+     */
+    private void tachesDeCloture(WorkflowContext wf) {
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("modifyUpdateDateTypeTask", ACTION_CLOTURE));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide());
+    }
+
+    /**
+     * Taches qui se branchent sur un formulaire, ajoutees une fois celui-ci cree.
+     *
+     * <p>Ces taches designent un formulaire support dans leur configuration : elles ne peuvent donc
+     * pas etre posees au moment ou le workflow est bati. Revenir sur le workflow a ce stade est la
+     * demarche normale, et c'est aussi ce qui verifie qu'un workflow deja actif reste modifiable.</p>
+     *
+     * @param wf    contexte workflow courant
+     * @param forms formulaire support
+     */
+    private void completerWorkflowAvecLeFormulaire(WorkflowContext wf, FormsContext forms) {
+        // La notification de l'usager ne lit pas la reponse directement : elle passe par un mapping
+        // qui, pour ce formulaire, designe les questions portant ses coordonnees. Sans lui, l'action
+        // echoue a l'execution et annule toute la transition.
+        CreateNotifygruMappingMacroTest.run(forms);
+
+        AddTaskToActionMacroTest.run(wf, TaskDataSet.sur("editFormResponseTypeTask", ACTION_CLOTURE));
+        ConfigureTaskMacroTest.run(wf, TaskConfigDataSet.vide()
+            .selectionLibelle("form_select", forms.formTitle)
+            .appliquer("select_form_config"));
+    }
+
+    /**
+     * Associe le formulaire au workflow actif, puis le publie.
+     *
+     * @param forms contexte formulaire courant
+     * @param wf    workflow a associer
+     */
+    private void mettreEnService(FormsContext forms, WorkflowContext wf) {
         forms.workflowId = wf.workflowId;
         forms.workflowName = wf.workflowName;
-
-        CreateFormMacroTest.run(forms, FormDataSet.defaults().withTitle("Parcours complet"));
-
-        CreateStepMacroTest.run(forms, StepDataSet.of("Identite"));
-        CreateStepMacroTest.run(forms, StepDataSet.of("Details de la demande"));
-        CreateStepMacroTest.run(forms, StepDataSet.finalStep("Confirmation"));
-        SetStepInitialMacroTest.run(forms, StepTargetDataSet.of(0));
-        SetStepFinalMacroTest.run(forms, StepTargetDataSet.of(2));
-        UnsetStepFinalMacroTest.run(forms, StepTargetDataSet.of(0));
-        CreateTransitionMacroTest.run(forms, TransitionDataSet.of(0, 1));
-        CreateTransitionMacroTest.run(forms, TransitionDataSet.of(1, 2));
-
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TEXT, Q_NOM).onStep(0));
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.DATE, Q_NAISSANCE).onStep(0));
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TELEPHONE, "Telephone").onStep(0));
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.NUMBERING, "Numero de dossier").onStep(0));
-
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TEXTAREA, Q_OBJET).onStep(1));
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.NUMBER, Q_MONTANT).onStep(1));
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.RADIO, "Type de demandeur").onStep(1));
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.CHECKBOX, "Dispositifs concernes").onStep(1));
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.SELECT, "Direction de rattachement").onStep(1));
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.SELECT_ORDER, "Priorites par ordre").onStep(1));
-
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TEXT, Q_PRECISIONS).onStep(2));
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.FILE, "Piece justificative").onStep(2));
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.SLOT, "Creneau de rendez-vous").onStep(2));
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.SESSION, "Session").onStep(2));
-        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.MYLUTECE_ATTRIBUTE, "Attribut utilisateur").onStep(2));
-
         AssociateWorkflowMacroTest.run(forms, WorkflowRefDataSet.of(wf.workflowName));
         PublishFormMacroTest.run(forms, PublishDataSet.defaults());
+    }
+
+    /**
+     * Formulaire a embranchement : quatre etapes, deux branches qui se rejoignent.
+     *
+     * <p>L'etape d'identite porte la question qui pilote le parcours. Deux transitions en partent :
+     * la premiere, conditionnee sur le choix « subvention », mene au dossier ; la seconde, laissee
+     * sans condition, sert de sortie par defaut et mene a la demande d'information. Lutece les
+     * examine dans l'ordre de leur priorite et emprunte la premiere dont les conditions sont
+     * satisfaites — l'ordre de creation fait donc partie du scenario.</p>
+     *
+     * @param suffix suffixe unique du run
+     * @return le contexte formulaire alimente
+     */
+    private FormsContext formulaire(String suffix) {
+        FormsContext forms = new FormsContext(page, BASE_URL, suffix);
+        CreateFormMacroTest.run(forms, FormDataSet.defaults().withTitle("Parcours complet"));
+
+        CreateStepMacroTest.run(forms, StepDataSet.of(ETAPE_IDENTITE));
+        CreateStepMacroTest.run(forms, StepDataSet.of(ETAPE_SUBVENTION));
+        CreateStepMacroTest.run(forms, StepDataSet.of(ETAPE_INFORMATION));
+        CreateStepMacroTest.run(forms, StepDataSet.finalStep(ETAPE_CONFIRMATION));
+        SetStepInitialMacroTest.run(forms, StepTargetDataSet.of(0));
+        SetStepFinalMacroTest.run(forms, StepTargetDataSet.of(3));
+        UnsetStepFinalMacroTest.run(forms, StepTargetDataSet.of(0));
+
+        questionsIdentite(forms);
+        questionsSubvention(forms);
+        questionsInformation(forms);
+        questionsConfirmation(forms);
+
+        // Creer une etape la relie automatiquement a la precedente : le formulaire possede donc
+        // deja un enchainement lineaire que le scenario n'a pas demande. Poser les liaisons voulues
+        // par-dessus donnerait un graphe hybride, ou la liaison automatique, prioritaire, l'emporte.
+        for (int etape = 0; etape < forms.steps.size(); etape++) {
+            ClearStepTransitionsMacroTest.run(forms, StepTargetDataSet.of(etape));
+        }
+
+        CreateTransitionMacroTest.run(forms, TransitionDataSet.of(0, 1));
+        CreateTransitionMacroTest.run(forms, TransitionDataSet.of(0, 2));
+        CreateTransitionMacroTest.run(forms, TransitionDataSet.of(1, 3));
+        CreateTransitionMacroTest.run(forms, TransitionDataSet.of(2, 3));
+
+        AddTransitionControlMacroTest.run(forms,
+            TransitionControlDataSet.valeurChoisie(0, 1, indexQuestion(forms, Q_NATURE), CHOIX_SUBVENTION));
         return forms;
     }
 
     /**
-     * Saisie front office etape par etape, puis recapitulatif et validation.
+     * Questions de l'etape d'identite, dont celle qui pilote l'embranchement.
      *
-     * <p>Le daemon d'indexation est declenche avant toute lecture back office : la multivue lit un
-     * index Lucene, pas directement la base, et une reponse tout juste soumise n'y apparait qu'une
-     * fois ce daemon passe. Son intervalle n'a aucune raison de coincider avec le test.</p>
-     *
-     * <p>La question de type date est volontairement laissee vide : le theme rend ce type via un
-     * composant dont le champ visible ne porte pas d'attribut {@code name}, et le renseigner fait
-     * echouer la soumission de l'etape. Elle n'est pas obligatoire, le parcours reste donc valide
-     * et le formulaire continue de couvrir ce type cote back office.</p>
-     *
-     * @param forms contexte du formulaire publie
+     * @param forms contexte formulaire courant
      */
-    private void soumissionFrontOffice(FormsContext forms) {
+    private void questionsIdentite(FormsContext forms) {
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.RADIO, Q_NATURE).onStep(0));
+        AddQuestionChoicesMacroTest.run(forms,
+            QuestionChoicesDataSet.of(Q_NATURE, CHOIX_SUBVENTION, CHOIX_INFORMATION));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TEXT, Q_NOM).onStep(0));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.DATE, Q_NAISSANCE).onStep(0));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TELEPHONE, "Telephone").onStep(0));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.NUMBERING, "Numero de dossier").onStep(0));
+    }
+
+    /**
+     * Questions de la branche « dossier de subvention ».
+     *
+     * @param forms contexte formulaire courant
+     */
+    private void questionsSubvention(FormsContext forms) {
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TEXTAREA, Q_OBJET).onStep(1));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.NUMBER, Q_MONTANT).onStep(1));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.RADIO, "Type de demandeur").onStep(1));
+        AddQuestionChoicesMacroTest.run(forms,
+            QuestionChoicesDataSet.of("Type de demandeur", "Association", "Entreprise"));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.CHECKBOX, "Dispositifs concernes").onStep(1));
+        AddQuestionChoicesMacroTest.run(forms,
+            QuestionChoicesDataSet.of("Dispositifs concernes", "Fonctionnement", "Investissement"));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.SELECT, "Direction de rattachement").onStep(1));
+        AddQuestionChoicesMacroTest.run(forms,
+            QuestionChoicesDataSet.of("Direction de rattachement", "Direction A", "Direction B"));
+    }
+
+    /**
+     * Questions de la branche « demande d'information ».
+     *
+     * @param forms contexte formulaire courant
+     */
+    private void questionsInformation(FormsContext forms) {
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TEXT, Q_SUJET).onStep(2));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TEXTAREA, "Precisions complementaires").onStep(2));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.SELECT, "Canal de reponse souhaite").onStep(2));
+        AddQuestionChoicesMacroTest.run(forms,
+            QuestionChoicesDataSet.of("Canal de reponse souhaite", "Courriel", "Courrier"));
+    }
+
+    /**
+     * Questions de l'etape de confirmation, commune aux deux branches.
+     *
+     * @param forms contexte formulaire courant
+     */
+    private void questionsConfirmation(FormsContext forms) {
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TEXT, "Personne a contacter").onStep(3));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.FILE, "Piece justificative").onStep(3));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.CHECKBOX, "Engagement sur l'honneur").onStep(3));
+        AddQuestionChoicesMacroTest.run(forms,
+            QuestionChoicesDataSet.of("Engagement sur l'honneur", "Je certifie l'exactitude"));
+        // Types moins courants, regroupes sur l'etape commune aux deux branches : ils elargissent la
+        // couverture sans dependre du chemin emprunte.
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.SELECT_ORDER, "Priorites par ordre").onStep(3));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.SLOT, "Creneau de rendez-vous").onStep(3));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.SESSION, "Session").onStep(3));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.MYLUTECE_ATTRIBUTE, "Attribut utilisateur").onStep(3));
+        AddQuestionMacroTest.run(forms, QuestionDataSet.of(QuestionType.TERMS_OF_SERVICE, "Conditions d'utilisation").onStep(3));
+        // Les types commentaire, image et geolocalisation sont volontairement absents : leurs
+        // briques respectives echouent deja isolement, pour des raisons etrangeres a ce scenario.
+        // Les inclure ferait tomber tout le parcours sur un defaut qu'il n'a pas vocation a
+        // eprouver, et masquerait les regressions qu'il surveille reellement.
+    }
+
+    /**
+     * Position d'une question dans le contexte, par son titre.
+     *
+     * @param forms contexte formulaire courant
+     * @param titre titre de la question
+     * @return sa position dans {@code forms.questions}
+     */
+    private int indexQuestion(FormsContext forms, String titre) {
+        for (int i = 0; i < forms.questions.size(); i++) {
+            if (titre.equals(forms.questions.get(i).title)) {
+                return i;
+            }
+        }
+        throw new IllegalStateException("Question '" + titre + "' absente du contexte");
+    }
+
+    /**
+     * Soumet une reponse en empruntant l'une des deux branches.
+     *
+     * <p>Verifier l'etape atteinte <i>et</i> celle qui a ete ecartee est ce qui prouve que
+     * l'embranchement a joue : sans ce controle, une condition inoperante laisserait simplement le
+     * parcours suivre la premiere transition, et les deux soumissions passeraient par la meme
+     * branche sans que rien ne le signale.</p>
+     *
+     * @param forms         contexte formulaire courant
+     * @param choix         reponse donnee a la question qui pilote le parcours
+     * @param etapeAttendue titre de l'etape qui doit suivre
+     * @param etapeEcartee  titre de l'etape qui ne doit pas etre atteinte
+     */
+    private void soumettre(FormsContext forms, String choix, String etapeAttendue, String etapeEcartee) {
         OpenFormFOMacroTest.run(forms);
+        VerifyStepFOMacroTest.run(forms, ETAPE_IDENTITE);
+
+        SelectChoiceFOMacroTest.run(forms, ChoiceSelectionDataSet.of(Q_NATURE, choix));
         FillFieldFOMacroTest.run(forms, FieldValueDataSet.text(Q_NOM, "Dupont"));
+        FillFieldFOMacroTest.run(forms, FieldValueDataSet.date(Q_NAISSANCE, "15/10/1980"));
+        remplirEtape(forms, ETAPE_IDENTITE);
         NextStepFOMacroTest.run(forms);
-        FillFieldFOMacroTest.run(forms, FieldValueDataSet.text(Q_OBJET, "Demande de subvention annuelle"));
-        FillFieldFOMacroTest.run(forms, FieldValueDataSet.number(Q_MONTANT, "1500"));
+
+        VerifyStepFOMacroTest.run(forms, etapeAttendue);
+        VerifyStepFOMacroTest.absente(forms, etapeEcartee);
+        remplirEtape(forms, etapeAttendue);
         NextStepFOMacroTest.run(forms);
-        FillFieldFOMacroTest.run(forms, FieldValueDataSet.text(Q_PRECISIONS, "Dossier complet transmis"));
+
+        VerifyStepFOMacroTest.run(forms, ETAPE_CONFIRMATION);
+        remplirEtape(forms, ETAPE_CONFIRMATION);
         ViewSummaryFOMacroTest.run(forms);
         ValidateSummaryFOMacroTest.run(forms);
+    }
+
+    /**
+     * Renseigne toutes les questions de l'etape affichee et exige qu'au moins une l'ait ete.
+     *
+     * <p>Le remplissage exhaustif est silencieux par construction : il parcourt ce qu'il trouve.
+     * Si les champs cessaient d'etre reconnus — un type de question rendu differemment, un
+     * selecteur devenu caduc —, l'etape serait traversee vide et la reponse soumise sans contenu,
+     * sans qu'aucune brique ne proteste.</p>
+     *
+     * @param forms contexte formulaire courant
+     * @param etape titre de l'etape, pour situer un eventuel echec
+     */
+    private void remplirEtape(FormsContext forms, String etape) {
+        int renseignes = FillAllFieldsFOMacroTest.run(forms);
+        Assertions.assertTrue(renseignes > 0,
+            "L'etape '" + etape + "' n'a vu aucune question renseignee : la reponse serait soumise "
+                + "sans contenu");
+    }
+
+    /**
+     * Declenche l'indexation pour que les reponses soumises apparaissent dans la multivue.
+     *
+     * <p>La multivue ne lit pas la base mais un index, alimente par un demon : une reponse tout
+     * juste soumise y est absente tant qu'il n'est pas passe.</p>
+     *
+     * @param forms contexte formulaire courant
+     */
+    private void indexer(FormsContext forms) {
         RunDaemonMacroTest.run(forms, DaemonDataSet.formsIndexer());
         VerifyResponseSubmittedMacroTest.run(forms);
     }
 
     /**
-     * Instruction de la reponse en back office : la multivue, ou la reponse apparait portee par
-     * l'etat initial du workflow associe, puis le detail de cette reponse.
+     * Instruction d'une reponse : enchainement de deux actions, avec controle de leurs effets.
      *
-     * <p>Le scenario s'arrete au detail. Declencher une action de workflow depuis cette vue suppose
-     * des permissions RBAC sur les ressources concernees (formulaire, type d'action de workflow)
-     * que ce scenario ne configure pas : sans elles l'action n'est pas proposee. Les accorder ici
-     * reviendrait a reecrire les droits du site a chaque execution, ce qui n'est pas acceptable sur
-     * un environnement durable — c'est l'objet d'un scenario dedie, a l'image de la configuration
-     * RBAC existante.</p>
-     *
-     *
-     * @param forms contexte portant la reponse soumise
+     * @param forms contexte formulaire courant
      */
     private void instruction(FormsContext forms) {
         OpenMultiviewMacroTest.run(forms);
         OpenResponseDetailMacroTest.run(forms);
+        VerifyResponseStateMacroTest.run(forms, ResponseStateDataSet.sansHistorique(ETAT_NOUVELLE));
+
+        RunWorkflowActionOnResponseMacroTest.run(forms, ResponseActionDataSet.of(ACTION_PRISE_EN_CHARGE));
+        // Les traces attendues sont celles des taches de l'action : le commentaire, l'entite
+        // affectee, et la notification adressee a l'usager — c'est dans l'historique de la reponse
+        // que son existence se constate.
+        VerifyResponseStateMacroTest.run(forms, ResponseStateDataSet.avecTraces(
+            ETAT_INSTRUCTION, ACTION_PRISE_EN_CHARGE,
+            COMMENTAIRE_INSTRUCTION, UNITE_DIRECTION, TRACE_NOTIFICATION));
+        VerifyNotificationMacroTest.run(forms,
+            NotificationDataSet.of(CANAL_NOTIFICATION, MESSAGE_NOTIFICATION));
+
+        RunWorkflowActionOnResponseMacroTest.run(forms, ResponseActionDataSet.of(ACTION_COMPLEMENT));
+        VerifyResponseStateMacroTest.run(forms, ResponseStateDataSet.avecTraces(
+            ETAT_COMPLEMENT, ACTION_COMPLEMENT, MESSAGE_COMPLEMENT));
     }
 }

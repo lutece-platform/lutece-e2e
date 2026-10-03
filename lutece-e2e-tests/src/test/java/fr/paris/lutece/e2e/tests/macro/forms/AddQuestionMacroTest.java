@@ -59,6 +59,8 @@ public class AddQuestionMacroTest extends MacroTest {
 
         MacroSupport.navigate(ctx, MacroSupport.FORMS + "ManageQuestions.jsp?view=manageQuestions&id_step=" + step.id);
 
+        java.util.List<Integer> idsAvant = questionIds(page);
+
         openAddQuestion(page);
 
         // Choix du type par le libelle du bouton
@@ -85,7 +87,40 @@ public class AddQuestionMacroTest extends MacroTest {
         ref.title = data.title();
         ref.type = data.type().name();
         ref.stepId = step.id;
+        // L'identifiant est indispensable aux briques qui travaillent sur la question elle-meme :
+        // ajout de choix, controle de transition portant sur sa valeur. Il n'est expose nulle part
+        // ailleurs que dans les liens de la liste, d'ou la comparaison avant / apres.
+        questionIds(page).stream()
+            .filter(id -> !idsAvant.contains(id))
+            .findFirst()
+            .ifPresent(id -> ref.id = id);
         ctx.questions.add(ref);
+    }
+
+    /**
+     * Identifiants des questions presentes sur la liste de l'etape.
+     *
+     * @param page page de gestion des questions
+     * @return les identifiants, sans doublon et dans l'ordre d'apparition
+     */
+    private static java.util.List<Integer> questionIds(Page page) {
+        java.util.List<Integer> ids = new java.util.ArrayList<>();
+        Locator liens = page.locator("a[href*='id_question=']");
+        for (int i = 0; i < liens.count(); i++) {
+            String href = liens.nth(i).getAttribute("href");
+            if (href == null) {
+                continue;
+            }
+            try {
+                int id = Integer.parseInt(href.split("id_question=")[1].split("&")[0].split("#")[0]);
+                if (!ids.contains(id)) {
+                    ids.add(id);
+                }
+            } catch (RuntimeException ignore) {
+                // href sans identifiant exploitable : sans interet pour le suivi des questions
+            }
+        }
+        return ids;
     }
 
     /** Ouvre l'assistant d'ajout de question (gere le menu "Actions" pour les questions suivantes). */

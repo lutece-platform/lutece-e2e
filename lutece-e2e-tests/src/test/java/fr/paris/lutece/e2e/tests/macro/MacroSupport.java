@@ -45,11 +45,33 @@ public final class MacroSupport {
                 if (b.isVisible()) {
                     b.click(new Locator.ClickOptions().setTimeout(4000));
                     page.waitForLoadState();
-                    return;
+                    break;
                 }
             }
         } catch (RuntimeException ignored) {
             // banniere absente / deja fermee (cookie deja pose) : rien a faire
+        }
+        neutraliserBandeauResiduel(page);
+    }
+
+    /**
+     * Ecarte le conteneur de consentement s'il recouvre encore la page apres le clic.
+     *
+     * <p>Le clic sur le bouton de refus ne retire pas toujours le conteneur : il subsiste parfois,
+     * transparent mais superpose, et capte les clics destines aux elements situes dessous. Les
+     * composants qui s'ouvrent en surcouche, calendrier d'un champ date en tete, deviennent alors
+     * inatteignables alors que la page parait normale. Le consentement n'etant jamais l'objet des
+     * scenarios, on retire le conteneur plutot que de forcer les clics, ce qui masquerait de vrais
+     * recouvrements.</p>
+     *
+     * @param page page front-office courante
+     */
+    private static void neutraliserBandeauResiduel(Page page) {
+        try {
+            page.evaluate("() => { const r = document.getElementById('tarteaucitronRoot');"
+                + " if (r) { r.remove(); } }");
+        } catch (RuntimeException ignored) {
+            // page sans conteneur de consentement : rien a neutraliser
         }
     }
 

@@ -9,6 +9,7 @@ import fr.paris.lutece.e2e.tests.macro.MacroSupport;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.data.FormDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.StepDataSet;
+import fr.paris.lutece.e2e.tests.macro.data.StepTargetDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.TransitionDataSet;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
@@ -73,11 +74,36 @@ public class CreateTransitionMacroTest extends MacroTest {
         Assertions.assertTrue(page.getByText("Liaison").first().isVisible(),
             "La creation de transition aurait du afficher la confirmation 'Liaison creee'");
 
+        verifierLiaison(ctx, fromStep, toStep);
+
         // Best-effort : memoriser l'id de la transition si un lien l'expose.
         Integer transitionId = deriveTransitionId(page);
         if (transitionId != null) {
             ctx.transitionIds.add(transitionId);
         }
+    }
+
+    /**
+     * Verifie que l'etape source porte bien une liaison vers l'etape cible.
+     *
+     * <p>Le message de confirmation ne prouve rien : Lutece l'affiche aussi lorsqu'il refuse la
+     * liaison demandee — par exemple au depart d'une etape finale —, en se contentant d'ajouter un
+     * avertissement. La liaison manque alors, ou part d'une autre etape, et le parcours emprunte
+     * silencieusement un autre chemin.</p>
+     *
+     * @param ctx      contexte formulaire courant
+     * @param fromStep etape de depart demandee
+     * @param toStep   etape d'arrivee demandee
+     */
+    private static void verifierLiaison(FormsContext ctx, FormsContext.StepRef fromStep,
+        FormsContext.StepRef toStep) {
+        MacroSupport.navigate(ctx, MacroSupport.FORMS
+            + "ManageTransitions.jsp?view=manageTransitions&id_step=" + fromStep.id);
+        Locator cartes = ctx.page.locator("div.card")
+            .filter(new Locator.FilterOptions().setHasText(toStep.title));
+        Assertions.assertTrue(cartes.count() > 0,
+            "L'etape '" + fromStep.title + "' devrait porter une liaison vers '" + toStep.title
+                + "' apres creation : la liaison a ete refusee ou rattachee a une autre etape");
     }
 
     /**
@@ -126,6 +152,10 @@ public class CreateTransitionMacroTest extends MacroTest {
         CreateFormMacroTest.run(ctx, FormDataSet.defaults());
         CreateStepMacroTest.run(ctx, StepDataSet.initial("Etape initiale"));
         CreateStepMacroTest.run(ctx, StepDataSet.finalStep("Etape finale"));
+        // Lutece marque d'office la premiere etape creee comme finale, et refuse toute liaison au
+        // depart d'une etape finale — en affichant malgre tout « Liaison creee ». Sans ce retrait,
+        // la brique s'eprouverait sur une liaison que Lutece n'a jamais etablie.
+        UnsetStepFinalMacroTest.run(ctx, StepTargetDataSet.of(0));
         run(ctx, TransitionDataSet.defaults());
     }
 }

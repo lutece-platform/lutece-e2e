@@ -79,7 +79,16 @@ public class AddTaskToActionMacroTest extends MacroTest {
         boolean actionModifiable = modifyActionLink.count() > 0 && modifyActionLink.first().isVisible();
         Assumptions.assumeTrue(actionModifiable,
             "Aucun lien 'Modifier l'action' visible : impossible d'ouvrir la configuration des taches, test ignore");
-        edit.clickModifyAction();
+
+        if (data.actionLabel() == null) {
+            edit.clickModifyAction();
+        } else {
+            int idAction = idActionNommee(ctx, data.actionLabel());
+            Assertions.assertTrue(idAction > 0,
+                "L'action '" + data.actionLabel() + "' est introuvable sur le workflow : la tache '"
+                    + data.taskTypeKey() + "' ne peut pas lui etre rattachee");
+            WorkflowSupport.navigate(ctx, WorkflowSupport.WF + "ModifyAction.jsp?id_action=" + idAction);
+        }
 
         // Garder le select "Nouvelle tache" (avec l'option demandee) et le bouton "Inserer".
         Locator taskSelect = ctx.page.getByLabel("Nouvelle tâche");
@@ -111,6 +120,39 @@ public class AddTaskToActionMacroTest extends MacroTest {
             || WorkflowSupport.isTextVisible(ctx.page, data.taskTypeKey());
         Assertions.assertTrue(taskPresent,
             "La tache '" + data.taskTypeKey() + "' devrait apparaitre sur la page de l'action apres insertion");
+    }
+
+    /**
+     * Identifiant de l'action portant le libelle donne.
+     *
+     * <p>Les actions sont presentees en blocs, chacun portant son libelle et ses liens de gestion.
+     * On remonte donc du lien de modification a son bloc pour verifier a quelle action il se
+     * rapporte : viser la mauvaise action placerait la tache sur une transition ou elle ne serait
+     * jamais jouee, sans que rien ne le signale.</p>
+     *
+     * @param ctx     contexte workflow courant
+     * @param libelle libelle de l'action recherchee
+     * @return l'identifiant de l'action, ou -1 si aucune ne porte ce libelle
+     */
+    private static int idActionNommee(WorkflowContext ctx, String libelle) {
+        Locator liens = ctx.page.locator("a[href*='id_action=']");
+        for (int i = 0; i < liens.count(); i++) {
+            String href = liens.nth(i).getAttribute("href");
+            if (href == null || !href.contains("ModifyAction")) {
+                continue;
+            }
+            Locator bloc = liens.nth(i).locator(
+                "xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' card ')][1]");
+            if (bloc.count() == 0 || !bloc.first().innerText().contains(libelle)) {
+                continue;
+            }
+            try {
+                return Integer.parseInt(href.split("id_action=")[1].split("&")[0].split("#")[0]);
+            } catch (RuntimeException ignore) {
+                // lien sans identifiant exploitable
+            }
+        }
+        return -1;
     }
 
     /**

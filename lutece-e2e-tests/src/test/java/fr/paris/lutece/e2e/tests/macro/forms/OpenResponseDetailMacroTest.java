@@ -64,7 +64,19 @@ public class OpenResponseDetailMacroTest extends MacroTest {
 
         // 1) Ligne porteuse de son URL de detail : la multivue ne rend pas de lien dans ses
         // cellules, c'est le <tr> qui porte data-url et le clic sur la ligne qui ouvre le detail.
+        // La multivue cumule les reponses de tous les formulaires du site : on vise d'abord celle
+        // du formulaire courant, sans quoi le scenario inspecterait la reponse d'un autre, dont
+        // l'etat et le workflow n'ont rien a voir avec ce qu'il vient de produire.
         Locator lignesCliquables = page.locator("table tbody tr[data-url]");
+        if (ctx.formTitle != null && !ctx.formTitle.isBlank()) {
+            Locator duFormulaire = page.locator("table tbody tr[data-url]")
+                .filter(new Locator.FilterOptions().setHasText(ctx.formTitle));
+            if (duFormulaire.count() > 0 && duFormulaire.first().isVisible()) {
+                duFormulaire.first().click();
+                page.waitForLoadState();
+                return true;
+            }
+        }
         if (lignesCliquables.count() > 0 && lignesCliquables.first().isVisible()) {
             lignesCliquables.first().click();
             page.waitForLoadState();

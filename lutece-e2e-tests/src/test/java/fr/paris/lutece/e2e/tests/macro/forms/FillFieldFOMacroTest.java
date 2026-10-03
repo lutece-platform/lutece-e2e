@@ -2,6 +2,7 @@ package fr.paris.lutece.e2e.tests.macro.forms;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.options.WaitForSelectorState;
 import com.microsoft.playwright.options.AriaRole;
 import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
@@ -39,6 +40,12 @@ import java.util.Locale;
 @Tag("brick")
 public class FillFieldFOMacroTest extends MacroTest {
 
+    /** Delai d'ouverture du calendrier d'un champ date, en millisecondes. */
+    private static final double CALENDRIER_TIMEOUT_MS = 5000;
+
+    /** Rang du jour choisi dans le mois affiche : un jour de plein milieu, jamais hors bornes. */
+    private static final int JOUR_CIBLE = 14;
+
     @Step("Remplir un champ en front-office")
     public static void run(FormsContext ctx, FieldValueDataSet data) {
         Assertions.assertTrue(ctx.formId > 0,
@@ -54,11 +61,7 @@ public class FillFieldFOMacroTest extends MacroTest {
                 + "(libelle different, champ absent ou formulaire non ouvert) : brique ignoree");
 
         if ("date".equals(kind)) {
-            // Meme approche que FormsPage.fillDateFieldFO : on pilote flatpickr, avec repli sur value+change.
-            field.evaluate(
-                "(el, date) => { if (el._flatpickr) { el._flatpickr.setDate(date, true); }"
-                    + " else { el.value = date; el.dispatchEvent(new Event('change')); } }",
-                data.value());
+            choisirDateAuCalendrier(page, field, data.label());
         } else {
             field.click();
             field.fill(data.value());
@@ -79,16 +82,42 @@ public class FillFieldFOMacroTest extends MacroTest {
     }
 
     /**
+     * Choisit une date en passant par le calendrier du champ.
+     *
+     * <p>Le champ visible d'une question de type date ne porte pas d'attribut {@code name} : il
+     * n'est qu'un affichage, la valeur soumise etant deposee dans un champ cache par le calendrier
+     * seul. Y ecrire directement laisse donc la reponse vide tout en donnant le change, puisque le
+     * champ visible, lui, affiche bien le texte saisi.</p>
+     *
+     * @param page   page front-office courante
+     * @param champ  champ de date vise
+     * @param label  libelle de la question, pour le diagnostic
+     */
+    private static void choisirDateAuCalendrier(Page page, Locator champ, String label) {
+        champ.click();
+        Locator jours = page.locator(
+            ".datepicker-dropdown .datepicker-cell.day:not(.prev):not(.next):not(.disabled)");
+        try {
+            jours.first().waitFor(new Locator.WaitForOptions()
+                .setState(WaitForSelectorState.VISIBLE).setTimeout(CALENDRIER_TIMEOUT_MS));
+        } catch (RuntimeException calendrierAbsent) {
+            Assumptions.assumeTrue(false,
+                "Le calendrier du champ '" + label + "' ne s'est pas ouvert : date non renseignable");
+        }
+        jours.nth(Math.min(JOUR_CIBLE, jours.count() - 1)).click();
+    }
+
+    /**
      * Localise le champ FO selon son type. Retourne un locateur mono-element ou {@code null} si absent.
      */
     private static Locator locateField(Page page, String label, String kind) {
         if ("date".equals(kind)) {
-            Locator flatpickr = page.locator("input.flatpickr-input");
-            if (flatpickr.count() > 0) {
-                return flatpickr.first();
-            }
             Locator byLabel = page.getByLabel(label);
-            return byLabel.count() > 0 ? byLabel.first() : null;
+            if (byLabel.count() > 0) {
+                return byLabel.first();
+            }
+            Locator datepicker = page.locator("input.lutece-datepicker");
+            return datepicker.count() > 0 ? datepicker.first() : null;
         }
 
         AriaRole role = "number".equals(kind) ? AriaRole.SPINBUTTON : AriaRole.TEXTBOX;

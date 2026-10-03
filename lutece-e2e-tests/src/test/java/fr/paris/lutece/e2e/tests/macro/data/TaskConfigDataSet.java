@@ -17,8 +17,8 @@ import java.util.List;
  * <pre>
  *   TaskConfigDataSet.vide()
  *       .radio("assignment_type", "create")
- *       .selection("unit_selection_id_to_add", "ParametrableUnitSelection")
- *       .appliquer()
+ *       .selection("unit_selection_id_to_add", "UnitSelectionSpecificUnit")
+ *       .appliquer("addUnitSelection")
  * </pre>
  *
  * @param reglages reglages a appliquer dans l'ordre
@@ -36,7 +36,11 @@ public record TaskConfigDataSet(List<Reglage> reglages) {
         /** Case a cocher, par valeur. */
         CASE,
         /** Clic sur le bouton intermediaire du formulaire (ex. "Ajouter le mode d'assignation"). */
-        APPLIQUER
+        APPLIQUER,
+        /** Liste deroulante, par fragment du libelle d'une option. */
+        SELECTION_LIBELLE,
+        /** Enregistrement intermediaire, le formulaire se poursuivant ensuite. */
+        ENREGISTRER
     }
 
     /**
@@ -122,6 +126,51 @@ public record TaskConfigDataSet(List<Reglage> reglages) {
      */
     public TaskConfigDataSet appliquer() {
         return avec(new Reglage(Nature.APPLIQUER, "", ""));
+    }
+
+    /**
+     * Ajoute un clic sur un bouton intermediaire designe par sa valeur.
+     *
+     * <p>L'ecran d'une tache d'affectation en propose plusieurs — ajouter un mode d'assignation,
+     * en supprimer un, choisir une configuration parametrable — tous portes par le meme attribut
+     * {@code name}. Les distinguer par leur valeur evite de dependre de leur ordre d'apparition,
+     * qui change avec l'etat de la configuration.</p>
+     *
+     * @param valeurBouton attribut {@code value} du bouton vise
+     * @return un nouveau parametrage incluant ce reglage
+     */
+    public TaskConfigDataSet appliquer(String valeurBouton) {
+        return avec(new Reglage(Nature.APPLIQUER, "", valeurBouton));
+    }
+
+    /**
+     * Ajoute la selection de l'option dont le libelle contient le fragment donne.
+     *
+     * <p>Certaines listes portent des valeurs construites a l'execution — un fournisseur de
+     * donnees nomme {@code ...ProviderService.@.*26} melange un identifiant technique attribue par
+     * la base — qu'aucun scenario ne peut connaitre a l'avance, et dont le libelle exact varie
+     * aussi d'un site a l'autre. Seul un fragment stable du libelle permet de les designer.</p>
+     *
+     * @param champ    attribut {@code name} de la liste
+     * @param fragment fragment devant figurer dans le libelle de l'option
+     * @return un nouveau parametrage incluant ce reglage
+     */
+    public TaskConfigDataSet selectionLibelle(String champ, String fragment) {
+        return avec(new Reglage(Nature.SELECTION_LIBELLE, champ, fragment));
+    }
+
+    /**
+     * Ajoute un enregistrement intermediaire du formulaire.
+     *
+     * <p>La tache de notification se configure en deux temps : le fournisseur de donnees doit etre
+     * enregistre avant que les canaux de notification ne deviennent proposables. Contrairement au
+     * bouton d'application, l'enregistrement peut quitter l'ecran ; la brique y revient d'elle-meme
+     * pour poursuivre le parametrage.</p>
+     *
+     * @return un nouveau parametrage incluant ce reglage
+     */
+    public TaskConfigDataSet enregistrer() {
+        return avec(new Reglage(Nature.ENREGISTRER, "", ""));
     }
 
     /**
