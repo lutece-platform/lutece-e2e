@@ -111,9 +111,10 @@ public class AddQuestionChoicesMacroTest extends MacroTest {
         MacroSupport.navigate(ctx, MacroSupport.FORMS
             + "ManageQuestions.jsp?view=modifyQuestion&id_step=" + question.stepId
             + "&id_question=" + question.id);
-        String contenu = ctx.page.locator("body").textContent().replaceAll("\\s+", " ");
         for (String choix : data.choices()) {
-            Assertions.assertTrue(contenu.contains(choix),
+            // Le choix est relu sur un ecran qui vient d'etre charge : on attend qu'il y figure
+            // plutot que de lire la page une fois. La presence suffit, l'ecran repliant la liste.
+            MacroSupport.exigerPresent(ctx.page.getByText(choix),
                 "Le choix '" + choix + "' devrait figurer sur la question '" + data.questionTitle()
                     + "' apres enregistrement");
         }

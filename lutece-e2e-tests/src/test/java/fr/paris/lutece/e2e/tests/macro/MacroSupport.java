@@ -13,6 +13,9 @@ public final class MacroSupport {
 
     public static final String FORMS = "/jsp/admin/plugins/forms/";
 
+    /** Delai d'apparition d'un element attendu apres une navigation, en millisecondes. */
+    private static final double ATTENTE_ELEMENT_MS = 10_000;
+
     private MacroSupport() {}
 
     public static void navigate(FormsContext ctx, String relativeUrl) {
@@ -126,5 +129,49 @@ public final class MacroSupport {
 
     private static String safe(String s) {
         return s == null ? "" : s;
+    }
+
+    /**
+     * Exige qu'un element finisse par etre visible, et echoue avec un message explicite sinon.
+     *
+     * <p>Lire l'etat d'un element une seule fois juge l'instant ou le test passe : apres une
+     * navigation ou un enregistrement, la page peut encore etre en cours de rendu, et un comptage
+     * immediat conclut a tort a son absence. On attend donc l'etat au lieu de le constater, ce qui
+     * supprime une classe entiere d'echecs intermittents.</p>
+     *
+     * @param locator element attendu ; son premier exemplaire est pris s'il en designe plusieurs
+     * @param message diagnostic si l'element n'apparait pas
+     */
+    public static void exigerVisible(Locator locator, String message) {
+        attendre(locator, WaitForSelectorState.VISIBLE, message);
+    }
+
+    /**
+     * Exige qu'un element finisse par etre present dans la page, visible ou non.
+     *
+     * <p>Utile pour les controles que l'interface stylise en les masquant — cases a cocher
+     * habillees, champs pilotes par un editeur — qu'on ne peut donc pas exiger visibles.</p>
+     *
+     * @param locator element attendu
+     * @param message diagnostic si l'element n'apparait pas
+     */
+    public static void exigerPresent(Locator locator, String message) {
+        attendre(locator, WaitForSelectorState.ATTACHED, message);
+    }
+
+    /**
+     * Attend qu'un element atteigne un etat, et transforme l'echeance en echec explicite.
+     *
+     * @param locator element attendu
+     * @param etat    etat recherche
+     * @param message diagnostic si l'etat n'est pas atteint
+     */
+    private static void attendre(Locator locator, WaitForSelectorState etat, String message) {
+        try {
+            locator.first().waitFor(new Locator.WaitForOptions()
+                .setState(etat).setTimeout(ATTENTE_ELEMENT_MS));
+        } catch (RuntimeException jamaisAtteint) {
+            org.junit.jupiter.api.Assertions.fail(message);
+        }
     }
 }

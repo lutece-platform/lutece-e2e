@@ -78,10 +78,9 @@ public class CreateNotifygruMappingMacroTest extends MacroTest {
             + "input[name='action_createNotifygruMappingManager']").first().click();
         page.waitForLoadState();
 
-        String contenu = page.locator("body").innerText().replaceAll("\\s+", " ");
-        Assertions.assertTrue(contenu.contains(ctx.formTitle),
+        MacroSupport.exigerVisible(page.getByText(ctx.formTitle),
             "Le mapping du formulaire '" + ctx.formTitle + "' devrait figurer dans la liste apres "
-                + "enregistrement. Contenu lu : " + contenu.substring(0, Math.min(200, contenu.length())));
+                + "enregistrement");
     }
 
     /**

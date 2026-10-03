@@ -99,9 +99,11 @@ public class CreateTransitionMacroTest extends MacroTest {
         FormsContext.StepRef toStep) {
         MacroSupport.navigate(ctx, MacroSupport.FORMS
             + "ManageTransitions.jsp?view=manageTransitions&id_step=" + fromStep.id);
-        Locator cartes = ctx.page.locator("div.card")
+        // Assertion web-first : elle reinterroge la page jusqu'a son echeance, la liste venant
+        // d'etre recharge. Un simple comptage, lui, juge l'instant ou il tombe.
+        Locator carte = ctx.page.locator("div.card")
             .filter(new Locator.FilterOptions().setHasText(toStep.title));
-        Assertions.assertTrue(cartes.count() > 0,
+        MacroSupport.exigerVisible(carte,
             "L'etape '" + fromStep.title + "' devrait porter une liaison vers '" + toStep.title
                 + "' apres creation : la liaison a ete refusee ou rattachee a une autre etape");
     }

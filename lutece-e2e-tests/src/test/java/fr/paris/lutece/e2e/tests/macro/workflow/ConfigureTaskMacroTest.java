@@ -59,18 +59,20 @@ public class ConfigureTaskMacroTest extends MacroTest {
         + " return false;"
         + "}";
 
-    /** Attente de l'initialisation de l'editeur riche attache a un champ. */
+    /**
+     * Attente de l'editeur riche attache a un champ.
+     *
+     * <p>On interroge son etat d'initialisation, et non sa seule existence : l'editeur est
+     * enregistre avant d'avoir repris la main sur le champ, et ecrire dans cet intervalle depose
+     * bien la valeur, que l'editeur remplace ensuite par la sienne — vide.</p>
+     */
     private static final String EDITEUR_PRET =
-        "id => !!(window.tinymce && window.tinymce.get && window.tinymce.get(id))";
+        "id => { const tm = window.tinymce;"
+        + " const ed = (tm && tm.get) ? tm.get(id) : null;"
+        + " return !!(ed && ed.initialized); }";
 
     /** Delai d'initialisation de l'editeur riche, en millisecondes. */
     private static final double EDITEUR_TIMEOUT_MS = 5000;
-
-    /** Nombre de tentatives de depot d'une valeur dans un editeur riche. */
-    private static final int ESSAIS_SAISIE = 3;
-
-    /** Pause entre deux tentatives de saisie dans un editeur riche, en millisecondes. */
-    private static final double PAUSE_SAISIE_MS = 800;
 
     /** Panneau de configuration avancee d'une tache de notification. */
     private static final String PANNEAU_AVANCE = "#config_global";
@@ -252,8 +254,8 @@ public class ConfigureTaskMacroTest extends MacroTest {
      *
      * <p>Les messages de notification sont rediges dans un editeur riche : le champ d'origine est
      * alors masque et remplace par un cadre editable. Y ecrire directement echoue, le champ n'etant
-     * plus atteignable ; c'est dans le cadre qu'il faut saisir, l'editeur reportant son contenu
-     * dans le champ au moment de l'enregistrement.</p>
+     * plus atteignable ; c'est a l'editeur qu'il faut s'adresser, une fois son initialisation
+     * achevee, et c'est lui qui reporte son contenu dans le champ.</p>
      *
      * @param page    page de configuration de la tache
      * @param champ   champ vise
@@ -265,17 +267,7 @@ public class ConfigureTaskMacroTest extends MacroTest {
             return;
         }
         attendreEditeur(page, champ);
-        // L'editeur peut achever son initialisation juste apres la saisie et reprendre la main sur
-        // le champ, effacant ce qu'on vient d'y deposer. On confirme donc que la valeur a tenu, et
-        // on la repose sinon : sans cela, la tache s'enregistre avec un message vide, et c'est
-        // seulement a l'execution de l'action que son absence se remarque.
-        for (int essai = 0; essai < ESSAIS_SAISIE; essai++) {
-            champ.evaluate(EDITEUR_RICHE, reglage.valeur());
-            if (champ.inputValue().contains(reglage.valeur())) {
-                return;
-            }
-            page.waitForTimeout(PAUSE_SAISIE_MS);
-        }
+        champ.evaluate(EDITEUR_RICHE, reglage.valeur());
     }
 
     /**

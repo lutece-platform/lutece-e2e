@@ -1,6 +1,7 @@
 package fr.paris.lutece.e2e.tests.macro.forms;
 
 import fr.paris.lutece.e2e.tests.macro.FormsContext;
+import fr.paris.lutece.e2e.tests.macro.MacroSupport;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.data.FormDataSet;
 import fr.paris.lutece.e2e.tests.macro.data.PublishDataSet;
@@ -36,12 +37,11 @@ public class VerifyStepFOMacroTest extends MacroTest {
 
     @Step("Verifier l'etape affichee en front office")
     public static void run(FormsContext ctx, String titreAttendu) {
-        ctx.page.waitForLoadState();
-        String contenu = ctx.page.locator("body").innerText().replaceAll("\\s+", " ");
-        Assertions.assertTrue(contenu.contains(titreAttendu),
+        // Assertion web-first : l'etape vient d'etre atteinte par une navigation, la page peut
+        // encore etre en cours de rendu. Lire le texte une fois jugerait l'instant du test.
+        MacroSupport.exigerVisible(ctx.page.getByText(titreAttendu),
             "Le front office devrait afficher l'etape '" + titreAttendu
-                + "' : le parcours a bifurque ailleurs qu'attendu. Contenu lu : "
-                + contenu.substring(0, Math.min(220, contenu.length())));
+                + "' : le parcours a bifurque ailleurs qu'attendu");
     }
 
     /**

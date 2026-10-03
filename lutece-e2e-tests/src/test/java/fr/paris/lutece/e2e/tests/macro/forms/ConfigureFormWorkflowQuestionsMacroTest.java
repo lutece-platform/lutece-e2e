@@ -110,9 +110,12 @@ public class ConfigureFormWorkflowQuestionsMacroTest extends MacroTest {
      */
     private static void exigerCochee(FormsContext ctx, String prefixe, String titre, String demande) {
         int id = idQuestion(ctx, titre);
-        boolean cochee = ctx.page.locator("input[type='checkbox'][name='" + prefixe + id + "']")
-            .first().isChecked();
-        Assertions.assertTrue(cochee,
+        Locator cases = ctx.page.locator("input[type='checkbox'][name='" + prefixe + id + "']");
+        // La case est habillee par l'interface, donc jamais « visible » au sens de Playwright :
+        // on attend sa presence avant d'en lire l'etat, la page venant d'etre rechargee.
+        MacroSupport.exigerPresent(cases,
+            "La question '" + titre + "' devrait figurer dans la configuration workflow du formulaire");
+        Assertions.assertTrue(cases.first().isChecked(),
             "La question '" + titre + "' devrait rester declaree pour la demande de " + demande
                 + " : sans elle, l'action ne proposera rien a l'usager");
     }
