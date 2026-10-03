@@ -612,7 +612,7 @@ pipeline {
                     }
 
                     // Publication sur le serveur Allure mutualise : resultats envoyes puis
-                    // rapport genere, a chaque build.""" Le service ne declenche aucune
+                    // rapport genere, a chaque build. Le service ne declenche aucune
                     // generation de lui-meme. Un serveur indisponible ne doit pas faire
                     // echouer un build dont les tests sont verts.
                     echo '=== Publication du rapport sur le serveur Allure ==='
