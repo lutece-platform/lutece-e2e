@@ -32,7 +32,12 @@ lutece-e2e-web/src/main/liberty/config/jvm.options
 test-run-suffix.txt
 *.log
 target/screenshots/
-
+.allure*
+node_module*
 # Secrets
 .env
 *.key
+
+# claude code
+.claude
+.agents
