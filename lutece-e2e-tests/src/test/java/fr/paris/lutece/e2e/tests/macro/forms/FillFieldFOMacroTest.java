@@ -49,6 +49,29 @@ public class FillFieldFOMacroTest extends MacroTest {
     private static final int JOUR_CIBLE = 14;
 
     @Step("Remplir un champ en front-office")
+    /**
+     * Remplit le champ s'il figure sur l'etape affichee, sans rien exiger sinon.
+     *
+     * <p>Pour un parcours dont on ne connait pas la repartition des questions par etape — celui
+     * d'une suite decrite dans un fichier. La resolution est celle de la brique elle-meme, et non
+     * une recherche approchee du libelle : un champ nombre ou date ne se reconnait pas au texte
+     * qui l'entoure.</p>
+     *
+     * @param ctx  contexte formulaire courant
+     * @param data la valeur a poser
+     * @return vrai si le champ etait present et rempli
+     */
+    public static boolean siPresent(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx,
+        FieldValueDataSet data) {
+
+        String kind = data.kind() == null ? "text" : data.kind().toLowerCase(Locale.ROOT);
+        if (locateField(ctx.page, data.label(), kind) == null) {
+            return false;
+        }
+        run(ctx, data);
+        return true;
+    }
+
     public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, FieldValueDataSet data) {
         Assertions.assertTrue(ctx.formId > 0,
             "Un formulaire doit exister (ctx.formId) avant de remplir un champ en front-office");

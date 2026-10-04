@@ -78,15 +78,31 @@ public final class LecteurDeSuite {
         String nom = texte(entete, "nom", "suite", origine);
         String description = texteFacultatif(entete, "description", "");
 
+        Organisation organisation = lireOrganisation(objet(contenu, "organisation", "racine"));
         Workflow workflow = lireWorkflow(objet(contenu, "workflow", "racine"));
         Formulaire formulaire = lireFormulaire(objet(contenu, "formulaire", "racine"));
         List<EtapeDeParcours> parcours = lireParcours(liste(contenu, "parcours", "racine"), workflow, formulaire);
 
-        if (workflow == null && formulaire == null && parcours.isEmpty()) {
+        if (organisation == null && workflow == null && formulaire == null && parcours.isEmpty()) {
             throw new DescriptionInvalide(origine,
-                "la suite ne decrit ni workflow, ni formulaire, ni parcours : elle n'a rien a executer");
+                "la suite ne decrit ni organisation, ni workflow, ni formulaire, ni parcours : "
+                + "elle n'a rien a executer");
         }
-        return new DescriptionDeSuite(nom, description, workflow, formulaire, parcours);
+        return new DescriptionDeSuite(nom, description, organisation, workflow, formulaire, parcours);
+    }
+
+    private static Organisation lireOrganisation(Map<String, Object> bloc) {
+        if (bloc == null) {
+            return null;
+        }
+        List<String> entites = new ArrayList<>();
+        for (Object entite : liste(bloc, "entites", "organisation")) {
+            entites.add(String.valueOf(entite));
+        }
+        if (entites.isEmpty()) {
+            throw new DescriptionInvalide("organisation", "au moins une entite est necessaire");
+        }
+        return new Organisation(entites, booleen(bloc, "affecter-un-agent"));
     }
 
     // ---------------------------------------------------------------- workflow
@@ -162,7 +178,40 @@ public final class LecteurDeSuite {
             throw new DescriptionInvalide("formulaire", "au moins une etape est necessaire");
         }
         controlerConditions(etapes);
-        return new Formulaire(titre, etapes, lireEnchainement(bloc, etapes));
+
+        List<String> rouvertes = new ArrayList<>();
+        for (Object titreQuestion : liste(bloc, "questions-rouvertes", "formulaire")) {
+            String libelle = String.valueOf(titreQuestion);
+            if (etapes.stream().flatMap(e -> e.questions().stream())
+                    .noneMatch(q -> q.titre().equals(libelle))) {
+                throw new DescriptionInvalide("formulaire > questions-rouvertes",
+                    "aucune question ne s'intitule « " + libelle + " »");
+            }
+            rouvertes.add(libelle);
+        }
+
+        return new Formulaire(titre, etapes, lireEnchainement(bloc, etapes),
+            lireOptions(objet(bloc, "options", "formulaire")), rouvertes,
+            booleen(bloc, "mapping-notification"));
+    }
+
+    private static Options lireOptions(Map<String, Object> bloc) {
+        if (bloc == null) {
+            return null;
+        }
+        Integer max = bloc.containsKey("reponses-max")
+            ? entier(bloc, "reponses-max", 0, "formulaire > options")
+            : null;
+        return new Options(
+            texteFacultatif(bloc, "disponible-du", null),
+            texteFacultatif(bloc, "disponible-au", null),
+            texteFacultatif(bloc, "message-indisponible", null),
+            max,
+            booleen(bloc, "une-reponse-par-usager"),
+            booleen(bloc, "recapitulatif"),
+            booleen(bloc, "brouillon"),
+            booleen(bloc, "fil-ariane"),
+            booleen(bloc, "authentification"));
     }
 
     private static Etape lireEtape(Map<String, Object> bloc, int rang) {
@@ -215,7 +264,14 @@ public final class LecteurDeSuite {
                 texte(si, "question", ouQuestion + " > affichee-si", null),
                 texte(si, "vaut", ouQuestion + " > affichee-si", null));
         }
-        return new Question(type, titre, choix, groupe, condition);
+        Validation validation = null;
+        Map<String, Object> regle = objet(bloc, "validation", ouQuestion);
+        if (regle != null) {
+            validation = new Validation(
+                texte(regle, "regle", ouQuestion + " > validation", null),
+                texteFacultatif(regle, "message", "Saisie invalide"));
+        }
+        return new Question(type, titre, choix, groupe, condition, validation);
     }
 
     /**
@@ -270,7 +326,14 @@ public final class LecteurDeSuite {
             String vers = texte(champs, "vers", "formulaire > enchainement", null);
             exigerEtapeConnue(etapes, de, "formulaire > enchainement, champ « de »");
             exigerEtapeConnue(etapes, vers, "formulaire > enchainement, champ « vers »");
-            liaisons.add(new Liaison(de, vers));
+            Condition si = null;
+            Map<String, Object> condition = objet(champs, "si", "formulaire > enchainement");
+            if (condition != null) {
+                si = new Condition(
+                    texte(condition, "question", "formulaire > enchainement > si", null),
+                    texte(condition, "vaut", "formulaire > enchainement > si", null));
+            }
+            liaisons.add(new Liaison(de, vers, si));
         }
         return liaisons;
     }
@@ -297,9 +360,18 @@ public final class LecteurDeSuite {
                 parcours.add(lireSoumission(objet(bloc, "soumission", ou), ou, formulaire));
             } else if (bloc.containsKey("instruction")) {
                 parcours.add(lireInstruction(objet(bloc, "instruction", ou), ou, workflow));
+            } else if (bloc.containsKey("daemon")) {
+                parcours.add(new Daemon(texte(bloc, "daemon", ou, null)));
+            } else if (bloc.containsKey("export")) {
+                String format = texte(bloc, "export", ou, null).toLowerCase(java.util.Locale.ROOT);
+                if (!List.of("csv", "pdf").contains(format)) {
+                    throw new DescriptionInvalide(ou, "format d'export inconnu : « " + format + " »",
+                        List.of("csv", "pdf"));
+                }
+                parcours.add(new Export(format));
             } else {
                 throw new DescriptionInvalide(ou, "etape de parcours inconnue",
-                    List.of("soumission", "instruction"));
+                    List.of("soumission", "instruction", "daemon", "export"));
             }
         }
         return parcours;
@@ -316,14 +388,93 @@ public final class LecteurDeSuite {
         if (brutes != null) {
             brutes.forEach((question, valeur) -> reponses.put(question, String.valueOf(valeur)));
         }
+        List<Saisie> valeurs = new ArrayList<>();
+        for (Object element : liste(bloc, "valeurs", ou)) {
+            Map<String, Object> champs = commeObjet(element, ou + " > valeurs");
+            valeurs.add(new Saisie(
+                texte(champs, "question", ou + " > valeurs", null),
+                texte(champs, "valeur", ou + " > valeurs", null),
+                natureDeSaisie(texteFacultatif(champs, "nature", "texte"), ou + " > valeurs")));
+        }
+
         List<ControleDeVisibilite> controles = new ArrayList<>();
+        List<String> etapesAttendues = new ArrayList<>();
+        List<String> etapesEcartees = new ArrayList<>();
+        List<SaisieRefusee> refus = new ArrayList<>();
         for (Object element : liste(bloc, "verifier", ou)) {
             Map<String, Object> champs = commeObjet(element, ou + " > verifier");
-            controles.add(new ControleDeVisibilite(
-                texte(champs, "question", ou + " > verifier", null),
-                !booleen(champs, "masquee")));
+            if (champs.containsKey("etape")) {
+                String etape = texte(champs, "etape", ou + " > verifier", null);
+                exigerEtapeConnue(formulaire.etapes(), etape, ou + " > verifier, champ « etape »");
+                (booleen(champs, "ecartee") ? etapesEcartees : etapesAttendues).add(etape);
+            } else if (champs.containsKey("refuse")) {
+                refus.add(new SaisieRefusee(
+                    texte(champs, "question", ou + " > verifier", null),
+                    texte(champs, "refuse", ou + " > verifier", null),
+                    texte(champs, "accepte", ou + " > verifier", null),
+                    texteFacultatif(champs, "message", "")));
+            } else {
+                String question = texte(champs, "question", ou + " > verifier", null);
+                exigerQuestionConnue(formulaire, question, ou + " > verifier");
+                controles.add(new ControleDeVisibilite(question, !booleen(champs, "masquee")));
+            }
         }
-        return new Soumission(nom, reponses, controles);
+
+        List<String> iterations = new ArrayList<>();
+        for (Object element : liste(bloc, "iterations", ou)) {
+            Map<String, Object> champs = commeObjet(element, ou + " > iterations");
+            String etape = texte(champs, "etape", ou + " > iterations", null);
+            exigerEtapeConnue(formulaire.etapes(), etape, ou + " > iterations, champ « etape »");
+            iterations.add(etape);
+        }
+
+        for (String question : reponses.keySet()) {
+            exigerQuestionConnue(formulaire, question, ou + " > reponses");
+        }
+        for (Saisie saisie : valeurs) {
+            exigerQuestionConnue(formulaire, saisie.question(), ou + " > valeurs");
+        }
+
+        return new Soumission(nom, reponses, valeurs, controles, etapesAttendues, etapesEcartees,
+            iterations, refus, booleen(bloc, "brouillon"));
+    }
+
+    /**
+     * Nature d'une saisie, qui pilote la strategie employee en front office.
+     *
+     * @param mot mot employe dans le fichier
+     * @param ou  emplacement, cite si le mot est inconnu
+     * @return la nature attendue par la brique de saisie
+     */
+    private static String natureDeSaisie(String mot, String ou) {
+        return switch (mot.toLowerCase(java.util.Locale.ROOT)) {
+            case "texte" -> "text";
+            case "nombre" -> "number";
+            case "date" -> "date";
+            default -> throw new DescriptionInvalide(ou,
+                "nature de saisie inconnue : « " + mot + " »", List.of("texte", "nombre", "date"));
+        };
+    }
+
+    /**
+     * Verifie qu'une question citee par le parcours existe bien dans le formulaire decrit.
+     *
+     * <p>Une faute de frappe sur un libelle ne se verrait sinon qu'a l'execution, et sous la forme
+     * d'une reponse qui ne trouve jamais sa question.</p>
+     *
+     * @param formulaire le formulaire decrit
+     * @param titre      libelle cite
+     * @param ou         emplacement dans le fichier
+     */
+    private static void exigerQuestionConnue(Formulaire formulaire, String titre, String ou) {
+        boolean connue = formulaire.etapes().stream()
+            .flatMap(etape -> etape.questions().stream())
+            .anyMatch(question -> question.titre().equals(titre));
+        if (!connue) {
+            throw new DescriptionInvalide(ou, "aucune question ne s'intitule « " + titre + " »",
+                formulaire.etapes().stream().flatMap(e -> e.questions().stream())
+                    .map(Question::titre).toList());
+        }
     }
 
     private static Instruction lireInstruction(Map<String, Object> bloc, String ou, Workflow workflow) {
@@ -340,8 +491,15 @@ public final class LecteurDeSuite {
         for (Object trace : liste(bloc, "traces", ou)) {
             traces.add(String.valueOf(trace));
         }
+        Notification notification = null;
+        Map<String, Object> notif = objet(bloc, "notification", ou);
+        if (notif != null) {
+            notification = new Notification(
+                texte(notif, "canal", ou + " > notification", null),
+                texte(notif, "message", ou + " > notification", null));
+        }
         return new Instruction(action, texteFacultatif(bloc, "etat-attendu", null), traces,
-            texteFacultatif(bloc, "sur-etat", null));
+            texteFacultatif(bloc, "sur-etat", null), notification, booleen(bloc, "lien-fo"));
     }
 
     // ------------------------------------------------------------- extraction

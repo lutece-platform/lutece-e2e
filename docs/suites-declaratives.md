@@ -169,9 +169,82 @@ d'intérêts de la commission de déontologie : 8 états, 7 actions, 8 étapes, 
 contrôles conditionnels, soumission et instruction. C'est la transcription d'une suite qui existait
 en Java, et le modèle à recopier.
 
+## Les sections facultatives
+
+```yaml
+organisation:                 # entités unittree, pour les tâches d'affectation
+  entites: [Direction, Service]
+  affecter-un-agent: true
+
+formulaire:
+  options:                    # page de modification du formulaire
+    disponible-du: today
+    reponses-max: 100
+    recapitulatif: true
+  questions-rouvertes: [Nom]  # ce qu'une demande de correction rouvre à l'usager
+  mapping-notification: true  # où la notification lit les coordonnées
+  etapes:
+    - questions:
+        - type: texte
+          titre: Courriel
+          validation:         # règle de validation
+            regle: Email
+            message: Saisie invalide
+
+  enchainement:               # embranchement : l'ordre compte
+    - de: Identité
+      vers: Subvention
+      si:
+        question: Nature de la demande
+        vaut: Subvention
+    - de: Identité            # sortie par défaut, en second
+      vers: Information
+
+parcours:
+  - soumission:
+      valeurs:                # valeurs précises, au lieu du remplissage automatique
+        - question: Nom
+          valeur: Dupont
+        - question: Date de naissance
+          nature: date        # texte | nombre | date
+          valeur: 15/10/1980
+      verifier:
+        - etape: Subvention            # l'étape atteinte
+        - etape: Information
+          ecartee: true                # celle qui ne doit pas l'être
+        - question: Courriel
+          refuse: pas-une-adresse      # doit être refusé
+          accepte: a@example.com       # doit passer
+          message: Saisie invalide
+      iterations:
+        - etape: Subvention            # ajoute puis retire une itération
+      brouillon: true
+  - instruction:
+      action: Prendre en charge
+      etat-attendu: En cours d'instruction
+      traces: [Commentaire d'instruction]
+      sur-etat: Nouvelle demande
+      notification:
+        canal: Agent
+        message: Votre demande est en cours
+      lien-fo: true
+  - daemon: formsIndexerDaemon
+  - export: csv
+```
+
 ## Ce que le fichier ne couvre pas
 
-Les briques existent, le vocabulaire ne les expose pas encore : itérations de groupe en front
-office, brouillons, exports, contrôles de validation, daemons autres que l'indexeur, unittree.
-Une démarche qui en a besoin garde sa suite Java — les deux familles cohabitent et partagent les
-mêmes briques.
+Trois limites, constatées en transcrivant deux démarches et vérifiées sur une instance réelle :
+
+| Limite | Pourquoi | Contournement |
+|---|---|---|
+| **Tâches à configuration en plusieurs temps** (affectation à une entité, notification multicanal) | `config:` est une table plate ; ces écrans demandent une séquence avec des boutons intermédiaires | garder une suite Java pour ces tâches |
+| **`reponses` sur une liste déroulante** | la brique de sélection ne reconnaît que les questions rendues dans un `fieldset` ou un `.form-group`, ce que le thème ne fait pas pour les listes | laisser le remplissage automatique s'en charger |
+| **`nature: nombre`** | s'appuie sur le rôle ARIA `spinbutton`, que le thème n'expose pas | employer `nature: texte`, qui retombe sur le libellé et son champ voisin |
+| **`iterations`** | la brique ne détecte pas le bloc d'itération sur un formulaire bâti ainsi | à reprendre dans la brique |
+
+Le vocabulaire est posé pour les quatre : ce sont les briques sous-jacentes qu'il faudra reprendre,
+et le fichier n'aura pas à changer.
+
+Une démarche qui a besoin de ce qui manque garde sa suite Java — les deux familles cohabitent et
+partagent les mêmes briques, donc rien ne diverge.

@@ -47,6 +47,67 @@ class LecteurDeSuiteTest {
     }
 
     @Test
+    @DisplayName("La suite a embranchement est lue et validee")
+    void suiteAEmbranchement() {
+        var description = LecteurDeSuite.depuis(Path.of("src/test/resources/suites/subvention.e2e-suite.yml"));
+
+        assertAll(
+            () -> assertEquals(2, description.organisation().entites().size(),
+                "Les deux entites organisationnelles doivent etre lues"),
+            () -> assertTrue(description.organisation().affecterUnAgent(),
+                "L'affectation d'un agent doit etre lue"),
+            () -> assertEquals(4, description.formulaire().enchainement().size(),
+                "Les quatre liaisons doivent etre lues"),
+            () -> assertNotNull(description.formulaire().enchainement().get(0).si(),
+                "La premiere liaison porte la condition d'embranchement"),
+            () -> assertNull(description.formulaire().enchainement().get(1).si(),
+                "La seconde liaison est la sortie par defaut"),
+            () -> assertNotNull(description.formulaire().options(),
+                "Les options du formulaire doivent etre lues"),
+            () -> assertEquals(2, description.formulaire().questionsRouvertes().size(),
+                "Les deux questions rouvertes doivent etre lues"),
+            () -> assertTrue(description.formulaire().mappingNotification(),
+                "Le mapping de notification doit etre lu"));
+    }
+
+    @Test
+    @DisplayName("Une reponse de parcours visant une question absente est refusee")
+    void reponseSansQuestion() {
+        var echec = assertThrows(DescriptionInvalide.class, () -> lire("""
+            suite: { nom: Essai }
+            formulaire:
+              titre: Essai
+              etapes:
+                - titre: Unique
+                  questions:
+                    - { type: texte, titre: Nom }
+            parcours:
+              - soumission:
+                  reponses:
+                    Prenom: Jean
+            """));
+
+        assertTrue(echec.getMessage().contains("Prenom"),
+            "Le message doit citer la question introuvable : " + echec.getMessage());
+    }
+
+    @Test
+    @DisplayName("Un format d'export inconnu est refuse")
+    void exportInconnu() {
+        var echec = assertThrows(DescriptionInvalide.class, () -> lire("""
+            suite: { nom: Essai }
+            formulaire:
+              titre: Essai
+              etapes: [{ titre: Unique, questions: [{ type: texte, titre: Nom }] }]
+            parcours:
+              - export: xlsx
+            """));
+
+        assertTrue(echec.getMessage().contains("xlsx") && echec.getMessage().contains("csv"),
+            "Le message doit citer le format fautif et ceux qui conviennent : " + echec.getMessage());
+    }
+
+    @Test
     @DisplayName("Un type de question hors vocabulaire est refuse, en listant ceux qui conviennent")
     void typeDeQuestionInconnu() {
         var echec = assertThrows(DescriptionInvalide.class, () -> lire("""

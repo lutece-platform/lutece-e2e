@@ -55,7 +55,11 @@ public class SelectChoiceFOMacroTest extends MacroTest {
     public static boolean siPresente(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx,
         ChoiceSelectionDataSet data) {
 
-        if (ctx.page.getByText(data.questionLabel()).count() == 0) {
+        // La presence est jugee avec le meme localisateur que celui qui servira a agir : chercher
+        // le libelle n'importe ou dans la page le trouverait dans un fil d'ariane ou un
+        // recapitulatif, et la brique echouerait ensuite sur un bloc de question introuvable.
+        if (ctx.page.locator("form fieldset, form .form-group, form div.mb-3")
+                .filter(new Locator.FilterOptions().setHasText(data.questionLabel())).count() == 0) {
             return false;
         }
         run(ctx, data);

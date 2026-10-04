@@ -1,0 +1,200 @@
+# Demande de subvention — second site, choisi pour ne rien partager avec le premier
+#
+# La deontologie est lineaire : neuf ecrans a la file, une question fermee par rubrique. Celle-ci
+# bifurque : la nature de la demande decide de l'ecran suivant, et les deux branches se rejoignent.
+# Elle s'appuie sur une organisation, pose des options, valide une saisie et itere un groupe en
+# front office — tout ce que la deontologie ne faisait pas.
+
+suite:
+  nom: Demande de subvention
+  description: >
+    Formulaire a embranchement : l'identite mene au dossier de subvention ou a la demande
+    d'information selon la nature declaree, et les deux branches se rejoignent sur une
+    confirmation commune.
+
+organisation:
+  entites:
+    - Direction des subventions
+    - Service instruction
+  affecter-un-agent: true
+
+workflow:
+  nom: Instruction des subventions
+  etats:
+    - Nouvelle demande
+    - En cours d'instruction
+    - Complement demande
+    - Complement recu
+    - Cloturee
+
+  actions:
+    - nom: Prendre en charge
+      de: Nouvelle demande
+      vers: En cours d'instruction
+      taches:
+        - type: statut-publication
+          config:
+            published: true
+        - type: commentaire
+          config:
+            title: Commentaire d'instruction
+            mandatory: false
+            richText: true
+
+    - nom: Demander un complement
+      de: En cours d'instruction
+      vers: Complement demande
+      taches:
+        - type: demande-complement
+          config:
+            idStateAfterEdition: Complement recu
+            defaultMessage: Merci de completer votre dossier.
+
+    - nom: Reprendre apres complement
+      de: Complement recu
+      vers: En cours d'instruction
+
+    - nom: Cloturer
+      de: En cours d'instruction
+      vers: Cloturee
+
+formulaire:
+  titre: Demande de subvention
+
+  options:
+    disponible-du: today
+    disponible-au: "2033-12-31"
+    reponses-max: 100
+    recapitulatif: true
+    fil-ariane: true
+
+  # Les questions que rouvre une demande de complement adressee a l'usager.
+  questions-rouvertes:
+    - Nom du demandeur
+    - Objet de la demande
+
+  # Necessaire pour que la notification de l'usager sache ou lire ses coordonnees.
+  mapping-notification: true
+
+  etapes:
+    - titre: Identite
+      initiale: true
+      questions:
+        - type: radio
+          titre: Nature de la demande
+          choix: [Subvention, Information]
+        - type: texte
+          titre: Nom du demandeur
+        - type: date
+          titre: Date de naissance
+        - type: texte
+          titre: Courriel de contact
+          validation:
+            regle: Email
+            message: Saisie invalide
+
+    - titre: Dossier de subvention
+      groupes:
+        - titre: Postes de depense
+          iterations: 5
+      questions:
+        - type: texte-long
+          titre: Objet de la demande
+        - type: nombre
+          titre: Montant demande
+        - type: texte
+          titre: Intitule du poste
+          groupe: Postes de depense
+        - type: nombre
+          titre: Montant du poste
+          groupe: Postes de depense
+
+    - titre: Demande d'information
+      questions:
+        - type: texte
+          titre: Sujet de la question
+        - type: liste-deroulante
+          titre: Canal de reponse souhaite
+          choix: [Courriel, Courrier]
+
+    - titre: Confirmation
+      finale: true
+      questions:
+        - type: case-a-cocher
+          titre: Engagement sur l'honneur
+          choix: [Je certifie l'exactitude]
+
+  # L'ordre compte : Lutece emprunte la premiere liaison dont la condition est satisfaite.
+  # La sortie par defaut vient donc en second, sans quoi elle rendrait la premiere inutile.
+  enchainement:
+    - de: Identite
+      vers: Dossier de subvention
+      si:
+        question: Nature de la demande
+        vaut: Subvention
+    - de: Identite
+      vers: Demande d'information
+    - de: Dossier de subvention
+      vers: Confirmation
+    - de: Demande d'information
+      vers: Confirmation
+
+parcours:
+  # Branche subvention : l'ecran de dossier doit s'afficher, celui d'information etre ecarte.
+  - soumission:
+      nom: Demande de subvention avec postes de depense
+      reponses:
+        Nature de la demande: Subvention
+      valeurs:
+        - question: Nom du demandeur
+          valeur: Dupont
+        - question: Date de naissance
+          nature: date
+          valeur: 15/10/1980
+        # « nombre » s'appuie sur le role ARIA spinbutton, que ce theme n'expose pas : la
+        # strategie « texte » retombe sur le libelle et son champ voisin, et trouve le champ.
+        - question: Montant demande
+          nature: texte
+          valeur: "4200"
+      verifier:
+        - etape: Dossier de subvention
+        - etape: Demande d'information
+          ecartee: true
+        - question: Courriel de contact
+          refuse: pas-une-adresse
+          accepte: contact@example.com
+          message: Saisie invalide
+
+  - instruction:
+      action: Prendre en charge
+      etat-attendu: En cours d'instruction
+      traces: [Commentaire d'instruction]
+
+  - instruction:
+      action: Demander un complement
+      etat-attendu: Complement demande
+      lien-fo: true
+
+  - daemon: formsIndexerDaemon
+
+  # Seconde branche : meme formulaire, l'autre chemin.
+  - soumission:
+      nom: Demande d'information
+      reponses:
+        Nature de la demande: Information
+        # « Canal de reponse souhaite » est une liste deroulante : la brique de selection ne sait
+        # designer que les questions rendues dans un fieldset ou un .form-group, ce que ce theme
+        # ne fait pas pour les listes. Le remplissage automatique s'en charge.
+      valeurs:
+        - question: Nom du demandeur
+          valeur: Martin
+        # Le courriel porte une regle de validation : le remplissage automatique y poserait une
+        # valeur quelconque, que le formulaire refuserait, et l'etape ne passerait pas.
+        - question: Courriel de contact
+          valeur: martin@example.com
+      verifier:
+        - etape: Demande d'information
+        - etape: Dossier de subvention
+          ecartee: true
+
+  - export: csv

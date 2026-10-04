@@ -3,10 +3,13 @@ package fr.paris.lutece.e2e.tests.declaratif;
 import com.microsoft.playwright.Page;
 import fr.paris.lutece.e2e.tests.declaratif.DescriptionDeSuite.*;
 import fr.paris.lutece.e2e.tests.macro.FormsContext;
+import fr.paris.lutece.e2e.tests.macro.UnittreeContext;
 import fr.paris.lutece.e2e.tests.macro.WorkflowContext;
 import fr.paris.lutece.e2e.tests.macro.data.*;
 import fr.paris.lutece.e2e.tests.macro.forms.*;
 import fr.paris.lutece.e2e.tests.macro.system.RunDaemonMacroTest;
+import fr.paris.lutece.e2e.tests.macro.unittree.AddUsersToUnitMacroTest;
+import fr.paris.lutece.e2e.tests.macro.unittree.CreateUnitMacroTest;
 import fr.paris.lutece.e2e.tests.macro.workflow.*;
 import io.qameta.allure.Step;
 import org.junit.jupiter.api.Assertions;
@@ -41,6 +44,8 @@ public final class ExecuteurDeSuite {
     /** Le formulaire decrit, garde pour savoir quelle etape porte quelle question. */
     private Formulaire formulaireDecrit;
 
+    private UnittreeContext organisation;
+
     /**
      * @param page      page Playwright pilotant le navigateur
      * @param urlDeBase adresse du site cible
@@ -58,6 +63,9 @@ public final class ExecuteurDeSuite {
      * @param description la suite a jouer
      */
     public void executer(DescriptionDeSuite description) {
+        if (description.organisation() != null) {
+            batirLOrganisation(description.organisation());
+        }
         if (description.workflow() != null) {
             batirLeWorkflow(description.workflow());
         }
@@ -66,6 +74,32 @@ public final class ExecuteurDeSuite {
             mettreEnService(description);
         }
         jouerLeParcours(description.parcours());
+    }
+
+    /**
+     * Cree les entites organisationnelles, et y rattache un agent si la description le demande.
+     *
+     * <p>Les entites sont creees a la racine plutot qu'imbriquees : la creation sous parent depend
+     * d'un identifiant que la liste des unites n'expose pas de facon fiable selon les sites, ce qui
+     * rendrait la suite tributaire de l'environnement sans rien apporter — l'affectation d'une
+     * ressource a une entite, elle, reste couverte.</p>
+     *
+     * @param decrite l'organisation decrite
+     */
+    @Step("Batir l'organisation decrite")
+    private void batirLOrganisation(Organisation decrite) {
+        organisation = new UnittreeContext(page, urlDeBase, suffixe);
+        for (String entite : decrite.entites()) {
+            CreateUnitMacroTest.run(organisation, UnitDataSet.of(entite));
+        }
+        if (decrite.affecterUnAgent()) {
+            AddUsersToUnitMacroTest.run(organisation, UserAssignmentDataSet.defaults());
+        }
+    }
+
+    /** @return le contexte des entites organisationnelles, ou {@code null} si la suite n'en decrit pas */
+    public UnittreeContext organisation() {
+        return organisation;
     }
 
     /** @return le contexte formulaire alimente, pour les controles d'une suite appelante */
@@ -171,7 +205,47 @@ public final class ExecuteurDeSuite {
         }
 
         poserLesControles(etapes);
+        poserLesValidations(etapes);
         enchainer(decrit, etapes);
+
+        if (decrit.options() != null) {
+            appliquerLesOptions(decrit.options());
+        }
+    }
+
+    /**
+     * Applique les options du formulaire.
+     *
+     * <p>Elles sont posees apres les etapes et les questions : la page de modification du
+     * formulaire porte aussi l'association au workflow, et y revenir plus tard l'ecraserait.</p>
+     *
+     * @param options les options decrites
+     */
+    @Step("Appliquer les options du formulaire")
+    private void appliquerLesOptions(Options options) {
+        ConfigureFormOptionsMacroTest.run(forms, new FormOptionsDataSet(
+            options.disponibleDu(), options.disponibleAu(), options.messageIndisponible(),
+            options.reponsesMax(), options.uneReponseParUsager(), options.recapitulatif(),
+            options.brouillon(), options.filAriane(), options.authentification(), null, null));
+    }
+
+    /**
+     * Pose les regles de validation decrites sur les questions.
+     *
+     * @param etapes les etapes du formulaire
+     */
+    private void poserLesValidations(List<Etape> etapes) {
+        for (Etape etape : etapes) {
+            for (Question question : etape.questions()) {
+                if (question.validation() == null) {
+                    continue;
+                }
+                AddValidationControlMacroTest.run(forms, ControlDataSet.validation(
+                    rangDeLaQuestion(question.titre()),
+                    question.validation().regle(),
+                    question.validation().message()));
+            }
+        }
     }
 
     private void marquer(List<Etape> etapes, java.util.function.Predicate<Etape> critere,
@@ -244,6 +318,15 @@ public final class ExecuteurDeSuite {
                 CreateTransitionMacroTest.run(forms, TransitionDataSet.of(
                     rangDeLEtape(etapes, liaison.de()), rangDeLEtape(etapes, liaison.vers())));
             }
+            // Les conditions sont posees apres toutes les liaisons : l'ecran de controle d'une
+            // transition se construit a partir de celles qui existent deja.
+            for (Liaison liaison : decrit.enchainement()) {
+                if (liaison.si() != null) {
+                    AddTransitionControlMacroTest.run(forms, TransitionControlDataSet.valeurChoisie(
+                        rangDeLEtape(etapes, liaison.de()), rangDeLEtape(etapes, liaison.vers()),
+                        rangDeLaQuestion(liaison.si().question()), liaison.si().vaut()));
+                }
+            }
             return;
         }
         // Enchainement lineaire : chaque etape du parcours mene a la suivante. Les etapes hors
@@ -261,6 +344,19 @@ public final class ExecuteurDeSuite {
 
     @Step("Associer le workflow et publier le formulaire")
     private void mettreEnService(DescriptionDeSuite description) {
+        Formulaire decrit = description.formulaire();
+        if (!decrit.questionsRouvertes().isEmpty()) {
+            // Sans cette declaration, l'ecran d'execution d'une demande de correction ou de
+            // complement ne propose aucune question a selectionner, et la demande part sans objet.
+            ConfigureFormWorkflowQuestionsMacroTest.run(forms,
+                FormWorkflowQuestionsDataSet.memesQuestions(
+                    decrit.questionsRouvertes().toArray(new String[0])));
+        }
+        if (decrit.mappingNotification()) {
+            // La notification de l'usager ne lit pas la reponse directement : elle passe par un
+            // mapping qui designe les questions portant ses coordonnees.
+            CreateNotifygruMappingMacroTest.run(forms);
+        }
         if (description.workflow() != null) {
             forms.workflowId = workflow.workflowId;
             forms.workflowName = workflow.workflowName;
@@ -277,6 +373,11 @@ public final class ExecuteurDeSuite {
                 soumettre(soumission);
             } else if (etape instanceof Instruction instruction) {
                 instruire(instruction);
+            } else if (etape instanceof Daemon daemon) {
+                RunDaemonMacroTest.run(forms, DaemonDataSet.of(daemon.cle()));
+            } else if (etape instanceof Export export) {
+                ExportResponsesMacroTest.run(forms,
+                    "pdf".equals(export.format()) ? ExportDataSet.pdf() : ExportDataSet.csv());
             }
         }
     }
@@ -310,13 +411,27 @@ public final class ExecuteurDeSuite {
                     placees.add(reponse.getKey());
                 }
             }
+            for (Saisie saisie : soumission.valeurs()) {
+                if (FillFieldFOMacroTest.siPresent(forms, new FieldValueDataSet(
+                        saisie.question(), saisie.valeur(), saisie.nature()))) {
+                    placees.add(saisie.question());
+                }
+            }
             for (ControleDeVisibilite controle : soumission.controles()) {
                 if (ecran == etapeDeLaQuestion(controle.question())) {
                     VerifyQuestionVisibilityFOMacroTest.run(forms, new QuestionVisibilityDataSet(
                         controle.question(), controle.visible()));
                 }
             }
+            for (SaisieRefusee refus : soumission.refus()) {
+                if (forms.page.getByText(refus.question()).count() > 0) {
+                    VerifyValidationErrorFOMacroTest.run(forms, ValidationCheckDataSet.of(
+                        refus.question(), refus.valeur(), refus.accepte(), refus.message()));
+                }
+            }
+            controlerLesEtapes(soumission, ecran);
             FillAllFieldsFOMacroTest.run(forms);
+            itererSiDemande(soumission, ecran);
             if (!NextStepFOMacroTest.estDisponible(forms)) {
                 break;
             }
@@ -325,18 +440,83 @@ public final class ExecuteurDeSuite {
         }
 
         java.util.Set<String> orphelines = new java.util.LinkedHashSet<>(soumission.reponses().keySet());
+        soumission.valeurs().forEach(saisie -> orphelines.add(saisie.question()));
         orphelines.removeAll(placees);
         Assertions.assertTrue(orphelines.isEmpty(),
             "Ces reponses n'ont trouve leur question sur aucune etape du parcours : " + orphelines
             + ". Le libelle differe de celui declare dans la section « formulaire », ou l'etape qui "
             + "porte la question n'est pas atteinte par l'enchainement decrit.");
 
+        if (soumission.brouillon()) {
+            SaveDraftFOMacroTest.run(forms);
+        }
         ViewSummaryFOMacroTest.run(forms);
         ValidateSummaryFOMacroTest.run(forms);
         // La multivue lit l'index Lucene et non la base : sans passage de l'indexeur, une reponse
         // bien enregistree y reste invisible.
         RunDaemonMacroTest.run(forms, DaemonDataSet.formsIndexer());
         VerifyResponseSubmittedMacroTest.run(forms);
+    }
+
+    /**
+     * Constate l'etape atteinte, et celle qui ne l'a pas ete.
+     *
+     * <p>Les deux vont ensemble pour un formulaire a embranchement : verifier seulement l'etape
+     * atteinte laisserait passer une condition inoperante, le parcours suivant alors simplement la
+     * premiere liaison sans que rien ne le signale.</p>
+     *
+     * @param soumission la soumission decrite
+     */
+    private void controlerLesEtapes(Soumission soumission, int ecran) {
+        for (String attendue : soumission.etapesAttendues()) {
+            // L'etape n'est constatee que la ou elle doit s'afficher : l'exiger partout ferait
+            // echouer toutes les autres.
+            if (ecran == rangDEcran(attendue)) {
+                VerifyStepFOMacroTest.run(forms, attendue);
+            }
+        }
+        for (String ecartee : soumission.etapesEcartees()) {
+            // Une etape ecartee ne doit s'afficher nulle part : le constat vaut a chaque ecran.
+            VerifyStepFOMacroTest.absente(forms, ecartee);
+        }
+    }
+
+    /**
+     * Ajoute puis retire une iteration, sur les etapes que la description designe.
+     *
+     * <p>Ajouter sans retirer laisserait passer une regression sur la suppression d'iteration, qui
+     * est la moitie du mecanisme et la plus fragile : elle manipule un bloc deja rempli.</p>
+     *
+     * @param soumission la soumission decrite
+     * @param ecran      rang de l'etape affichee
+     */
+    private void itererSiDemande(Soumission soumission, int ecran) {
+        for (String etape : soumission.iterations()) {
+            if (ecran == rangDEcran(etape)) {
+                AddIterationFOMacroTest.run(forms);
+                RemoveIterationFOMacroTest.run(forms);
+            }
+        }
+    }
+
+    /**
+     * Rang d'ecran d'une etape du parcours, les etapes hors parcours ne comptant pas.
+     *
+     * @param titre titre de l'etape
+     * @return son rang, ou -1 si elle n'est pas dans le parcours
+     */
+    private int rangDEcran(String titre) {
+        int ecran = 0;
+        for (Etape etape : formulaireDecrit.etapes()) {
+            if (etape.horsParcours()) {
+                continue;
+            }
+            if (etape.titre().equals(titre)) {
+                return ecran;
+            }
+            ecran++;
+        }
+        return -1;
     }
 
     /**
@@ -373,6 +553,15 @@ public final class ExecuteurDeSuite {
             VerifyResponseStateMacroTest.run(forms, ResponseStateDataSet.avecTraces(
                 instruction.etatAttendu(), instruction.action(),
                 instruction.traces().toArray(new String[0])));
+        }
+        if (instruction.notification() != null) {
+            VerifyNotificationMacroTest.run(forms, NotificationDataSet.of(
+                instruction.notification().canal(), instruction.notification().message()));
+        }
+        if (instruction.lienFrontOffice()) {
+            // Une demande adressee a l'usager n'a de sens que s'il peut y repondre : l'historique
+            // doit porter le lien qui le ramene sur sa reponse.
+            VerifyResponseFoLinkMacroTest.run(forms);
         }
     }
 

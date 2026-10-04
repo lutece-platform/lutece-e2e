@@ -168,7 +168,27 @@ public class VerifyValidationErrorFOMacroTest extends MacroTest {
         }
     }
 
+    /**
+     * Identifiants des actions de progression du formulaire en front office.
+     *
+     * <p>Cibles avant les libelles : « Etape suivante » est rendu « Étape suivante », avec un E
+     * accentue, et {@code getByRole} ne normalise pas les accents — la recherche par libelle ne
+     * correspondait a rien et faisait ignorer la brique sans que rien ne le signale. Les
+     * identifiants, eux, sont stables quel que soit le theme.</p>
+     */
+    private static final String[] ACTIONS_AVANCER = {
+        "button#action_doSaveStep", "button#action_saveForm", "button[name='action_doSaveStep']"
+    };
+
     private static boolean clickAdvance(Page page) {
+        for (String selecteur : ACTIONS_AVANCER) {
+            Locator bouton = page.locator(selecteur);
+            if (bouton.count() > 0 && bouton.first().isVisible()) {
+                bouton.first().click();
+                return true;
+            }
+        }
+        // Repli sur les libelles, pour un theme qui n'exposerait pas ces identifiants.
         for (String name : ADVANCE_BUTTONS) {
             Locator btn = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName(name));
             if (btn.count() > 0 && btn.first().isVisible()) {
