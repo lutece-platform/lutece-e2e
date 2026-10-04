@@ -40,7 +40,9 @@ public class CreateGroupMacroTest extends MacroTest {
         Assertions.assertTrue(ctx.formId > 0 && !ctx.steps.isEmpty(),
             "Un formulaire et au moins une etape doivent exister avant de creer un groupe");
 
-        FormsContext.StepRef step = ctx.lastStep();
+        FormsContext.StepRef step = data.stepIndex() == null
+            ? ctx.lastStep()
+            : ctx.steps.get(data.stepIndex());
         String title = data.title() + " " + ctx.runSuffix;
         Page page = ctx.page;
 

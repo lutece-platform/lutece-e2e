@@ -150,10 +150,72 @@ public class AddQuestionMacroTest extends MacroTest {
                 fillIfPresent(page, "#file_max_size", String.valueOf(data.fileMaxSize()));
                 fillIfPresent(page, "#max_files", String.valueOf(data.maxFiles()));
             }
+            case TERMS_OF_SERVICE -> {
+                // Le type exige un texte de conditions, pose dans un editeur riche. Laisse vide,
+                // l'enregistrement est refuse et la page reste sur le formulaire de creation.
+                fillIfPresent(page, "#link", "Charte d'engagement");
+                remplirEditeurRiche(page, "#tos", TEXTE_CONDITIONS);
+            }
             default -> {
                 // pas de champ additionnel obligatoire pour les autres types
             }
         }
+    }
+
+    /**
+     * Texte depose dans les conditions d'utilisation, faute de quoi la question est refusee.
+     */
+    private static final String TEXTE_CONDITIONS =
+        "<p>Je m'engage a respecter les regles de la charte.</p>";
+
+    /**
+     * Script d'ecriture dans un editeur riche, avec repli sur le champ masque qu'il remplace.
+     */
+    private static final String EDITEUR_RICHE =
+        "(el, valeur) => {"
+        + " const tm = window.tinymce;"
+        + " const ed = (tm && tm.get && el.id) ? tm.get(el.id) : null;"
+        + " if (ed) { ed.setContent(valeur); ed.save(); return true; }"
+        + " el.value = valeur;"
+        + " el.dispatchEvent(new Event('change', { bubbles: true }));"
+        + " return false;"
+        + "}";
+
+    /**
+     * Delai laisse a l'editeur riche pour prendre en charge le champ, en millisecondes.
+     */
+    private static final double ATTENTE_EDITEUR_MS = 5000;
+
+    /**
+     * Depose un contenu dans un champ pris en charge par un editeur riche.
+     *
+     * <p>L'editeur s'initialise apres le chargement de la page. Ecrire avant qu'il ne soit pret
+     * depose bien la valeur dans le champ masque, mais l'editeur la remplace ensuite par son
+     * propre contenu, vide : la saisie semble faite et ne l'est pas. On attend donc qu'il ait
+     * pris le champ en charge avant d'ecrire.</p>
+     *
+     * @param page     page de creation de la question
+     * @param selecteur selecteur du champ masque
+     * @param contenu  contenu a deposer
+     */
+    private static void remplirEditeurRiche(Page page, String selecteur, String contenu) {
+        Locator champ = page.locator(selecteur);
+        if (champ.count() == 0) {
+            return;
+        }
+        String id = champ.first().getAttribute("id");
+        if (id != null) {
+            try {
+                page.waitForFunction(
+                    "id => { const tm = window.tinymce;"
+                    + " const ed = (tm && tm.get) ? tm.get(id) : null;"
+                    + " return !!(ed && ed.initialized); }",
+                    id, new Page.WaitForFunctionOptions().setTimeout(ATTENTE_EDITEUR_MS));
+            } catch (RuntimeException sansEditeur) {
+                // Champ sans editeur riche sur ce build : l'ecriture directe ci-dessous suffit.
+            }
+        }
+        champ.first().evaluate(EDITEUR_RICHE, contenu);
     }
 
     private static void fillIfPresent(Page page, String selector, String value) {

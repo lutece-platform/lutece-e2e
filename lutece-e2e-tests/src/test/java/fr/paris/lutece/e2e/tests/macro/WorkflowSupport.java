@@ -26,8 +26,11 @@ public final class WorkflowSupport {
         // dernier cree se retrouve au-dela de la premiere page et parait introuvable. On demande
         // donc une page assez grande pour que tous soient dans le document.
         navigate(ctx, WF + "ManageWorkflow.jsp?items_per_page=100000");
-        Locator link = ctx.page.locator(
-            "a[href*='id_workflow=']:has-text('" + workflowName + "')").first();
+        // Le libelle vient de l'appelant et peut contenir une apostrophe, qui refermerait la
+        // chaine d'un selecteur ':has-text(...)' et casserait la resolution. Le filtre de
+        // Playwright prend une chaine Java, jamais relue comme selecteur.
+        Locator link = ctx.page.locator("a[href*='id_workflow=']")
+            .filter(new Locator.FilterOptions().setHasText(workflowName)).first();
         try {
             link.waitFor(new Locator.WaitForOptions()
                 .setState(WaitForSelectorState.ATTACHED).setTimeout(10_000));

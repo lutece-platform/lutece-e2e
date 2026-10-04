@@ -60,7 +60,8 @@ public class RemoveActionMacroTest extends MacroTest {
         // Verifier que l'action a disparu de la page d'edition du workflow.
         WorkflowSupport.navigate(ctx, WorkflowSupport.WF + "ModifyWorkflow.jsp?id_workflow=" + ctx.workflowId);
         Assertions.assertEquals(0,
-            page.locator("a[href*='id_action=']:has-text('" + target.name + "')").count(),
+            page.locator("a[href*='id_action=']")
+                .filter(new Locator.FilterOptions().setHasText(target.name)).count(),
             "L'action '" + target.name + "' ne devrait plus apparaitre apres suppression");
 
         ctx.actions.remove(target);
@@ -68,7 +69,8 @@ public class RemoveActionMacroTest extends MacroTest {
 
     /** Resout id_action via le lien portant le nom de l'action cible. Retourne -1 si absent. */
     private static int resolveActionId(Page page, String actionName) {
-        Locator link = page.locator("a[href*='id_action=']:has-text('" + actionName + "')").first();
+        Locator link = page.locator("a[href*='id_action=']")
+            .filter(new Locator.FilterOptions().setHasText(actionName)).first();
         if (link.count() == 0) {
             return -1;
         }

@@ -74,7 +74,8 @@ public class ModifyStateMacroTest extends MacroTest {
      * Retourne -1 si aucun lien exploitable n'est present.
      */
     private static int resolveStateId(Page page, String stateName) {
-        Locator named = page.locator("a[href*='id_state=']:has-text('" + stateName + "')").first();
+        Locator named = page.locator("a[href*='id_state=']")
+            .filter(new Locator.FilterOptions().setHasText(stateName)).first();
         Locator link = named.count() > 0 ? named : page.locator("a[href*='id_state=']").first();
         if (link.count() == 0) {
             return -1;

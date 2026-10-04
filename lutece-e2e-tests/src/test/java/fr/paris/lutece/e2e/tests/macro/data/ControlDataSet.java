@@ -21,20 +21,42 @@ public record ControlDataSet(
         Integer targetQuestionIndex,
         Integer questionIndex,
         String value,
-        String errorMessage) {
+        String errorMessage,
+        String validatorName) {
+
+    /** Validateur comparant la reponse a une valeur de liste : celui des questions a choix. */
+    public static final String VALIDATEUR_VALEUR_DE_LISTE = "forms.listValueValidator";
 
     /**
      * Controle conditionnel : la question cible s'affiche selon la reponse de la question pilote.
      */
     public static ControlDataSet conditional(int pilotQuestionIndex, int targetQuestionIndex, String value) {
-        return new ControlDataSet(pilotQuestionIndex, targetQuestionIndex, null, value, null);
+        return new ControlDataSet(pilotQuestionIndex, targetQuestionIndex, null, value, null, null);
+    }
+
+    /**
+     * Controle conditionnel pilote par une question a choix.
+     *
+     * <p>Le type de controle doit etre designe explicitement. Laisse au defaut, le formulaire
+     * retient le premier validateur de la liste, qui attend un nombre : la valeur attendue — le
+     * libelle d'un choix — n'y entre pas, et le controle n'est pas cree.</p>
+     *
+     * @param pilotQuestionIndex  rang de la question qui commande l'affichage
+     * @param targetQuestionIndex rang de la question affichee ou masquee
+     * @param value               libelle du choix declenchant l'affichage
+     * @return le jeu de donnees correspondant
+     */
+    public static ControlDataSet conditionalSurListe(int pilotQuestionIndex, int targetQuestionIndex,
+        String value) {
+        return new ControlDataSet(pilotQuestionIndex, targetQuestionIndex, null, value, null,
+            VALIDATEUR_VALEUR_DE_LISTE);
     }
 
     /**
      * Controle de validation pose sur une question.
      */
     public static ControlDataSet validation(int questionIndex, String value, String errorMessage) {
-        return new ControlDataSet(null, null, questionIndex, value, errorMessage);
+        return new ControlDataSet(null, null, questionIndex, value, errorMessage, null);
     }
 
     /**

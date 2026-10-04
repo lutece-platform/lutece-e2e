@@ -93,6 +93,12 @@ public class AddConditionalControlMacroTest extends MacroTest {
                 "Question pilote '" + pilot.title + "' absente de la liste des questions du controle conditionnel.");
             clickSubmit(page, "view_modifyConditionControl", "validateQuestion");
 
+            // Le type de controle commande la forme du champ de valeur. Laisse au defaut, c'est le
+            // premier validateur de la liste qui s'applique — souvent numerique — et le libelle
+            // d'un choix n'y entre pas. On le designe donc par son nom de bean, independant de la
+            // langue du site.
+            choisirValidateur(page, data.validatorName());
+
             // Si le validateur par defaut n'a pas encore expose son champ de valeur, on le declenche.
             if (page.locator("[name='value']").count() == 0) {
                 clickSubmit(page, "view_modifyConditionControl", "validateValidator");
@@ -202,6 +208,32 @@ public class AddConditionalControlMacroTest extends MacroTest {
             }
         }
         return false;
+    }
+
+    /**
+     * Designe le type de controle, puis recharge le formulaire pour qu'il expose son champ de valeur.
+     *
+     * <p>Sans nom de validateur, on ne touche a rien : l'appelant s'en remet au defaut du site.</p>
+     *
+     * @param page          page du formulaire de controle
+     * @param validatorName nom de bean du validateur, ou {@code null}
+     */
+    private static void choisirValidateur(Page page, String validatorName) {
+        if (validatorName == null || validatorName.isBlank()) {
+            return;
+        }
+        Locator select = page.locator("select[name='validatorName']");
+        if (select.count() == 0 || !select.first().isVisible()) {
+            return;
+        }
+        try {
+            select.first().selectOption(validatorName);
+        } catch (RuntimeException absent) {
+            // Validateur non propose pour ce type de question : on laisse le defaut, et le champ
+            // de valeur dira s'il convient.
+            return;
+        }
+        clickSubmit(page, "view_modifyConditionControl", "validateValidator");
     }
 
     /**

@@ -62,7 +62,8 @@ public class RemoveStateMacroTest extends MacroTest {
         // Verifier que l'etat a disparu de la page d'edition du workflow.
         WorkflowSupport.navigate(ctx, WorkflowSupport.WF + "ModifyWorkflow.jsp?id_workflow=" + ctx.workflowId);
         Assertions.assertEquals(0,
-            page.locator("a[href*='id_state=']:has-text('" + target.name + "')").count(),
+            page.locator("a[href*='id_state=']")
+                .filter(new Locator.FilterOptions().setHasText(target.name)).count(),
             "L'etat '" + target.name + "' ne devrait plus apparaitre apres suppression");
 
         ctx.states.remove(target);
@@ -70,7 +71,8 @@ public class RemoveStateMacroTest extends MacroTest {
 
     /** Resout id_state via le lien portant le nom de l'etat cible (pas de repli, pour ne pas viser l'etat initial). */
     private static int resolveStateId(Page page, String stateName) {
-        Locator link = page.locator("a[href*='id_state=']:has-text('" + stateName + "')").first();
+        Locator link = page.locator("a[href*='id_state=']")
+            .filter(new Locator.FilterOptions().setHasText(stateName)).first();
         if (link.count() == 0) {
             return -1;
         }

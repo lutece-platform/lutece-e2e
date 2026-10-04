@@ -70,7 +70,11 @@ public class WorkflowListPage {
     private String getWorkflowId(String workflowName) {
         page.navigate(baseUrl + "/jsp/admin/plugins/workflow/ManageWorkflow.jsp");
         page.waitForLoadState();
-        Locator link = page.locator("a[href*='id_workflow=']:has-text('" + workflowName + "')").first();
+        // Le nom vient de l'appelant : une apostrophe refermerait la chaine d'un selecteur
+        // ':has-text(...)' et Playwright rejetterait tout le selecteur. Le filtre prend une
+        // chaine Java, jamais relue comme selecteur.
+        Locator link = page.locator("a[href*='id_workflow=']")
+            .filter(new Locator.FilterOptions().setHasText(workflowName)).first();
         String href = link.getAttribute("href");
         if (href != null && href.contains("id_workflow=")) {
             return href.split("id_workflow=")[1].split("&")[0].split("#")[0];

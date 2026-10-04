@@ -22,8 +22,10 @@ public final class UnittreeSupport {
      */
     public static int extractUnitId(UnittreeContext ctx, String label) {
         navigate(ctx, UT + "ManageUnits.jsp");
-        Locator link = ctx.page.locator(
-            "a[href*='idUnit=']:has-text('" + label + "'), a[href*='idUnit='][title*='" + label + "']").first();
+        // Filtre plutot qu'interpolation : une apostrophe dans le libelle refermerait la chaine
+        // du selecteur ':has-text(...)' et rendrait l'entite introuvable.
+        Locator link = ctx.page.locator("a[href*='idUnit=']")
+            .filter(new Locator.FilterOptions().setHasText(label)).first();
         try {
             link.waitFor(new Locator.WaitForOptions()
                 .setState(WaitForSelectorState.ATTACHED).setTimeout(10_000));

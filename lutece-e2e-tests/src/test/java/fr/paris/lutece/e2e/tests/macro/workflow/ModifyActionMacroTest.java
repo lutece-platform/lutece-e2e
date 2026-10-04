@@ -73,7 +73,8 @@ public class ModifyActionMacroTest extends MacroTest {
      * Retourne -1 si aucun lien exploitable n'est present.
      */
     private static int resolveActionId(Page page, String actionName) {
-        Locator named = page.locator("a[href*='id_action=']:has-text('" + actionName + "')").first();
+        Locator named = page.locator("a[href*='id_action=']")
+            .filter(new Locator.FilterOptions().setHasText(actionName)).first();
         Locator link = named.count() > 0 ? named : page.locator("a[href*='id_action=']").first();
         if (link.count() == 0) {
             return -1;
