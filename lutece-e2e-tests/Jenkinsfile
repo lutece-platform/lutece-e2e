@@ -8,6 +8,13 @@
  * Architecture:
  * - Étapes Maven: agent any (contrôleur Jenkins)
  * - Étapes Podman/Tests: agent podman
+ *
+ * Variables d'environnement globales Jenkins attendues. Elles ne sont pas déclarées dans le
+ * bloc environment, qui les masquerait : ce sont des adresses d'infrastructure, et le dépôt
+ * est public.
+ * - DOCKER_REGISTRY      registre des images de site (mode TESTCONTAINERS)
+ * - ALLURE_SERVER_URL    serveur Allure mutualisé, pour la publication du rapport
+ * - LUTECE_RECETTE_URL   site de recette (mode EXTERNAL, ENVIRONMENT=recette)
  */
 
 pipeline {
@@ -49,6 +56,10 @@ pipeline {
         // étant prioritaire sur les variables globales.
         // Le projet Allure, lui, est déduit du site testé par le script (un projet par
         // site, pour que les tendances d'un site ne soient pas mélangées à un autre).
+
+        // LUTECE_RECETTE_URL suit la même règle : l'adresse du site de recette vient des
+        // variables globales Jenkins, pour garder le nom d'hôte hors du dépôt. Elle n'est
+        // lue qu'en mode EXTERNAL, quand ENVIRONMENT vaut 'recette'.
     }
 
     parameters {
@@ -66,8 +77,9 @@ pipeline {
         choice(
             name: 'ENVIRONMENT',
             choices: ['recette', 'local'],
-            description: '[EXTERNAL] Environnement cible. Pour toute autre cible, ' +
-                         'renseigner LUTECE_URL.'
+            description: '[EXTERNAL] Environnement cible. \'recette\' lit son adresse dans ' +
+                         'la variable globale Jenkins LUTECE_RECETTE_URL. Pour toute autre ' +
+                         'cible, renseigner LUTECE_URL.'
         )
         string(
             name: 'LUTECE_URL',
@@ -215,7 +227,16 @@ pipeline {
                             } else {
                                 switch(params.ENVIRONMENT) {
                                     case 'recette':
-                                        env.TARGET_URL = 'https://<site-recette>/lutece'
+                                        // Sans la variable globale, il n'y a rien a viser :
+                                        // mieux vaut l'echec immediat qu'une execution
+                                        // silencieuse sur une autre instance.
+                                        if (!env.LUTECE_RECETTE_URL?.trim()) {
+                                            error("ENVIRONMENT=recette demande la variable " +
+                                                  "d'environnement globale Jenkins " +
+                                                  "LUTECE_RECETTE_URL. La definir, ou " +
+                                                  "renseigner le parametre LUTECE_URL.")
+                                        }
+                                        env.TARGET_URL = env.LUTECE_RECETTE_URL.trim()
                                         break
                                     case 'local':
                                     default:
