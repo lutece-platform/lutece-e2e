@@ -66,6 +66,20 @@ public class NextStepFOMacroTest extends MacroTest {
     }
 
     /**
+     * Le formulaire propose-t-il encore une etape suivante ?
+     *
+     * <p>Permet de parcourir un formulaire dont on ne connait pas le nombre d'etapes — le cas d'une
+     * suite decrite dans un fichier — sans tenter un passage qui echouerait sur la derniere.</p>
+     *
+     * @param ctx contexte formulaire courant
+     * @return vrai si le bouton d'etape suivante est present et visible
+     */
+    public static boolean estDisponible(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx) {
+        Locator bouton = nextStepButton(ctx.page);
+        return bouton.count() > 0 && bouton.first().isVisible();
+    }
+
+    /**
      * Localise le bouton de passage a l'etape suivante.
      *
      * <p>Cible l'identifiant de l'action plutot que son libelle. Le libelle rendu est

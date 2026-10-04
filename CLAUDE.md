@@ -266,6 +266,28 @@ Les tests utilisent SmallRye/MicroProfile Config avec des ordinals :
 
 Cela permet de surcharger via la ligne de commande : `-Dtest.headless=true`, `-Dlutece.base.url=...`
 
+## Suites declaratives
+
+Un site peut decrire sa suite dans un fichier plutot que la coder : voir
+[Suites declaratives](docs/suites-declaratives.md).
+
+Le fichier (`.e2e-suite.yml`, YAML ou JSON) vit a la racine de l'image du site, a cote de son
+`.e2e-config.json`. La pipeline l'extrait et l'execute avec les briques existantes — aucun
+Playwright a ecrire pour un nouveau site.
+
+```
+declaratif/
+├── Vocabulaire.java        mots du fichier -> types de question et cles de tache
+├── DescriptionDeSuite.java ce qu'un fichier decrit, une fois lu
+├── LecteurDeSuite.java     lecture et validation (SnakeYAML, SafeConstructor)
+├── ExecuteurDeSuite.java   traduit la description en appels de briques
+└── SuiteDeclarativeTest.java  point d'entree JUnit (-Dsuite.fichier=...)
+```
+
+- `LecteurDeSuiteTest` valide un fichier sans navigateur, en quelques millisecondes
+- `ContainerSuiteDeclarativeSuite` monte l'instance puis joue le fichier
+- Valeur `SuiteDeclarative` du parametre `TEST_SUITE` cote Jenkins
+
 ## Ajouter une nouvelle fonctionnalite
 
 1. **Page Object POJO** dans `lutece-e2e-core/src/java/.../pages/bo/MyPage.java`

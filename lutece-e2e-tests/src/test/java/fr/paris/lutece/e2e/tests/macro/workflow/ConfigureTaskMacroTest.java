@@ -211,10 +211,35 @@ public class ConfigureTaskMacroTest extends MacroTest {
                             + "l'execution de l'action");
                 }
                 default -> {
-                    // SELECTION et APPLIQUER : rien de relisible de facon fiable, cf. javadoc.
+                    // SELECTION, APPLIQUER et AUTO : rien de relisible de facon fiable, cf. javadoc.
                 }
             }
         }
+    }
+
+    /**
+     * Nature d'un controle, lue sur l'ecran de configuration ouvert.
+     *
+     * <p>L'ordre d'examen va du plus specifique au plus general : une liste deroulante et un
+     * bouton radio se reconnaissent a leur balise, tout le reste est une saisie. Un champ absent
+     * est rendu comme une saisie, pour que l'echec soit signale par le controle de presence
+     * existant et nomme le champ plutot que la deduction.</p>
+     *
+     * @param page    ecran de configuration de la tache
+     * @param reglage le reglage a poser
+     * @return la nature a employer
+     */
+    private static TaskConfigDataSet.Nature natureSurEcran(Page page, TaskConfigDataSet.Reglage reglage) {
+        if (page.locator("select[name='" + reglage.champ() + "']").count() > 0) {
+            return TaskConfigDataSet.Nature.SELECTION;
+        }
+        if (page.locator("input[type='radio'][name='" + reglage.champ() + "']").count() > 0) {
+            return TaskConfigDataSet.Nature.RADIO;
+        }
+        if (page.locator("input[type='checkbox'][name='" + reglage.champ() + "']").count() > 0) {
+            return TaskConfigDataSet.Nature.CASE;
+        }
+        return TaskConfigDataSet.Nature.TEXTE;
     }
 
     /**
@@ -227,6 +252,8 @@ public class ConfigureTaskMacroTest extends MacroTest {
     private static void appliquer(WorkflowContext ctx, int taskId, TaskConfigDataSet.Reglage reglage) {
         Page page = ctx.page;
         switch (reglage.nature()) {
+            case AUTO -> appliquer(ctx, taskId, new TaskConfigDataSet.Reglage(
+                natureSurEcran(page, reglage), reglage.champ(), reglage.valeur()));
             case TEXTE -> {
                 Locator champ = page.locator(
                     "input[name='" + reglage.champ() + "'], textarea[name='" + reglage.champ() + "']");

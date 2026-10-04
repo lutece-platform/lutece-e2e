@@ -40,6 +40,28 @@ import org.junit.jupiter.api.Test;
 @Tag("brick")
 public class SelectChoiceFOMacroTest extends MacroTest {
 
+    /**
+     * Retient un choix si la question figure sur l'etape affichee, sans rien exiger sinon.
+     *
+     * <p>Pour un parcours dont on ne connait pas la repartition des questions par etape — celui
+     * d'une suite decrite dans un fichier, ou l'auteur enumere les reponses du parcours entier
+     * sans dire ou chacune se pose. L'appelant reste responsable de verifier qu'elles ont toutes
+     * trouve leur place.</p>
+     *
+     * @param ctx  contexte formulaire courant
+     * @param data le choix a retenir
+     * @return vrai si la question etait presente et le choix retenu
+     */
+    public static boolean siPresente(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx,
+        ChoiceSelectionDataSet data) {
+
+        if (ctx.page.getByText(data.questionLabel()).count() == 0) {
+            return false;
+        }
+        run(ctx, data);
+        return true;
+    }
+
     @Step("Retenir un choix en front-office")
     public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, ChoiceSelectionDataSet data) {
         Page page = ctx.page;

@@ -118,6 +118,7 @@ pipeline {
                 'FormsParcoursCompletSuite',
                 'ContainerFormsDeontologieSuite',
                 'FormsDeontologieSuite',
+                'SuiteDeclarative',
                 'ContainerIntegrationSuite',
                 'ContainerMacroIntegrationSuite',
                 'WorkflowFormsIntegrationSuite',
@@ -392,6 +393,45 @@ pipeline {
                     }
                 }
 
+                // Suite declarative : le fichier qui decrit la demarche voyage avec le site, dans
+                // son image, a cote de son .e2e-config.json. L'extraire plutot que de le versionner
+                // cote tests est tout l'interet : la demarche et sa description evoluent ensemble,
+                // et ajouter un site ne demande plus de toucher a ce depot.
+                //
+                // L'extraction a lieu ici, sur l'agent podman, et non dans « Build & Prepare » :
+                // le controleur n'a pas de podman.
+                stage('Extract Suite Description') {
+                    when {
+                        expression { params.TEST_SUITE == 'SuiteDeclarative' }
+                    }
+                    steps {
+                        script {
+                            env.SUITE_IMAGE = env.LUTECE_IMAGE_REF?.trim() ?: params.LUTECE_IMAGE
+                            env.SUITE_FICHIER = 'lutece-e2e-tests/suite-du-site.yml'
+                        }
+                        // Bloc sans interpolation : les valeurs passent par l'environnement, ce qui
+                        // evite d'avoir a echapper quoi que ce soit entre Groovy et le shell.
+                        sh '''
+                            set -e
+                            CONTENEUR=$(podman create "$SUITE_IMAGE")
+                            trap 'podman rm -f "$CONTENEUR" >/dev/null 2>&1 || true' EXIT
+                            TROUVE=""
+                            for NOM in .e2e-suite.yml .e2e-suite.yaml .e2e-suite.json; do
+                                if podman cp "$CONTENEUR:/$NOM" "$SUITE_FICHIER" 2>/dev/null; then
+                                    TROUVE="$NOM"
+                                    break
+                                fi
+                            done
+                            if [ -z "$TROUVE" ]; then
+                                echo "ERREUR : aucun fichier de suite a la racine de $SUITE_IMAGE." >&2
+                                echo "  Y poser un .e2e-suite.yml (ou .yaml, ou .json), a cote du .e2e-config.json." >&2
+                                exit 1
+                            fi
+                            echo "Suite declarative extraite de l'image : $TROUVE"
+                        '''
+                    }
+                }
+
                 stage('Run E2E Tests - Testcontainers') {
                     when {
                         expression { params.TEST_MODE == 'TESTCONTAINERS' }
@@ -430,6 +470,9 @@ pipeline {
                             if (params.TEST_SUITE == 'FormsDeontologieSuite') {
                                 testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.ContainerFormsDeontologieSuite"
                             }
+                            if (params.TEST_SUITE == 'SuiteDeclarative') {
+                                testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.ContainerSuiteDeclarativeSuite"
+                            }
 
                             // Reference immuable resolue au pull ; fallback sur le tag si indisponible
                             def luteceImageRef = env.LUTECE_IMAGE_REF?.trim() ?: params.LUTECE_IMAGE
@@ -460,6 +503,7 @@ pipeline {
                                         ./mvnw clean test -o \
                                         -Dmaven.repo.local=m2-repo \
                                         -Dtest=${testClass} \
+                                        ${env.SUITE_FICHIER ? '-Dsuite.fichier=/work/' + env.SUITE_FICHIER : ''} \
                                         -Dlutece.image=${luteceImageRef} \
                                         -Dlutece.context.root=${LUTECE_CONTEXT_ROOT} \
                                         -Dlutece.http.port=${LUTECE_HTTP_PORT} \
@@ -517,6 +561,9 @@ pipeline {
                                     || params.TEST_SUITE == 'FormsDeontologieSuite') {
                                 testClass = "fr.paris.lutece.e2e.tests.suites.FormsDeontologieSuite"
                             }
+                            if (params.TEST_SUITE == 'SuiteDeclarative') {
+                                testClass = "fr.paris.lutece.e2e.tests.declaratif.SuiteDeclarativeTest"
+                            }
 
                             sh 'mkdir -p lutece-e2e-tests/target/screenshots'
 
@@ -543,6 +590,7 @@ pipeline {
                                         ./mvnw clean test -o \
                                         -Dmaven.repo.local=m2-repo \
                                         -Dtest=${testClass} \
+                                        ${env.SUITE_FICHIER ? '-Dsuite.fichier=/work/' + env.SUITE_FICHIER : ''} \
                                         -Dlutece.base.url=${env.TARGET_URL} \
                                         -Dtest.headless=${params.HEADLESS} \
                                         -Dtest.timeout=30000 \

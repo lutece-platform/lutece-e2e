@@ -42,7 +42,16 @@ public record TaskConfigDataSet(List<Reglage> reglages) {
         /** Enregistrement intermediaire, le formulaire se poursuivant ensuite. */
         ENREGISTRER,
         /** Ouverture du panneau de configuration avancee de la tache. */
-        OUVRIR_AVANCE
+        OUVRIR_AVANCE,
+        /**
+         * Nature deduite de l'ecran : liste deroulante, bouton radio, case ou champ texte.
+         *
+         * <p>Pour un parametrage qui ne connait pas le formulaire de la tache — celui d'une suite
+         * decrite dans un fichier, ecrit par quelqu'un qui connait sa demarche et non le plugin.
+         * Exiger de lui qu'il distingue « selection » de « texte » reviendrait a lui demander
+         * d'ouvrir l'ecran de chaque type de tache pour le renseigner.</p>
+         */
+        AUTO
     }
 
     /**
@@ -71,6 +80,17 @@ public record TaskConfigDataSet(List<Reglage> reglages) {
      */
     public static TaskConfigDataSet defaults() {
         return vide();
+    }
+
+    /**
+     * Ajoute un reglage dont la nature sera deduite de l'ecran.
+     *
+     * @param champ  attribut {@code name} du controle
+     * @param valeur valeur a poser
+     * @return le parametrage complete
+     */
+    public TaskConfigDataSet auto(String champ, String valeur) {
+        return avec(new Reglage(Nature.AUTO, champ, valeur));
     }
 
     /**

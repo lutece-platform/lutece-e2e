@@ -1,0 +1,243 @@
+# Declaration d'interets simplifiee — commission de deontologie
+#
+# Transcription declarative de FormsDeontologieSuite. Le meme parcours, decrit au lieu d'etre
+# code : c'est la preuve que le format couvre une demarche reelle, et le modele a recopier pour
+# un autre site.
+#
+# En CI, ce fichier vit a la racine de l'image du site, a cote de .e2e-config.json.
+
+suite:
+  nom: Declaration d'interets simplifiee
+  description: >
+    Sept rubriques declaratives partagent le meme motif : une question fermee commande des
+    questions de detail rassemblees dans un groupe repetable. C'est ce motif que la suite
+    eprouve, a l'echelle plutot que sur un cas isole.
+
+workflow:
+  nom: Traitement des declarations d'interets
+  # Le premier etat est l'etat initial : celui que prend une reponse des sa soumission.
+  etats:
+    - Declaration effectuee
+    - Declaration en cours de verification
+    - Complements d'informations demandes
+    - Complements d'informations recus
+    - En cours d'instruction CDVP
+    - En attente avis definitif du president
+    - Envoi au declarant
+    - Declaration archivee
+
+  actions:
+    - nom: Generer le PDF et debuter la verification
+      de: Declaration effectuee
+      vers: Declaration en cours de verification
+      taches:
+        - type: statut-publication
+          config:
+            published: true
+
+    # L'action est nommee « complement » mais arme une correction de saisie : l'usager est
+    # renvoye sur les questions deja remplies. C'est le choix du site d'origine, et il commande
+    # le signet utilisable dans la notification.
+    - nom: Demander un complement d'informations
+      de: Declaration en cours de verification
+      vers: Complements d'informations demandes
+      taches:
+        - type: correction-saisie
+          config:
+            idStateAfterEdition: Complements d'informations recus
+            defaultMessage: Merci de modifier la reponse apportee aux questions ci-dessous
+        - type: commentaire
+          config:
+            title: Preciser la nature des corrections souhaitees
+            mandatory: false
+            richText: true
+
+    - nom: Reprendre l'instruction
+      de: Complements d'informations recus
+      vers: Declaration en cours de verification
+      taches:
+        - type: date-modification
+
+    - nom: Mettre en instruction CDVP
+      de: Declaration en cours de verification
+      vers: En cours d'instruction CDVP
+
+    - nom: Enregistrer l'analyse avant signature
+      de: En cours d'instruction CDVP
+      vers: En attente avis definitif du president
+
+    - nom: Enregistrer l'avis definitif signe
+      de: En attente avis definitif du president
+      vers: Envoi au declarant
+
+    - nom: Archiver la declaration
+      de: Envoi au declarant
+      vers: Declaration archivee
+
+formulaire:
+  titre: Declaration d'interets simplifiee
+  enchainement: lineaire
+
+  etapes:
+    - titre: Avant de demarrer
+      initiale: true
+      groupes:
+        - titre: Dispositions generales
+        - titre: Engagement de transparence
+      questions:
+        - type: numerotation
+          titre: Numero de la declaration
+        - type: conditions-utilisation
+          titre: Je m'engage a respecter les regles de la charte
+          groupe: Engagement de transparence
+
+    - titre: Renseignements personnels
+      groupes:
+        - titre: Identite du declarant
+        - titre: Information de contact
+      questions:
+        - type: radio
+          titre: Civilite
+          choix: [Madame, Monsieur]
+          groupe: Identite du declarant
+        - type: texte
+          titre: Nom d'usage
+          groupe: Identite du declarant
+        - type: telephone
+          titre: Numero de telephone
+          groupe: Information de contact
+        - type: texte
+          titre: Adresse postale
+          groupe: Information de contact
+        - type: date
+          titre: Date de debut de mandat
+
+    # --- Les rubriques declaratives : meme forme, sept fois ------------------
+    - titre: Activites professionnelles
+      groupes:
+        - titre: Activites professionnelles remunerees
+          iterations: 10
+      questions:
+        - type: radio
+          titre: Avez-vous des activites professionnelles ?
+          choix: [Oui, Non]
+        - type: texte
+          titre: Nom de l'employeur
+          groupe: Activites professionnelles remunerees
+          affichee-si:
+            question: "Avez-vous des activites professionnelles ?"
+            vaut: Oui
+        - type: date
+          titre: Debut de la periode d'exercice
+          groupe: Activites professionnelles remunerees
+          affichee-si:
+            question: "Avez-vous des activites professionnelles ?"
+            vaut: Oui
+        - type: texte-long
+          titre: Description de l'activite professionnelle
+          groupe: Activites professionnelles remunerees
+          affichee-si:
+            question: "Avez-vous des activites professionnelles ?"
+            vaut: Oui
+
+    - titre: Participations aux organes dirigeants
+      groupes:
+        - titre: Participations aux organes dirigeants declarees
+          iterations: 10
+      questions:
+        - type: radio
+          titre: Participez-vous a un organe dirigeant ?
+          choix: [Oui, Non]
+        - type: texte
+          titre: Denomination de l'organisme
+          groupe: Participations aux organes dirigeants declarees
+          affichee-si:
+            question: "Participez-vous a un organe dirigeant ?"
+            vaut: Oui
+        - type: texte-long
+          titre: Description de la fonction exercee
+          groupe: Participations aux organes dirigeants declarees
+          affichee-si:
+            question: "Participez-vous a un organe dirigeant ?"
+            vaut: Oui
+
+    - titre: Participations dans le capital d'une societe
+      groupes:
+        - titre: Participations financieres directes
+          iterations: 10
+      questions:
+        - type: radio
+          titre: Avez-vous des participations financieres ?
+          choix: [Oui, Non]
+        - type: texte
+          titre: Denomination de la societe
+          groupe: Participations financieres directes
+          affichee-si:
+            question: "Avez-vous des participations financieres ?"
+            vaut: Oui
+        - type: texte
+          titre: Evaluation de la participation financiere
+          groupe: Participations financieres directes
+          affichee-si:
+            question: "Avez-vous des participations financieres ?"
+            vaut: Oui
+
+    - titre: Fonctions benevoles
+      groupes:
+        - titre: Fonctions benevoles declarees
+          iterations: 10
+      questions:
+        - type: radio
+          titre: Exercez-vous des fonctions benevoles ?
+          choix: [Oui, Non]
+        - type: texte
+          titre: Denomination de la structure
+          groupe: Fonctions benevoles declarees
+          affichee-si:
+            question: "Exercez-vous des fonctions benevoles ?"
+            vaut: Oui
+        - type: texte-long
+          titre: Description des responsabilites exercees
+          groupe: Fonctions benevoles declarees
+          affichee-si:
+            question: "Exercez-vous des fonctions benevoles ?"
+            vaut: Oui
+
+    - titre: Validation declaration
+      finale: true
+      questions:
+        - type: texte-long
+          titre: Observations
+        - type: case-a-cocher
+          titre: Je certifie sur l'honneur l'exactitude
+          choix: [Je certifie l'exactitude des renseignements]
+
+    # Reservee a l'instruction : aucune liaison n'y mene, le workflow l'ouvre a l'agent.
+    - titre: Instruction de la declaration
+      hors-parcours: true
+      questions:
+        - type: texte-long
+          titre: Commentaires de la commission
+        - type: fichier
+          titre: Analyse du membre de la CDVP
+
+parcours:
+  # Le parcours le plus frequent : rien a declarer. Il eprouve la face masquee des controles.
+  - soumission:
+      nom: Declaration sans rubrique a declarer
+      reponses:
+        Avez-vous des activites professionnelles ?: Non
+        Participez-vous a un organe dirigeant ?: Non
+        Avez-vous des participations financieres ?: Non
+        Exercez-vous des fonctions benevoles ?: Non
+      verifier:
+        - question: Nom de l'employeur
+          masquee: true
+
+  - instruction:
+      action: Generer le PDF et debuter la verification
+      etat-attendu: Declaration en cours de verification
+
+  - instruction:
+      action: Demander un complement d'informations
+      etat-attendu: Complements d'informations demandes

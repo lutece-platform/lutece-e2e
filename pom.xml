@@ -31,6 +31,7 @@
         <smallrye-config.version>3.18.2</smallrye-config.version>
         <testcontainers.version>2.0.5</testcontainers.version>
         <allure.version>2.29.1</allure.version>
+        <snakeyaml.version>2.6</snakeyaml.version>
     </properties>
 
     <dependencyManagement>
@@ -102,6 +103,15 @@
                 <groupId>io.qameta.allure</groupId>
                 <artifactId>allure-junit5</artifactId>
                 <version>${allure.version}</version>
+            </dependency>
+
+            <!-- Lecture des suites declaratives. SnakeYAML lit le YAML et, celui-ci en etant un
+                 sur-ensemble, le JSON : un seul parseur pour les deux formats, et aucune
+                 dependance transitive a faire converger. -->
+            <dependency>
+                <groupId>org.yaml</groupId>
+                <artifactId>snakeyaml</artifactId>
+                <version>${snakeyaml.version}</version>
             </dependency>
 
             <!-- Testcontainers -->

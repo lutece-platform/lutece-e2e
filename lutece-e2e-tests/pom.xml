@@ -54,6 +54,12 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Lecture des suites declaratives (YAML ou JSON) -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
+
         <!-- Testcontainers -->
         <dependency>
             <groupId>org.testcontainers</groupId>
