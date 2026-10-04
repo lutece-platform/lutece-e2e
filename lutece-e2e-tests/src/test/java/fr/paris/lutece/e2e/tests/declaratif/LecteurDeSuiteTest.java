@@ -108,6 +108,22 @@ class LecteurDeSuiteTest {
     }
 
     @Test
+    @DisplayName("Une suite sans workflow est lue : les sections sont facultatives")
+    void suiteSansWorkflow() {
+        var description = LecteurDeSuite.depuis(Path.of("src/test/resources/suites/inscription.e2e-suite.yml"));
+
+        assertAll(
+            () -> assertNull(description.workflow(),
+                "La suite ne decrit aucun workflow"),
+            () -> assertNull(description.organisation(),
+                "La suite ne decrit aucune organisation"),
+            () -> assertEquals(2, description.formulaire().etapes().size(),
+                "Les deux etapes doivent etre lues"),
+            () -> assertEquals(3, description.parcours().size(),
+                "Une soumission, un daemon et un export"));
+    }
+
+    @Test
     @DisplayName("Un type de question hors vocabulaire est refuse, en listant ceux qui conviennent")
     void typeDeQuestionInconnu() {
         var echec = assertThrows(DescriptionInvalide.class, () -> lire("""

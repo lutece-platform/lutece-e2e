@@ -162,12 +162,17 @@ relient par leur libellé exact. Le lecteur vérifie ces liens avant toute exéc
 qui vise une question absente, ou une valeur que la question ne propose pas, est refusée en citant
 ce qui existe.
 
-## Un exemple complet
+## Trois exemples complets
 
-`lutece-e2e-tests/src/test/resources/suites/deontologie.e2e-suite.yml` décrit la déclaration
-d'intérêts de la commission de déontologie : 8 états, 7 actions, 8 étapes, groupes répétables,
-contrôles conditionnels, soumission et instruction. C'est la transcription d'une suite qui existait
-en Java, et le modèle à recopier.
+Dans `lutece-e2e-tests/src/test/resources/suites/`, trois démarches de structures volontairement
+différentes, toutes vérifiées contre une instance réelle. À recopier selon ce qui ressemble le
+plus à la vôtre.
+
+| Fichier | Forme | Ce qu'il montre |
+|---|---|---|
+| `deontologie.e2e-suite.yml` | **linéaire**, 8 étapes | affichage conditionnel à l'échelle, groupes répétables, instruction. Transcription d'une suite qui existait en Java |
+| `subvention.e2e-suite.yml` | **à embranchement** | liaison conditionnée et sortie par défaut, organisation unittree, options, validation de saisie, deux branches soumises |
+| `inscription.e2e-suite.yml` | **sans workflow** | démarche de simple collecte : les sections sont facultatives, le formulaire se publie sans workflow à associer |
 
 ## Les sections facultatives
 
@@ -242,6 +247,7 @@ Trois limites, constatées en transcrivant deux démarches et vérifiées sur un
 | **`reponses` sur une liste déroulante** | la brique de sélection ne reconnaît que les questions rendues dans un `fieldset` ou un `.form-group`, ce que le thème ne fait pas pour les listes | laisser le remplissage automatique s'en charger |
 | **`nature: nombre`** | s'appuie sur le rôle ARIA `spinbutton`, que le thème n'expose pas | employer `nature: texte`, qui retombe sur le libellé et son champ voisin |
 | **`iterations`** | la brique ne détecte pas le bloc d'itération sur un formulaire bâti ainsi | à reprendre dans la brique |
+| **`brouillon`** | le contrôle de sauvegarde n'apparaît pas en front office : la reprise d'un brouillon suppose vraisemblablement un usager authentifié | employer `options.authentification: true`, non vérifié |
 
 Le vocabulaire est posé pour les quatre : ce sont les briques sous-jacentes qu'il faudra reprendre,
 et le fichier n'aura pas à changer.

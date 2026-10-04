@@ -1,0 +1,86 @@
+# Inscription a un service municipal — troisieme site, sur un troisieme axe
+#
+# La deontologie est lineaire, la subvention bifurque. Celle-ci ne porte pas de workflow du tout :
+# une demarche de simple collecte, sans instruction. Elle verifie donc que les sections sont
+# reellement facultatives, et que le formulaire se publie sans workflow a associer.
+#
+# Elle sert aussi de catalogue : les types de question que les deux premiers fichiers n'employaient
+# pas sont rassembles ici, pour que la couverture ne depende pas de ce que ces demarches-la
+# demandaient.
+
+suite:
+  nom: Inscription a un service municipal
+  description: >
+    Demarche de collecte sans instruction : pas de workflow, une etape de saisie suivie d'une
+    etape de pieces. Rassemble les types de question peu employes ailleurs.
+
+formulaire:
+  titre: Inscription service municipal
+  enchainement: lineaire
+
+  options:
+    disponible-du: today
+    disponible-au: "2033-12-31"
+    recapitulatif: true
+    brouillon: true
+    fil-ariane: true
+
+  etapes:
+    - titre: Renseignements
+      initiale: true
+      groupes:
+        - titre: Identite de l'inscrit
+        - titre: Preferences
+      questions:
+        - type: numerotation
+          titre: Numero d'inscription
+        - type: texte
+          titre: Nom de famille
+          groupe: Identite de l'inscrit
+        - type: date
+          titre: Date de naissance
+          groupe: Identite de l'inscrit
+        - type: telephone
+          titre: Telephone de contact
+          groupe: Identite de l'inscrit
+        - type: nombre
+          titre: Nombre de personnes inscrites
+          groupe: Preferences
+        - type: liste-deroulante
+          titre: Creneau souhaite
+          choix: [Matin, Apres-midi, Soiree]
+          groupe: Preferences
+        - type: liste-ordonnee
+          titre: Activites par ordre de preference
+          choix: [Sport, Musique, Lecture]
+          groupe: Preferences
+        - type: case-a-cocher
+          titre: Services complementaires
+          choix: [Transport, Repas]
+          groupe: Preferences
+
+    - titre: Pieces et engagement
+      finale: true
+      questions:
+        - type: fichier
+          titre: Justificatif de domicile
+        - type: texte-long
+          titre: Observations libres
+        - type: conditions-utilisation
+          titre: J'accepte le reglement interieur
+
+parcours:
+  - soumission:
+      nom: Inscription complete
+      valeurs:
+        - question: Nom de famille
+          valeur: Lefevre
+        - question: Date de naissance
+          nature: date
+          valeur: 03/07/1992
+        - question: Nombre de personnes inscrites
+          nature: texte
+          valeur: "3"
+
+  - daemon: formsIndexerDaemon
+  - export: csv

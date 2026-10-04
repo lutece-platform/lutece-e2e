@@ -432,6 +432,12 @@ public final class ExecuteurDeSuite {
             controlerLesEtapes(soumission, ecran);
             FillAllFieldsFOMacroTest.run(forms);
             itererSiDemande(soumission, ecran);
+            if (soumission.brouillon() && ecran == 0) {
+                // Sur la premiere etape, la ou un usager interrompt reellement sa saisie pour la
+                // reprendre plus tard. La derniere etape ne porte pas forcement de champ texte, et
+                // sauvegarder ce qui va etre valide dans la seconde qui suit ne prouve rien.
+                SaveDraftFOMacroTest.run(forms);
+            }
             if (!NextStepFOMacroTest.estDisponible(forms)) {
                 break;
             }
@@ -447,9 +453,6 @@ public final class ExecuteurDeSuite {
             + ". Le libelle differe de celui declare dans la section « formulaire », ou l'etape qui "
             + "porte la question n'est pas atteinte par l'enchainement decrit.");
 
-        if (soumission.brouillon()) {
-            SaveDraftFOMacroTest.run(forms);
-        }
         ViewSummaryFOMacroTest.run(forms);
         ValidateSummaryFOMacroTest.run(forms);
         // La multivue lit l'index Lucene et non la base : sans passage de l'indexeur, une reponse
