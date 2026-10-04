@@ -55,10 +55,11 @@ public class VerifyResponseSubmittedMacroTest extends MacroTest {
         int rows = page.locator("table tbody tr").count();
 
         Assertions.assertTrue(counter > 0 || rows > 0,
-            "Aucune reponse enregistree pour le formulaire '" + ctx.formTitle + "' : la multivue affiche "
-            + counter + " reponse(s) et " + rows + " ligne(s). La validation du recapitulatif en "
-            + "front-office renvoie un 302 sans erreur mais ne persiste rien (verifie : indexation "
-            + "complete du portail relancee, formsIndexerDaemon execute, compteur toujours a 0).");
+            "Aucune reponse visible pour le formulaire '" + ctx.formTitle + "' : la multivue affiche "
+            + counter + " reponse(s) et " + rows + " ligne(s). La multivue lit l'index Lucene et non "
+            + "la base : une reponse bien enregistree y reste invisible tant que l'indexeur Forms "
+            + "n'est pas passe. Executer RunDaemonMacroTest(DaemonDataSet.formsIndexer()) apres la "
+            + "validation du recapitulatif avant d'appeler cette brique.");
     }
 
     /**

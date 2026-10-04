@@ -75,12 +75,17 @@ public class MoveQuestionIntoGroupMacroTest extends MacroTest {
             + "&stepValidated=true&groupValidated=true");
 
         // 2) Appliquer le deplacement (premiere position dans le groupe).
+        // Le parametre de position se nomme 'displayOrder' (FormsConstants.PARAMETER_DISPLAY_ORDER).
+        // Sous un autre nom il n'est pas lu, la position vaut -1 par defaut, et le plugin insere a
+        // l'index -2 de la liste du groupe : la requete tombe en erreur serveur. Le defaut ne se
+        // voyait pas tant qu'un groupe ne recevait qu'une question, l'insertion n'ayant lieu que
+        // si le groupe contient deja quelque chose.
         MacroSupport.navigate(ctx, MacroSupport.FORMS
             + "ManageQuestions.jsp?action=moveComposite"
             + "&id_display=" + questionDisplayId
             + "&id_step=" + stepId
             + "&id_parent=" + groupDisplayId
-            + "&display_order=1"
+            + "&displayOrder=1"
             + "&stepValidated=true&groupValidated=true");
 
         // Verification de l'effet : la question doit desormais etre imbriquee dans la carte du groupe.
@@ -88,9 +93,12 @@ public class MoveQuestionIntoGroupMacroTest extends MacroTest {
             + "ManageQuestions.jsp?view=manageQuestions&id_step=" + stepId);
         boolean nested = isQuestionNestedInGroup(page, group.title, question.title);
 
-        Assumptions.assumeTrue(nested,
-            "Le deplacement via l'UI moveComposite n'a pas pu etre applique de facon fiable "
-            + "dans cet environnement (question '" + question.title + "' -> groupe '" + group.title + "')");
+        // Constat ferme, et non assomption : un deplacement refuse par le serveur laisse la question
+        // a la racine de l'etape. L'ignorer rendait la brique muette sur son propre echec, et la
+        // suite appelante verte sans que rien n'ait bouge.
+        Assertions.assertTrue(nested,
+            "La question '" + question.title + "' devrait etre imbriquee dans le groupe '"
+            + group.title + "' apres le deplacement");
     }
 
     /** Recupere l'id d'affichage d'une question depuis le lien de suppression (view=getConfirmRemoveComposite). */

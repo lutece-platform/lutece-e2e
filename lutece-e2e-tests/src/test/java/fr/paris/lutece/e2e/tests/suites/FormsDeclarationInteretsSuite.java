@@ -157,6 +157,9 @@ public class FormsDeclarationInteretsSuite extends MacroTest {
         FillAllFieldsFOMacroTest.run(forms);
         ViewSummaryFOMacroTest.run(forms);
         ValidateSummaryFOMacroTest.run(forms);
+        // La multivue lit un index, pas la base : sans passage de l'indexeur, elle reste vide alors
+        // que la reponse est bien enregistree, et la preuve de soumission echouerait a tort.
+        RunDaemonMacroTest.run(forms, DaemonDataSet.formsIndexer());
         VerifyResponseSubmittedMacroTest.run(forms);
     }
 
@@ -201,9 +204,8 @@ public class FormsDeclarationInteretsSuite extends MacroTest {
         FillAllFieldsFOMacroTest.run(forms);
         ViewSummaryFOMacroTest.run(forms);
         ValidateSummaryFOMacroTest.run(forms);
-        VerifyResponseSubmittedMacroTest.run(forms);
-
         RunDaemonMacroTest.run(forms, DaemonDataSet.formsIndexer());
+        VerifyResponseSubmittedMacroTest.run(forms);
     }
 
     /**
