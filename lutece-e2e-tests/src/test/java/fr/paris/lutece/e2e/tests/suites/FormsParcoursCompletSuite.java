@@ -28,7 +28,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
- * Parcours metier complet, de l'organisation jusqu'a l'instruction de deux reponses.
+ * Parcours metier complet du plugin Forms, de l'organisation jusqu'a l'instruction de deux
+ * reponses.
  *
  * <p>Couvre en une seule execution les quatre briques fonctionnelles du socle, chacune dans sa
  * version non triviale, et surtout leurs points de jonction — c'est la ou les regressions
@@ -62,16 +63,16 @@ import org.junit.jupiter.api.Test;
  * <p>Execution :</p>
  * <pre>
  *   mvn -o test -pl lutece-e2e-tests \
- *     -Dtest=fr.paris.lutece.e2e.tests.suites.ParcoursCompletSuite \
+ *     -Dtest=fr.paris.lutece.e2e.tests.suites.FormsParcoursCompletSuite \
  *     -Dlutece.base.url=https://mon-site/lutece -Dtest.headless=true
  * </pre>
  */
 @Epic("Suites metier")
-@Feature("Parcours complet")
+@Feature("Parcours complet Forms")
 @Tag("macro")
 @Tag("suite")
-@DisplayName("Parcours complet : unites, workflow multi-etats, formulaire a embranchement, deux soumissions FO et instruction")
-public class ParcoursCompletSuite extends MacroTest {
+@DisplayName("Parcours complet Forms : unites, workflow multi-etats, formulaire a embranchement, deux soumissions FO et instruction")
+public class FormsParcoursCompletSuite extends MacroTest {
 
     @Test
     @Severity(SeverityLevel.CRITICAL)

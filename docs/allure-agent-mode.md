@@ -57,7 +57,7 @@ site partage. Sur une instance jetable, la rotation peut rester active.
 **Conteneur** — instance neuve, droits a ouvrir, identifiants par defaut :
 
 ```bash
-mvn -o test -pl lutece-e2e-tests -Dtest=ContainerParcoursCompletSuite \
+mvn -o test -pl lutece-e2e-tests -Dtest=ContainerFormsParcoursCompletSuite \
   -Dlutece.image=<registre>/bild/p30/site-integration-forms:8.0.0-SNAPSHOT \
   -Dlutece.context.root=/lutece -Dtest.headless=true
 ```
@@ -89,7 +89,7 @@ npx allure agent --goal "le parcours prouve le changement d'etat et la trace des
   --results-dir lutece-e2e-tests/target/allure-results \
   --expect-attachments 1 \
   --expect-step-containing "Verifier l'etat et l'historique de la reponse" \
-  -- mvn -o test -pl lutece-e2e-tests -Dtest=ParcoursCompletSuite ...
+  -- mvn -o test -pl lutece-e2e-tests -Dtest=FormsParcoursCompletSuite ...
 ```
 
 Chaque execution utilisant des attentes doit employer des attentes fraiches, propres a son
