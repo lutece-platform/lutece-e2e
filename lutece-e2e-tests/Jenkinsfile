@@ -99,11 +99,13 @@ pipeline {
         )
         choice(
             name: 'TEST_SUITE',
+            // Jenkins retient la premiere valeur comme defaut : le parcours complet tient
+            // cette place, c'est lui qui valide la pipeline de bout en bout.
             choices: [
-                'ContainerIntegrationSuite',
-                'ContainerMacroIntegrationSuite',
                 'ContainerParcoursCompletSuite',
                 'ParcoursCompletSuite',
+                'ContainerIntegrationSuite',
+                'ContainerMacroIntegrationSuite',
                 'WorkflowFormsIntegrationSuite',
                 'MacroTestsSuite',
                 'LoginContainerTest',
