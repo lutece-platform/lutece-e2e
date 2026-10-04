@@ -93,7 +93,9 @@ Features:
 - Bouton "Test forms complet" (lance la suite d'integration via `IntegrationTools.runIntegrationSuite()`)
 - Toast notifications
 - URL badge affichant l'URL complete du site cible
-- Preset URL : `https://<site-integration>/lutece`
+- URL cible : saisie dans le champ, ou proposee au chargement depuis `lutece.base.url`
+  (`GET /rest/agent/config`). Aucune adresse de site n'est codee dans la page : le depot
+  est public.
 
 ## LangChain4j Tools
 

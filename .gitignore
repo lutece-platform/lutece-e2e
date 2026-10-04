@@ -41,3 +41,23 @@ node_module*
 # claude code
 .claude
 .agents
+skills-lock.json
+
+# Rapports Allure generes : allure-report/ pese plusieurs Go une fois deplie.
+allure-report/
+allure-results/
+
+# Classes compilees hors target/, laissees par un lancement mal place.
+lutece-e2e-tests/fr/
+
+# Outillage et documents de travail locaux. Ils portent des chemins personnels et
+# des adresses d'infrastructure interne : le depot est public, ils n'ont rien a y
+# faire. package.json ne sert ici qu'au script de presentation (pptxgenjs).
+PRD.md
+forms.md
+generate-pptx.js
+package.json
+package-lock.json
+Lutece-E2E-Presentation.*
+slide-*.jpg
+login-page.png

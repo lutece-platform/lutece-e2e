@@ -85,7 +85,7 @@ public abstract class BaseTest {
      * fait échouer les briques touchant le front-office alors que l'application répond parfaitement.</p>
      *
      * <p>Le filtre porte sur l'<b>hôte de l'application</b> et non sur « localhost » : en mode externe
-     * ({@code -Dlutece.base.url=https://...<domaine-interne>/lutece}) un filtre sur localhost couperait
+     * ({@code -Dlutece.base.url=https://mon-site/lutece}) un filtre sur localhost couperait
      * l'application elle-même.</p>
      */
     public static void blockThirdPartyRequests(BrowserContext browserContext) {

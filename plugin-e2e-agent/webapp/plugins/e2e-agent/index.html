@@ -1576,9 +1576,11 @@
                         <input type="text" id="settingsUrl" placeholder="https://mon-site-lutece.fr/mon-application">
                     </div>
                     <div class="hint" id="urlHint">Entrez l'URL complete de votre site Lutece</div>
-                    <div class="url-presets">
-                        <button class="url-preset" onclick="setUrlPreset('https://<site-integration>/lutece')">p30-forms-integration</button>
-                    </div>
+                    <!-- Aucun raccourci de site n'est code ici : le depot est public, et une
+                         adresse de site y nommerait un hote interne. Le champ ci-dessus accepte
+                         n'importe quelle URL, et la valeur proposee au chargement vient de
+                         lutece.base.url, lu par GET /rest/agent/config. -->
+                    <div class="url-presets"></div>
                 </div>
 
                 <div class="settings-section">
