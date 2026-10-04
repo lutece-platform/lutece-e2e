@@ -246,7 +246,7 @@ lutece-e2e-tests/src/test/java/fr/paris/lutece/e2e/tests/bo/
     ├── WorkflowFormsIntegrationSuite.java # Suite externe (22 tests)
     ├── MacroTestsSuite.java               # Toutes les briques macro (74 tests, scan de package)
     ├── ContainerMacroIntegrationSuite.java # Suite Docker + toutes les briques macro (96 tests)
-    ├── ContainerFormsDeclarationInteretsSuite.java # Suite Docker : declaration d'interets (formulaire reel transcrit)
+    ├── ContainerFormsDeontologieSuite.java # Suite Docker : declaration d'interets (formulaire reel transcrit)
     ├── RbacConfigurationTest.java         # 5 tests - droits utilisateur
     ├── WorkflowCreationTest.java          # 6 tests - workflow + etats + actions
     ├── FormsCreationTest.java             # 9 tests - formulaires + questions

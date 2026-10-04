@@ -116,7 +116,7 @@ pipeline {
             choices: [
                 'ContainerFormsParcoursCompletSuite',
                 'FormsParcoursCompletSuite',
-                'ContainerFormsDeclarationInteretsSuite',
+                'ContainerFormsDeontologieSuite',
                 'FormsDeclarationInteretsSuite',
                 'ContainerIntegrationSuite',
                 'ContainerMacroIntegrationSuite',
@@ -428,7 +428,7 @@ pipeline {
                                 testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.ContainerFormsParcoursCompletSuite"
                             }
                             if (params.TEST_SUITE == 'FormsDeclarationInteretsSuite') {
-                                testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.ContainerFormsDeclarationInteretsSuite"
+                                testClass = "fr.paris.lutece.e2e.tests.bo.testsuites.ContainerFormsDeontologieSuite"
                             }
 
                             // Reference immuable resolue au pull ; fallback sur le tag si indisponible
@@ -513,7 +513,7 @@ pipeline {
                                     || params.TEST_SUITE == 'FormsParcoursCompletSuite') {
                                 testClass = "fr.paris.lutece.e2e.tests.suites.FormsParcoursCompletSuite"
                             }
-                            if (params.TEST_SUITE == 'ContainerFormsDeclarationInteretsSuite'
+                            if (params.TEST_SUITE == 'ContainerFormsDeontologieSuite'
                                     || params.TEST_SUITE == 'FormsDeclarationInteretsSuite') {
                                 testClass = "fr.paris.lutece.e2e.tests.suites.FormsDeclarationInteretsSuite"
                             }

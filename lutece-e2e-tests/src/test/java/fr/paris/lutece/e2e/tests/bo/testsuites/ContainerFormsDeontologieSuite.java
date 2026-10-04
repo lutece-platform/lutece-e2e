@@ -14,7 +14,7 @@ import org.junit.platform.suite.api.SuiteDisplayName;
  * pour cela, ce qu'une execution sur un site deja en service ne dit pas.</p>
  *
  * <pre>
- *   mvn test -pl lutece-e2e-tests -Dtest=ContainerFormsDeclarationInteretsSuite \
+ *   mvn test -pl lutece-e2e-tests -Dtest=ContainerFormsDeontologieSuite \
  *     -Dlutece.image=${DOCKER_REGISTRY}/bild/p30/site-integration-forms:8.0.0-SNAPSHOT \
  *     -Dlutece.context.root=/lutece -Dtest.headless=true
  * </pre>
@@ -31,5 +31,5 @@ import org.junit.platform.suite.api.SuiteDisplayName;
     RbacConfigurationTest.class,            // 2. Ouvre les droits : une instance neuve les refuse
     FormsDeclarationInteretsSuite.class     // 3. Formulaire, workflow, soumissions et instruction
 })
-public class ContainerFormsDeclarationInteretsSuite {
+public class ContainerFormsDeontologieSuite {
 }
