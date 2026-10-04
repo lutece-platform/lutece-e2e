@@ -1,6 +1,6 @@
 package fr.paris.lutece.e2e.tests.bo.testsuites;
 
-import fr.paris.lutece.e2e.tests.suites.FormsDeclarationInteretsSuite;
+import fr.paris.lutece.e2e.tests.suites.FormsDeontologieSuite;
 import org.junit.platform.suite.api.SelectClasses;
 import org.junit.platform.suite.api.Suite;
 import org.junit.platform.suite.api.SuiteDisplayName;
@@ -29,7 +29,7 @@ import org.junit.platform.suite.api.SuiteDisplayName;
 @SelectClasses({
     ContainerSetup.class,                   // 1. Demarre MariaDB puis Lutece, et publie l'URL de base
     RbacConfigurationTest.class,            // 2. Ouvre les droits : une instance neuve les refuse
-    FormsDeclarationInteretsSuite.class     // 3. Formulaire, workflow, soumissions et instruction
+    FormsDeontologieSuite.class     // 3. Formulaire, workflow, soumissions et instruction
 })
 public class ContainerFormsDeontologieSuite {
 }

@@ -56,7 +56,7 @@ import org.junit.jupiter.api.Test;
  * <p>Execution :</p>
  * <pre>
  *   mvn -o test -pl lutece-e2e-tests \
- *     -Dtest=fr.paris.lutece.e2e.tests.suites.FormsDeclarationInteretsSuite \
+ *     -Dtest=fr.paris.lutece.e2e.tests.suites.FormsDeontologieSuite \
  *     -Dlutece.base.url=https://mon-site/lutece -Dtest.headless=true
  * </pre>
  */
@@ -65,7 +65,7 @@ import org.junit.jupiter.api.Test;
 @Tag("macro")
 @Tag("suite")
 @DisplayName("Declaration d'interets : onze etapes, sept rubriques conditionnelles, workflow a dix etats")
-public class FormsDeclarationInteretsSuite extends MacroTest {
+public class FormsDeontologieSuite extends MacroTest {
 
     @Test
     @Severity(SeverityLevel.CRITICAL)
