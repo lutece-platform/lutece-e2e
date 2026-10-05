@@ -41,8 +41,16 @@ mvn test -pl lutece-e2e-tests \
 **Vérifier un fichier sans rien lancer** — quelques millisecondes, pas besoin de navigateur :
 
 ```bash
+# depuis le dépôt d'un site, sans rien d'autre que Python
+python3 .claude/skills/creer-suite-e2e/scripts/valider-suite.py .e2e-suite.yml
+
+# depuis ce dépôt, le lecteur fait autorité
 mvn test -pl lutece-e2e-tests -Dtest=LecteurDeSuiteTest
 ```
+
+Une skill, `creer-suite-e2e`, guide l'écriture d'un fichier et embarque ce validateur. Son
+vocabulaire est comparé à celui du lecteur par `VocabulaireDuValidateurTest`, qui échoue si les
+deux divergent.
 
 ## Les quatre sections
 

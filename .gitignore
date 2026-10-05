@@ -38,8 +38,12 @@ node_module*
 .env
 *.key
 
-# claude code
-.claude
+# claude code : la configuration locale et les skills installees restent hors du depot,
+# mais creer-suite-e2e est ecrite ici et doit voyager avec lui.
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/creer-suite-e2e/
 .agents
 skills-lock.json
 

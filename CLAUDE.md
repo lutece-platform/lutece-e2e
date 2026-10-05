@@ -285,6 +285,10 @@ declaratif/
 ```
 
 - `LecteurDeSuiteTest` valide un fichier sans navigateur, en quelques millisecondes
+- Skill `creer-suite-e2e` : guide l'ecriture d'un fichier pour un site, et embarque un validateur
+  Python autonome (`scripts/valider-suite.py`) utilisable depuis le depot du site, sans Java
+- `VocabulaireDuValidateurTest` compare le vocabulaire du validateur a celui du lecteur et echoue
+  s'ils divergent : deux listes recopiees derivent toujours
 - `ContainerSuiteDeclarativeSuite` monte l'instance puis joue le fichier
 - Valeur `SuiteDeclarative` du parametre `TEST_SUITE` cote Jenkins
 
