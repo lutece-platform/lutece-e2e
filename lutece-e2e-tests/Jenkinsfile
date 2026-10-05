@@ -70,7 +70,10 @@ pipeline {
         )
         string(
             name: 'LUTECE_IMAGE',
-            defaultValue: "${env.DOCKER_REGISTRY ?: '<registre>'}/bild/f98/site-deontologie:1.0.0-SNAPSHOT",
+            // Image d'integration forms : c'est celle contre laquelle les suites de ce depot sont
+            // eprouvees, et celle que la documentation donne en exemple. Un lancement sans
+            // parametre -- celui qu'un scan de depot declenche -- vise ainsi une cible connue.
+            defaultValue: "${env.DOCKER_REGISTRY ?: '<registre>'}/bild/p30/site-integration-forms:8.0.0-SNAPSHOT",
             description: '[TESTCONTAINERS] Image Docker Lutece à tester. Le registre du ' +
                          'défaut vient de la variable d\'environnement globale DOCKER_REGISTRY.'
         )
