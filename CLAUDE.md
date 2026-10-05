@@ -202,13 +202,13 @@ mvn test -pl lutece-e2e-tests \
   -Dlutece.image=${DOCKER_REGISTRY}/bild/p30/site-integration-forms:8.0.0-SNAPSHOT \
   -Dtest.headless=true
 
-# Suite globale : conteneurs + toutes les briques macro (96 tests) - Docker requis
+# Suite globale : conteneurs + toutes les briques macro (111 tests, > 1 h) - Docker requis
 mvn test -pl lutece-e2e-tests \
   -Dtest=fr.paris.lutece.e2e.tests.bo.testsuites.ContainerMacroIntegrationSuite \
   -Dlutece.image=${DOCKER_REGISTRY}/bild/p30/site-integration-forms:8.0.0-SNAPSHOT \
   -Dtest.headless=true
 
-# Toutes les briques macro seules (74 tests) - instance existante
+# Toutes les briques macro seules (89 tests) - instance existante
 mvn test -pl lutece-e2e-tests \
   -Dtest=fr.paris.lutece.e2e.tests.bo.testsuites.MacroTestsSuite
 
@@ -244,8 +244,9 @@ lutece-e2e-tests/src/test/java/fr/paris/lutece/e2e/tests/bo/
     ├── ContainerSetup.java                # Demarre MariaDB + Lutece via Testcontainers
     ├── ContainerIntegrationSuite.java     # Suite Docker (22 tests)
     ├── WorkflowFormsIntegrationSuite.java # Suite externe (22 tests)
-    ├── MacroTestsSuite.java               # Toutes les briques macro (74 tests, scan de package)
-    ├── ContainerMacroIntegrationSuite.java # Suite Docker + toutes les briques macro (96 tests)
+    ├── MacroTestsSuite.java               # Toutes les briques macro (89 tests, scan de package)
+    ├── ContainerMacroIntegrationSuite.java # Suite Docker + toutes les briques macro (111 tests)
+    ├── ContainerFormsParcoursCompletSuite.java # Suite Docker : parcours complet (unites, workflow, embranchement)
     ├── ContainerFormsDeontologieSuite.java # Suite Docker : declaration d'interets (formulaire reel transcrit)
     ├── RbacConfigurationTest.java         # 5 tests - droits utilisateur
     ├── WorkflowCreationTest.java          # 6 tests - workflow + etats + actions
@@ -254,7 +255,8 @@ lutece-e2e-tests/src/test/java/fr/paris/lutece/e2e/tests/bo/
     ├── LoginTest.java                     # 4 tests - authentification
     ├── AdminNavigationTest.java           # 4 tests - navigation back-office
     ├── LoginContainerTest.java            # 1 test  - login via conteneur
-    └── CreationQuestionTypeTextLongTest.java  # 1 test standalone
+    ├── CreationQuestionTypeTextLongTest.java  # 1 test standalone
+    └── (suites metier dans tests/suites/ : FormsParcoursCompletSuite, FormsDeontologieSuite, ...)
 ```
 
 ### Configuration MicroProfile (`config_ordinal`)
@@ -286,6 +288,36 @@ Pour l'agent IA (optionnel) :
 | WorkflowTools | `WorkflowTools.java` | Gestion workflows (creation, etats, actions, activation) |
 | FormsTools | `FormsTools.java` | Gestion formulaires (creation, etapes, questions, publication) |
 | IntegrationTools | `IntegrationTools.java` | Suite d'integration complete en un seul appel (workflow + formulaire + soumission FO) |
+
+## Duree des suites et accumulation
+
+Mesure du 2026-10-05 sur `ContainerMacroIntegrationSuite`, 107 tests acheves en 55 minutes : la
+cadence passe de **8 s a 56 s par test** entre le premier et le dernier quart du run.
+
+| Quart du run | Cadence |
+|---|---|
+| 1er | 8 s |
+| 2e | 21 s |
+| 3e | 36 s |
+| 4e | 56 s |
+
+Ce n'est pas le nombre de tests : a cadence constante, les 111 tests prendraient 15 minutes. Chaque
+brique coute de plus en plus cher.
+
+**Pourquoi** : 67 briques creent leur propre formulaire, 14 creent en plus leur propre workflow, et
+aucune ne nettoie derriere elle -- c'est voulu, chaque brique doit etre jouable seule. Or
+`CreateFormMacroTest` resout l'identifiant du nouveau formulaire par `MacroSupport.extractFormId`,
+qui charge `ManageForms.jsp?items_per_page=100000` : toutes les lignes. Au centieme test, la page
+porte cent formulaires. Le cout total est donc quadratique, pas lineaire.
+
+Le `items_per_page=100000` reste necessaire -- sans lui, un formulaire cree au-dela de la premiere
+page paraissait introuvable. C'est la resolution par la liste qu'il faudrait reprendre, pas la
+pagination.
+
+**Consequence operationnelle** : `ContainerMacroIntegrationSuite` depasse le `timeout(60, MINUTES)`
+du pipeline. Un run lance tel quel est coupe avant la fin, et les tests encore en cours tombent en
+`ERR_CONNECTION_REFUSED` -- les conteneurs sont demanteles sous eux. Allonger le timeout, ou
+scinder la suite.
 
 ## Driver Playwright pre-extrait
 

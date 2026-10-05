@@ -5,7 +5,7 @@ Tests E2E pour Lutece 8 avec Playwright.
 ## Architecture
 
 ```
-lutece-e2e/                 (parent POM - herite de lutece-global-pom 8.0.1)
+lutece-e2e/                 (parent POM - herite de lutece-global-pom 8.0.2)
 ├── lutece-e2e-core/        Page Objects Playwright + Actions metier + BrowserManager
 ├── lutece-e2e-tests/       Tests E2E (Playwright direct + Testcontainers)
 └── playwright-driver/      Driver Playwright pre-extrait
