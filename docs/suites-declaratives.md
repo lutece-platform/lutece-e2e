@@ -20,10 +20,10 @@ vérifie.
 Dans Jenkins, choisir `SuiteDeclarative` comme `TEST_SUITE`. Le fichier est extrait de l'image,
 rien d'autre à faire.
 
-Pour éprouver une description **avant** de l'embarquer dans l'image, téléverser le fichier depuis
-son poste dans le paramètre `SUITE_UPLOAD` du job. Renseigné, il fait foi : l'image n'est pas
-ouverte. C'est aussi ce qui rend `SuiteDeclarative` utilisable en mode `EXTERNAL`, où aucune image
-n'accompagne le site visé.
+Pour éprouver une description **avant** de l'embarquer dans l'image, coller son contenu dans le
+paramètre `SUITE_DESCRIPTION` du job. Renseigné, il fait foi : l'image n'est pas ouverte. C'est
+aussi ce qui rend `SuiteDeclarative` utilisable en mode `EXTERNAL`, où aucune image n'accompagne le
+site visé.
 
 En local :
 

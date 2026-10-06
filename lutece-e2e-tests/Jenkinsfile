@@ -137,14 +137,17 @@ pipeline {
             ],
             description: 'Suite de tests à exécuter'
         )
-        base64File(
-            // Televersement depuis le poste : il permet d'eprouver une description de suite
-            // sans reconstruire l'image du site, et rend SuiteDeclarative utilisable contre
-            // une instance externe, dont aucune image ne porte le fichier.
-            // Requiert le plugin Jenkins « File Parameter ».
-            name: 'SUITE_UPLOAD',
-            description: '[SuiteDeclarative] Fichier de suite (.yml, .yaml ou .json) ' +
-                         'téléversé depuis le poste. Renseigné, il fait foi et remplace ' +
+        text(
+            // Description fournie au lancement : elle permet d'eprouver une suite sans
+            // reconstruire l'image du site, et rend SuiteDeclarative utilisable contre une
+            // instance externe, qu'aucune image n'accompagne.
+            // Un parametre « text » est natif : contrairement a un televersement de fichier,
+            // il ne demande aucun plugin. Le contenu passe par writeFile, qui l'ecrit tel
+            // quel -- ni interpolation, ni echappement a prevoir dans le YAML.
+            name: 'SUITE_DESCRIPTION',
+            defaultValue: '',
+            description: '[SuiteDeclarative] Contenu du fichier de suite (YAML ou JSON), ' +
+                         'collé ici depuis le poste. Renseigné, il fait foi et remplace ' +
                          'celui que porte l\'image. Vide = lecture du .e2e-suite.yml à la ' +
                          'racine de l\'image.'
         )
@@ -423,20 +426,18 @@ pipeline {
                             env.SUITE_IMAGE = env.LUTECE_IMAGE_REF?.trim() ?: params.LUTECE_IMAGE
                             env.SUITE_FICHIER = 'lutece-e2e-tests/suite-du-site.yml'
                         }
-                        // Un fichier televerse depuis le poste fait foi : il permet d'eprouver une
-                        // description sans reconstruire l'image, et de jouer une suite declarative
-                        // contre une instance externe, qu'aucune image n'accompagne.
-                        withFileParameter(name: 'SUITE_UPLOAD', allowNoFile: true) {
-                            sh '''
-                                set -e
-                                # Un run precedent a pu laisser le fichier dans le workspace :
-                                # sans cet effacement, l'extraction plus bas serait sautee a tort.
-                                rm -f "$SUITE_FICHIER"
-                                if [ -n "${SUITE_UPLOAD:-}" ] && [ -s "$SUITE_UPLOAD" ]; then
-                                    cp "$SUITE_UPLOAD" "$SUITE_FICHIER"
-                                    echo "Suite declarative televersee depuis le poste ($(wc -c < "$SUITE_FICHIER") octets)."
-                                fi
-                            '''
+                        // Une description fournie au lancement fait foi : elle permet d'eprouver
+                        // une suite sans reconstruire l'image, et d'en jouer une contre une
+                        // instance externe, qu'aucune image n'accompagne.
+                        // Un run precedent a pu laisser le fichier dans le workspace : sans cet
+                        // effacement, l'extraction plus bas serait sautee a tort.
+                        sh 'rm -f "$SUITE_FICHIER"'
+                        script {
+                            if (params.SUITE_DESCRIPTION?.trim()) {
+                                writeFile file: env.SUITE_FICHIER, text: params.SUITE_DESCRIPTION
+                                echo "Suite declarative fournie par le job " +
+                                     "(${params.SUITE_DESCRIPTION.trim().length()} caracteres)."
+                            }
                         }
                         // Bloc sans interpolation : les valeurs passent par l'environnement, ce qui
                         // evite d'avoir a echapper quoi que ce soit entre Groovy et le shell.
@@ -457,7 +458,7 @@ pipeline {
                             if [ -z "$TROUVE" ]; then
                                 echo "ERREUR : aucun fichier de suite a la racine de $SUITE_IMAGE." >&2
                                 echo "  Y poser un .e2e-suite.yml (ou .yaml, ou .json), a cote du .e2e-config.json," >&2
-                                echo "  ou televerser le fichier via le parametre SUITE_UPLOAD du job." >&2
+                                echo "  ou coller son contenu dans le parametre SUITE_DESCRIPTION du job." >&2
                                 exit 1
                             fi
                             echo "Suite declarative extraite de l'image : $TROUVE"
