@@ -137,6 +137,17 @@ pipeline {
             ],
             description: 'Suite de tests à exécuter'
         )
+        base64File(
+            // Televersement depuis le poste : il permet d'eprouver une description de suite
+            // sans reconstruire l'image du site, et rend SuiteDeclarative utilisable contre
+            // une instance externe, dont aucune image ne porte le fichier.
+            // Requiert le plugin Jenkins « File Parameter ».
+            name: 'SUITE_UPLOAD',
+            description: '[SuiteDeclarative] Fichier de suite (.yml, .yaml ou .json) ' +
+                         'téléversé depuis le poste. Renseigné, il fait foi et remplace ' +
+                         'celui que porte l\'image. Vide = lecture du .e2e-suite.yml à la ' +
+                         'racine de l\'image.'
+        )
         booleanParam(
             name: 'HEADLESS',
             defaultValue: true,
@@ -412,10 +423,28 @@ pipeline {
                             env.SUITE_IMAGE = env.LUTECE_IMAGE_REF?.trim() ?: params.LUTECE_IMAGE
                             env.SUITE_FICHIER = 'lutece-e2e-tests/suite-du-site.yml'
                         }
+                        // Un fichier televerse depuis le poste fait foi : il permet d'eprouver une
+                        // description sans reconstruire l'image, et de jouer une suite declarative
+                        // contre une instance externe, qu'aucune image n'accompagne.
+                        withFileParameter(name: 'SUITE_UPLOAD', allowNoFile: true) {
+                            sh '''
+                                set -e
+                                # Un run precedent a pu laisser le fichier dans le workspace :
+                                # sans cet effacement, l'extraction plus bas serait sautee a tort.
+                                rm -f "$SUITE_FICHIER"
+                                if [ -n "${SUITE_UPLOAD:-}" ] && [ -s "$SUITE_UPLOAD" ]; then
+                                    cp "$SUITE_UPLOAD" "$SUITE_FICHIER"
+                                    echo "Suite declarative televersee depuis le poste ($(wc -c < "$SUITE_FICHIER") octets)."
+                                fi
+                            '''
+                        }
                         // Bloc sans interpolation : les valeurs passent par l'environnement, ce qui
                         // evite d'avoir a echapper quoi que ce soit entre Groovy et le shell.
                         sh '''
                             set -e
+                            if [ -s "$SUITE_FICHIER" ]; then
+                                exit 0
+                            fi
                             CONTENEUR=$(podman create "$SUITE_IMAGE")
                             trap 'podman rm -f "$CONTENEUR" >/dev/null 2>&1 || true' EXIT
                             TROUVE=""
@@ -427,7 +456,8 @@ pipeline {
                             done
                             if [ -z "$TROUVE" ]; then
                                 echo "ERREUR : aucun fichier de suite a la racine de $SUITE_IMAGE." >&2
-                                echo "  Y poser un .e2e-suite.yml (ou .yaml, ou .json), a cote du .e2e-config.json." >&2
+                                echo "  Y poser un .e2e-suite.yml (ou .yaml, ou .json), a cote du .e2e-config.json," >&2
+                                echo "  ou televerser le fichier via le parametre SUITE_UPLOAD du job." >&2
                                 exit 1
                             fi
                             echo "Suite declarative extraite de l'image : $TROUVE"
