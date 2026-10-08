@@ -36,8 +36,10 @@ pipeline {
         // prioritaire sur les variables globales).
         DOCKER_CREDENTIALS_ID = 'NexusSTIPS_bild_user'
 
-        // Lutece Testcontainers config
-        LUTECE_CONTEXT_ROOT = '/lutece'
+        // Lutece Testcontainers config. LUTECE_CONTEXT_ROOT n'est volontairement pas définie ici :
+        // elle est lue dans le server.xml de l'image testée (étape « Detect Context Root »), car le
+        // chemin de publication varie d'un site à l'autre. La déclarer dans ce bloc la figerait,
+        // un environment de pipeline étant prioritaire sur une affectation ultérieure.
         LUTECE_HTTP_PORT = '9090'
 
         // Testcontainers avec Podman - les valeurs exactes seront détectées dynamiquement
@@ -410,6 +412,52 @@ pipeline {
                     }
                 }
 
+                // Le chemin de publication n'est pas le meme d'un site a l'autre : site-formsdaj
+                // se deploie sous /formsdaj quand les autres sont sous /lutece. Il est declare dans
+                // le server.xml que l'image embarque, et c'est donc lui qui fait foi.
+                //
+                // Le lire plutot que de le redeclarer cote job ou dans .e2e-config.json evite de
+                // dire deux fois la meme chose : un site qui change de chemin, ou un site nouveau
+                // dont on oublierait la cle, redonnerait exactement la panne que cette etape
+                // corrige — trois minutes d'attente d'une page de connexion qui n'existe pas, puis
+                // une cascade de timeouts sans rapport apparent avec la cause.
+                stage('Detect Context Root') {
+                    when {
+                        expression { params.TEST_MODE == 'TESTCONTAINERS' }
+                    }
+                    steps {
+                        script {
+                            env.IMAGE_DU_SITE = env.LUTECE_IMAGE_REF?.trim() ?: params.LUTECE_IMAGE
+                        }
+                        // Bloc sans interpolation : l'image passe par l'environnement. Le conteneur
+                        // est seulement cree, jamais demarre — il ne sert qu'a ouvrir l'image.
+                        sh '''
+                            set -e
+                            CONTENEUR=$(podman create "$IMAGE_DU_SITE")
+                            trap 'podman rm -f "$CONTENEUR" >/dev/null 2>&1 || true' EXIT
+                            : > context-root.txt
+                            for CHEMIN in /config/server.xml /opt/ol/wlp/usr/servers/defaultServer/server.xml; do
+                                if podman cp "$CONTENEUR:$CHEMIN" server-du-site.xml 2>/dev/null; then
+                                    sed -n 's|.*<application[^>]*context-root="\\([^"]*\\)".*|\\1|p' server-du-site.xml | head -1 > context-root.txt
+                                    rm -f server-du-site.xml
+                                    break
+                                fi
+                            done
+                        '''
+                        script {
+                            String lu = readFile('context-root.txt').trim()
+                            if (lu) {
+                                env.LUTECE_CONTEXT_ROOT = lu.startsWith('/') ? lu : '/' + lu
+                                echo "Context root lu dans le server.xml de l'image : ${env.LUTECE_CONTEXT_ROOT}"
+                            } else {
+                                env.LUTECE_CONTEXT_ROOT = '/lutece'
+                                echo 'Aucun context-root declare dans le server.xml de l\'image, ' +
+                                     "valeur par defaut retenue : ${env.LUTECE_CONTEXT_ROOT}"
+                            }
+                        }
+                    }
+                }
+
                 // Suite declarative : le fichier qui decrit la demarche voyage avec le site, dans
                 // son image, a cote de son .e2e-config.json. L'extraire plutot que de le versionner
                 // cote tests est tout l'interet : la demarche et sa description evoluent ensemble,
@@ -478,7 +526,7 @@ pipeline {
                         ║  Image Lutece : ${params.LUTECE_IMAGE}
                         ║  Digest       : ${env.LUTECE_IMAGE_REF ?: 'N/A'}
                         ║  Build image  : ${env.LUTECE_IMAGE_CREATED ?: 'N/A'}
-                        ║  Context Root : ${LUTECE_CONTEXT_ROOT}
+                        ║  Context Root : ${env.LUTECE_CONTEXT_ROOT}
                         ║  Port HTTP    : ${LUTECE_HTTP_PORT}
                         ║  Test Suite   : ${params.TEST_SUITE}
                         ║  Playwright   : ${PLAYWRIGHT_IMAGE}
@@ -539,7 +587,7 @@ pipeline {
                                         -Dtest=${testClass} \
                                         ${env.SUITE_FICHIER ? '-Dsuite.fichier=/work/' + env.SUITE_FICHIER : ''} \
                                         -Dlutece.image=${luteceImageRef} \
-                                        -Dlutece.context.root=${LUTECE_CONTEXT_ROOT} \
+                                        -Dlutece.context.root=${env.LUTECE_CONTEXT_ROOT} \
                                         -Dlutece.http.port=${LUTECE_HTTP_PORT} \
                                         -Dtest.headless=${params.HEADLESS} \
                                         -Dtest.timeout=10000 \
