@@ -3,6 +3,7 @@ package fr.paris.lutece.e2e.tests.macro.forms;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
+import fr.paris.lutece.e2e.tests.macro.Evidence;
 import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.data.FormDataSet;
@@ -94,11 +95,18 @@ public class RunWorkflowActionOnResponseMacroTest extends MacroTest {
         action.first().click();
         page.waitForLoadState();
 
-        validerFormulaireDeTaches(page);
+        String deroulement = validerFormulaireDeTaches(page, label);
 
         // Confirmation eventuelle (page AdminMessage / modal / offcanvas).
         confirmIfPresent(page);
         page.waitForLoadState();
+
+        // Une action annulee cote serveur ramene sur le detail de la reponse sans rien afficher :
+        // le controle d'etat qui suit constate alors une reponse inchangee, sans pouvoir dire si
+        // l'ecran de saisie a ete manque ou si une tache a fait echouer la transition. Ces traces
+        // le disent, et evitent de rejouer tout le parcours pour le savoir.
+        Evidence.texte("Deroulement de l'action '" + data.actionLabel() + "'",
+            deroulement + " Page a l'issue de l'action : " + page.url());
 
         Assertions.assertFalse(page.url().contains("AdminLogin"),
             "La session admin ne devrait pas etre perdue apres l'action de workflow");
@@ -113,20 +121,26 @@ public class RunWorkflowActionOnResponseMacroTest extends MacroTest {
      * <p>L'ecran est reconnu a son bouton de validation plutot qu'a l'URL : c'est le seul signal
      * qui reste vrai quelle que soit la facon dont Lutece y amene.</p>
      *
-     * @param page page courante, positionnee apres le clic sur l'action
+     * @param page  page courante, positionnee apres le clic sur l'action
+     * @param label libelle de l'action declenchee
+     * @return le compte rendu de ce que l'ecran a demande et de ce qui lui a ete repondu
      */
-    private static void validerFormulaireDeTaches(Page page) {
+    private static String validerFormulaireDeTaches(Page page, String label) {
         Locator valider = page.locator(
             "button[name='action_doSaveTaskForm'], input[name='action_doSaveTaskForm']");
         if (valider.count() == 0) {
-            return;
+            return "Aucun ecran de saisie : l'action s'execute au clic.";
         }
-        designerQuestions(page);
+        int questions = designerQuestions(page);
         renseignerSaisies(page);
         renseignerListes(page);
         cocherChoixUniques(page);
+        // Seule capture de cet ecran : une fois valide, il laisse place au detail de la reponse, et
+        // ce qu'il proposait — questions a rouvrir, champs exiges — n'est plus observable nulle part.
+        Evidence.capture(page, "Ecran de saisie des taches de l'action '" + label + "'");
         valider.first().click();
         page.waitForLoadState();
+        return "Ecran de saisie valide, " + questions + " question(s) designee(s).";
     }
 
     /**
@@ -138,8 +152,9 @@ public class RunWorkflowActionOnResponseMacroTest extends MacroTest {
      * et le lien qui lui est adresse ne lui presente rien.</p>
      *
      * @param page formulaire de taches ouvert
+     * @return le nombre de questions designees
      */
-    private static void designerQuestions(Page page) {
+    private static int designerQuestions(Page page) {
         Locator questions = page.locator("input[type='checkbox'][name='ids_entry']");
         int total = questions.count();
         for (int i = 0; i < total; i++) {
@@ -148,6 +163,7 @@ public class RunWorkflowActionOnResponseMacroTest extends MacroTest {
                 question.check();
             }
         }
+        return total;
     }
 
     /**
