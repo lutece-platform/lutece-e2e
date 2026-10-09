@@ -20,7 +20,8 @@ import org.junit.jupiter.api.Test;
 /**
  * Brique macro : verifier le contenu d'une notification dans l'historique d'une reponse.
  *
- * <p>Lit : la multivue et le detail de la reponse du formulaire courant. Ecrit : rien.</p>
+ * <p>Lit : le detail de la reponse que l'execution courante a instruite. Ecrit : rien. Se saute si
+ * aucune reponse n'a ete instruite : il n'y a alors aucune notification a attendre.</p>
  *
  * <p>Constater qu'une notification figure dans l'historique ne dit pas ce qu'elle contient : une
  * tache mal parametree depose une notification vide, ou porteuse du message d'une autre action.
@@ -44,9 +45,13 @@ public class VerifyNotificationMacroTest extends MacroTest {
 
     @Step("Verifier le contenu de la notification deposee sur la reponse")
     public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, NotificationDataSet data) {
-        boolean ouvert = OpenResponseDetailMacroTest.openFirstResponseDetail(ctx);
-        Assumptions.assumeTrue(ouvert,
-            "aucune reponse a inspecter dans la multivue : notification non verifiable");
+        // Une notification n'existe que sur une reponse qu'une action est venue instruire. Hors
+        // parcours d'instruction, la brique ouvrirait la premiere reponse de la multivue — celle
+        // d'un autre parcours, qu'aucune action n'a touchee — et conclurait a une tache de
+        // notification defaillante sur un site parfaitement sain.
+        Assumptions.assumeTrue(ctx.lastResponseId != null,
+            "aucune reponse instruite par cette execution : notification non verifiable");
+        OpenResponseDetailMacroTest.reopenLastResponse(ctx);
 
         Locator declencheurs = ctx.page.locator("[" + ATTRIBUT_CONTENU + "]");
         int total = declencheurs.count();
@@ -97,7 +102,7 @@ public class VerifyNotificationMacroTest extends MacroTest {
     }
 
     @Test
-    @DisplayName("Verifier le contenu d'une notification (ignore si la multivue est vide)")
+    @DisplayName("Verifier le contenu d'une notification (ignore hors parcours d'instruction)")
     void standalone() {
         FormsContext ctx = newLoggedInContext();
         run(ctx, NotificationDataSet.of("Agent", ""));

@@ -18,7 +18,8 @@ import org.junit.jupiter.api.Test;
 /**
  * Brique macro : verifier que l'historique porte le lien ramenant l'usager sur sa reponse.
  *
- * <p>Lit : la reponse instruite. Ecrit : rien dans le contexte.</p>
+ * <p>Lit : la reponse que l'execution courante a instruite. Ecrit : rien dans le contexte. Se saute
+ * si aucune reponse n'a ete instruite : aucune demande n'a alors pu deposer de lien.</p>
  *
  * <p>Une demande de correction ou de complement n'a d'effet que si l'usager peut y repondre. Le
  * lien qui l'y ramene est depose dans l'historique de la reponse au moment ou l'action s'execute :
@@ -35,10 +36,13 @@ public class VerifyResponseFoLinkMacroTest extends MacroTest {
 
     @Step("Verifier le lien de retour vers le front office")
     public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx) {
-        boolean ouvert = OpenResponseDetailMacroTest.reopenLastResponse(ctx)
-            || OpenResponseDetailMacroTest.openFirstResponseDetail(ctx);
-        Assumptions.assumeTrue(ouvert,
-            "aucune reponse a inspecter : lien de retour non verifiable");
+        // Le lien n'est depose que par une demande de correction ou de complement. Hors parcours
+        // d'instruction, la brique ouvrirait la premiere reponse de la multivue — celle d'un autre
+        // parcours, qui n'a recu aucune demande — et conclurait a un lien manquant sur un site
+        // parfaitement sain.
+        Assumptions.assumeTrue(ctx.lastResponseId != null,
+            "aucune reponse instruite par cette execution : lien de retour non verifiable");
+        OpenResponseDetailMacroTest.reopenLastResponse(ctx);
 
         Locator liens = ctx.page.locator("a[href]");
         int total = liens.count();
@@ -69,7 +73,7 @@ public class VerifyResponseFoLinkMacroTest extends MacroTest {
     }
 
     @Test
-    @DisplayName("Verifier le lien de retour en front office (ignore si la multivue est vide)")
+    @DisplayName("Verifier le lien de retour en front office (ignore hors parcours d'instruction)")
     void standalone() {
         FormsContext ctx = newLoggedInContext();
         run(ctx);
