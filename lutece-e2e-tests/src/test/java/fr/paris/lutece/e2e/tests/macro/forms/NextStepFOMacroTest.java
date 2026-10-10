@@ -83,6 +83,10 @@ public class NextStepFOMacroTest extends MacroTest {
 
     /** Signature best-effort de l'etat de page : URL + 1er titre visible + comptes de boutons de flux. */
     private static String signature(Page page) {
+        // L'identifiant de l'etape courante est le temoin fiable de l'avancement : apres un POST l'URL ne change plus,
+        // et le premier titre de la page est celui du formulaire, identique d'une etape a l'autre.
+        Locator stepId = page.locator("form#form-validate input[name='id_step']");
+        String step = stepId.count() > 0 ? stepId.first().getAttribute("value") : "";
         String url = page.url();
         String heading = firstText(page, "h1, h2, h3, legend");
         int nextCount = nextStepButton(page).count();
@@ -90,7 +94,7 @@ public class NextStepFOMacroTest extends MacroTest {
             new Page.GetByRoleOptions().setName("Voir le récapitulatif")).count();
         int validateCount = page.getByRole(AriaRole.BUTTON,
             new Page.GetByRoleOptions().setName("Valider le récapitulatif")).count();
-        return url + "|" + heading + "|next=" + nextCount + "|summary=" + summaryCount + "|validate=" + validateCount;
+        return "step=" + step + "|" + url + "|" + heading + "|next=" + nextCount + "|summary=" + summaryCount + "|validate=" + validateCount;
     }
 
     private static String firstText(Page page, String selector) {

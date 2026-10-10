@@ -94,7 +94,7 @@ public class FillAllFieldsFOMacroTest extends MacroTest {
             }
             champ.click();
             Locator jours = page.locator(
-                ".datepicker-dropdown .datepicker-cell.day:not(.prev):not(.next):not(.disabled)");
+                ".datepicker-picker .datepicker-cell.day:not(.prev):not(.next):not(.disabled):visible");
             try {
                 jours.first().waitFor(new Locator.WaitForOptions()
                     .setState(WaitForSelectorState.VISIBLE).setTimeout(CALENDRIER_TIMEOUT_MS));
