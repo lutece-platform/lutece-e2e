@@ -46,10 +46,10 @@ public class FormsEditPage {
             page.getByRole(AriaRole.CHECKBOX,
                 new Page.GetByRoleOptions().setName("Finale")).check();
         } else {
-            // Une etape "Finale" ne peut porter aucune transition sortante. Sur ce site, la case
-            // "Finale" peut etre pre-cochee (et la 1re/seule etape est de toute facon forcee finale
-            // cote serveur par doCreateStep). On la decoche explicitement pour les etapes non finales
-            // afin que le contrat isFinal=false soit honore des que l'etape n'est plus la seule.
+            // Une etape "Finale" ne peut porter aucune transition sortante. La case "Finale" est
+            // pre-cochee pour la 1re etape (formulaire mono-etape par defaut) : la decocher demarre un
+            // formulaire multi-etapes (doCreateStep respecte la case depuis plugin-forms 4.0.2 ; avant,
+            // la 1re etape etait forcee finale). On la decoche explicitement pour les etapes non finales.
             page.getByRole(AriaRole.CHECKBOX,
                 new Page.GetByRoleOptions().setName("Finale")).uncheck();
         }
