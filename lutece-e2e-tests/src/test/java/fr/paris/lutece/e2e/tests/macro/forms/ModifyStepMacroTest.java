@@ -67,7 +67,8 @@ public class ModifyStepMacroTest extends MacroTest {
     void standalone() {
         FormsContext ctx = newLoggedInContext();
         CreateFormMacroTest.run(ctx, FormDataSet.defaults());
-        CreateStepMacroTest.run(ctx, StepDataSet.of("Etape a renommer"));
+        // seule etape du formulaire : finale, sinon forms refuse toute modification (aucune etape finale)
+        CreateStepMacroTest.run(ctx, StepDataSet.finalStep("Etape a renommer"));
         run(ctx, StepDataSet.of("Etape renommee"));
     }
 }
