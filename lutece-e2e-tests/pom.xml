@@ -22,7 +22,7 @@
         <lutece.http.port>9090</lutece.http.port>
         <lutece.context.root>/lutece</lutece.context.root>
         <!-- Agent AspectJ requis par Allure pour que les @Step des briques macro soient tisses -->
-        <aspectj.version>1.9.22.1</aspectj.version>
+        <aspectj.version>1.9.25</aspectj.version>
         <!-- Defaut vide : jacoco prepare-agent (POM parent) remplit cette propriete ; le defaut
              garde @{argLine} resoluble si jacoco est saute (-Djacoco.skip) -->
         <argLine></argLine>
