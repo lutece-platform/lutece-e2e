@@ -80,13 +80,18 @@ public class MoveQuestionIntoGroupMacroTest extends MacroTest {
         // l'index -2 de la liste du groupe : la requete tombe en erreur serveur. Le defaut ne se
         // voyait pas tant qu'un groupe ne recevait qu'une question, l'insertion n'ayant lieu que
         // si le groupe contient deja quelque chose.
+        // L'action est protegee par le jeton CSRF du core, verifie aussi en GET (LUT-33977) : on reprend
+        // le _csrftoken du formulaire de la vue moveComposite chargee a l'etape 1, comme le fait l'UI en POST.
+        Locator csrf = page.locator("input[name='_csrftoken']");
+        String token = csrf.count( ) > 0 ? csrf.first( ).getAttribute("value") : "";
         MacroSupport.navigate(ctx, MacroSupport.FORMS
             + "ManageQuestions.jsp?action=moveComposite"
             + "&id_display=" + questionDisplayId
             + "&id_step=" + stepId
             + "&id_parent=" + groupDisplayId
             + "&displayOrder=1"
-            + "&stepValidated=true&groupValidated=true");
+            + "&stepValidated=true&groupValidated=true"
+            + "&_csrftoken=" + token);
 
         // Verification de l'effet : la question doit desormais etre imbriquee dans la carte du groupe.
         MacroSupport.navigate(ctx, MacroSupport.FORMS
