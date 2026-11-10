@@ -8,6 +8,11 @@ import com.microsoft.playwright.options.*;
  */
 public class WorkflowEditPage {
 
+    /** Onglet Taches de ModifyAction.jsp (plugin-workflow 7.0.2+). */
+    private static final String PANE_TASKS = "pane-tasks";
+    /** Modale d'ajout de tache de ModifyAction.jsp (plugin-workflow 7.0.2+). */
+    private static final String ADD_TASK_MODAL = "#add-task";
+
     private final Page page;
     private final String baseUrl;
 
@@ -153,19 +158,74 @@ public class WorkflowEditPage {
         String href = link.getAttribute("href");
         if (href != null && href.contains("id_action=")) {
             String idAction = href.split("id_action=")[1].split("&")[0].split("#")[0];
-            page.navigate(baseUrl + "/jsp/admin/plugins/workflow/ModifyAction.jsp?id_action=" + idAction);
+            page.navigate(baseUrl + "/jsp/admin/plugins/workflow/ModifyAction.jsp?id_action=" + idAction
+                + "&pane=" + PANE_TASKS);
             page.waitForLoadState();
         } else {
             link.click();
+            page.waitForLoadState();
         }
         return this;
+    }
+
+    /**
+     * Se place sur l'onglet Taches de la page de l'action.
+     *
+     * <p>Depuis plugin-workflow 7.0.2 (LUT-33738), ModifyAction.jsp est decoupee en onglets rendus
+     * cote serveur : l'onglet affiche par defaut est {@code pane-general}, et le formulaire d'ajout
+     * de tache n'existe dans le DOM que sous {@code pane=pane-tasks}.</p>
+     */
+    public WorkflowEditPage openTasksPane() {
+        String url = page.url();
+        if (url.contains("ModifyAction.jsp") && !url.contains("pane=" + PANE_TASKS)
+                && page.locator(ADD_TASK_MODAL).count() == 0) {
+            String sansPane = url.replaceAll("&pane=[^&#]*", "");
+            page.navigate(sansPane + (sansPane.contains("?") ? "&" : "?") + "pane=" + PANE_TASKS);
+            page.waitForLoadState();
+        }
+        return this;
+    }
+
+    /**
+     * Ouvre la fenetre modale d'ajout de tache.
+     *
+     * <p>Depuis plugin-workflow 7.0.2, le select "Nouvelle tâche" et le bouton "Insérer" vivent
+     * dans la modale {@code #add-task}, cachee tant qu'on n'a pas clique sur son bouton
+     * d'ouverture. Sans modale (ancienne page), le formulaire est en ligne : rien a faire.</p>
+     */
+    public WorkflowEditPage openAddTaskModal() {
+        openTasksPane();
+        Locator modal = page.locator(ADD_TASK_MODAL);
+        if (modal.count() > 0 && !modal.isVisible()) {
+            page.locator("[data-bs-target='" + ADD_TASK_MODAL + "']:visible").first().click();
+            taskTypeSelect().waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+        }
+        return this;
+    }
+
+    /**
+     * Le select du type de tache a inserer.
+     */
+    public Locator taskTypeSelect() {
+        return page.getByLabel("Nouvelle tâche");
+    }
+
+    /**
+     * Le bouton qui soumet l'ajout de tache : celui de la modale quand elle existe, la page
+     * portant aussi un bouton "Insérer" d'ouverture de cette modale.
+     */
+    public Locator insertTaskButton() {
+        Locator modal = page.locator(ADD_TASK_MODAL);
+        Locator scope = modal.count() > 0 ? modal : page.locator("body");
+        return scope.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Insérer"));
     }
 
     /**
      * Selectionne un type de tache dans le dropdown.
      */
     public WorkflowEditPage selectTask(String taskType) {
-        page.getByLabel("Nouvelle tâche").selectOption(taskType);
+        openAddTaskModal();
+        taskTypeSelect().selectOption(taskType);
         return this;
     }
 
@@ -173,8 +233,7 @@ public class WorkflowEditPage {
      * Clique sur le bouton Inserer pour ajouter la tache.
      */
     public WorkflowEditPage clickInsertTask() {
-        page.getByRole(AriaRole.BUTTON,
-            new Page.GetByRoleOptions().setName("Insérer")).click();
+        insertTaskButton().first().click();
         return this;
     }
 

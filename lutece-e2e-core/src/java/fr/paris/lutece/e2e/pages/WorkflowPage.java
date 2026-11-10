@@ -333,11 +333,14 @@ public class WorkflowPage extends BasePage {
 
     /**
      * Ajoute une tâche à l'action courante.
-     * En Lutece 8, le select a le label "Nouvelle tâche" et le bouton est "Insérer".
+     * En Lutece 8, le select a le label "Nouvelle tâche" et le bouton est "Insérer" ; depuis
+     * plugin-workflow 7.0.2 ils vivent dans la modale de l'onglet Taches, que
+     * {@link fr.paris.lutece.e2e.pages.bo.WorkflowEditPage} sait ouvrir.
      */
     public WorkflowPage addTask(String taskType) {
-        page().getByLabel("Nouvelle tâche").selectOption(taskType);
-        page().getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Insérer")).click();
+        new fr.paris.lutece.e2e.pages.bo.WorkflowEditPage(page(), baseUrl())
+            .selectTask(taskType)
+            .clickInsertTask();
         waitForLoad();
         return this;
     }

@@ -89,13 +89,22 @@ public class AddTaskToActionMacroTest extends MacroTest {
             Assertions.assertTrue(idAction > 0,
                 "L'action '" + data.actionLabel() + "' est introuvable sur le workflow : la tache '"
                     + data.taskTypeKey() + "' ne peut pas lui etre rattachee");
-            WorkflowSupport.navigate(ctx, WorkflowSupport.WF + "ModifyAction.jsp?id_action=" + idAction);
+            WorkflowSupport.navigate(ctx, WorkflowSupport.WF + "ModifyAction.jsp?id_action=" + idAction
+                + "&pane=pane-tasks");
+        }
+
+        // Depuis plugin-workflow 7.0.2, le formulaire d'ajout vit dans une modale de l'onglet
+        // Taches : l'ouvrir avant de juger de la presence de ses controles. Un echec d'ouverture
+        // est laisse a l'assomption ci-dessous, qui statue avec son message explicite.
+        try {
+            edit.openAddTaskModal();
+        } catch (RuntimeException modaleAbsente) {
+            // controles juges ci-dessous
         }
 
         // Garder le select "Nouvelle tache" (avec l'option demandee) et le bouton "Inserer".
-        Locator taskSelect = ctx.page.getByLabel("Nouvelle tâche");
-        Locator insertButton = ctx.page.getByRole(AriaRole.BUTTON,
-            new Page.GetByRoleOptions().setName("Insérer"));
+        Locator taskSelect = edit.taskTypeSelect();
+        Locator insertButton = edit.insertTaskButton();
         boolean selectPresent = taskSelect.count() > 0 && taskSelect.first().isVisible();
         boolean optionPresent = selectPresent
             && taskSelect.locator("option[value='" + data.taskTypeKey() + "']").count() > 0;
