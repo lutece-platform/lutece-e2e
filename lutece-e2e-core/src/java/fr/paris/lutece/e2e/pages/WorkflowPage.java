@@ -4,6 +4,7 @@ import com.microsoft.playwright.FrameLocator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
 import fr.paris.lutece.e2e.core.BrowserSession;
+import fr.paris.lutece.e2e.pages.bo.AdminTabs;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 
@@ -287,7 +288,7 @@ public class WorkflowPage extends BasePage {
         }
 
         // Cliquer sur l'onglet Actions
-        var actionsTab = page().getByRole(AriaRole.TAB, new Page.GetByRoleOptions().setName("Actions"));
+        var actionsTab = AdminTabs.tab(page(), "Actions");
         if (actionsTab.isVisible()) {
             actionsTab.click();
             waitForLoad();

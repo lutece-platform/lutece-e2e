@@ -119,8 +119,7 @@ public class WorkflowEditPage {
      * Clique sur l'onglet Actions.
      */
     public WorkflowEditPage clickActionsTab() {
-        page.getByRole(AriaRole.TAB,
-            new Page.GetByRoleOptions().setName("Actions")).click();
+        AdminTabs.tab(page, "Actions").click();
         return this;
     }
 

@@ -20,8 +20,7 @@ public class FormsEditPage {
      * Clique sur l'onglet Etapes.
      */
     public FormsEditPage clickStepsTab() {
-        page.getByRole(AriaRole.TAB,
-            new Page.GetByRoleOptions().setName("Etapes")).click();
+        AdminTabs.tab(page, "Etapes").click();
         return this;
     }
 
@@ -29,8 +28,7 @@ public class FormsEditPage {
      * Clique sur l'onglet Parametres.
      */
     public FormsEditPage clickParametersTab() {
-        page.getByRole(AriaRole.TAB,
-            new Page.GetByRoleOptions().setName("Paramètres")).click();
+        AdminTabs.tab(page, "Paramètres").click();
         return this;
     }
 
@@ -101,8 +99,7 @@ public class FormsEditPage {
      * Clique sur l'onglet "Liste des Questions".
      */
     public FormsEditPage clickQuestionsTab() {
-        page.getByRole(AriaRole.TAB,
-            new Page.GetByRoleOptions().setName("Liste des Questions")).click();
+        AdminTabs.tab(page, "Liste des Questions").click();
         return this;
     }
 
@@ -110,8 +107,7 @@ public class FormsEditPage {
      * Clique sur l'onglet "Parametres de l'etape".
      */
     public FormsEditPage clickStepParametersTab() {
-        page.getByRole(AriaRole.TAB,
-            new Page.GetByRoleOptions().setName("Paramètres de l'étape")).click();
+        AdminTabs.tab(page, "Paramètres de l'étape").click();
         return this;
     }
 
