@@ -4,6 +4,7 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.WaitForSelectorState;
+import fr.paris.lutece.e2e.pages.bo.AdminTabs;
 import fr.paris.lutece.e2e.pages.bo.WorkflowEditPage;
 import fr.paris.lutece.e2e.tests.macro.MacroTest;
 import fr.paris.lutece.e2e.tests.macro.WorkflowContext;
@@ -60,8 +61,7 @@ public class AddTaskToActionMacroTest extends MacroTest {
         WorkflowEditPage edit = new WorkflowEditPage(ctx.page, ctx.baseUrl);
 
         // Rendre les actions visibles : cliquer sur l'onglet Actions uniquement s'il existe.
-        Locator actionsTab = ctx.page.getByRole(AriaRole.TAB,
-            new Page.GetByRoleOptions().setName("Actions"));
+        Locator actionsTab = AdminTabs.tab(ctx.page, "Actions");
         if (actionsTab.count() > 0 && actionsTab.first().isVisible()) {
             edit.clickActionsTab();
         }

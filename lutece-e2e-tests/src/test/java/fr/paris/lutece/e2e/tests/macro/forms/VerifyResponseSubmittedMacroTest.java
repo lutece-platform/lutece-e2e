@@ -2,6 +2,7 @@ package fr.paris.lutece.e2e.tests.macro.forms;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import fr.paris.lutece.e2e.pages.bo.AdminTabs;
 import fr.paris.lutece.e2e.tests.macro.Evidence;
 import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.MacroSupport;
@@ -73,7 +74,7 @@ public class VerifyResponseSubmittedMacroTest extends MacroTest {
      */
     private static void openAllResponsesPanel(Page page) {
         Locator tab = allResponsesTab(page);
-        if (tab.count() == 0 || "true".equals(tab.first().getAttribute("aria-selected"))) {
+        if (tab.count() == 0 || AdminTabs.isActive(tab.first())) {
             return;
         }
         tab.first().click();
@@ -81,19 +82,19 @@ public class VerifyResponseSubmittedMacroTest extends MacroTest {
     }
 
     /**
-     * Resout l'onglet « Toutes les reponses » de la multivue, par son identifiant puis par son intitule.
+     * Resout l'onglet « Toutes les reponses » de la multivue par son intitule.
+     *
+     * <p>Les onglets de la multivue ouvrent chacun un autre panneau (lien vers {@code MultiviewForms.jsp}) :
+     * selon la version du core ils portent {@code role="tab"} ou sont de simples liens {@code a.nav-link}
+     * (voir {@link AdminTabs}). Leur {@code id} ({@code multiviewforms}) est partage par tous les onglets et
+     * ne les distingue pas.</p>
      *
      * @param page
      *            la page de la multivue
      * @return le locator de l'onglet, vide si la multivue ne l'expose pas
      */
     private static Locator allResponsesTab(Page page) {
-        Locator byId = page.locator("a#multiviewforms[role='tab']");
-        if (byId.count() > 0) {
-            return byId;
-        }
-        return page.locator("a[role='tab']")
-            .filter(new Locator.FilterOptions().setHasText("Toutes les réponses"));
+        return AdminTabs.tab(page, "Toutes les réponses");
     }
 
     /**

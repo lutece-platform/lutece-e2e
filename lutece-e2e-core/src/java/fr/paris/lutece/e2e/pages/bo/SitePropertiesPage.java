@@ -21,16 +21,14 @@ public class SitePropertiesPage {
      */
     public boolean isDisplayed() {
         page.waitForLoadState();
-        return page.getByRole(AriaRole.TAB,
-            new Page.GetByRoleOptions().setName("Propriétés par défaut du site")).isVisible();
+        return AdminTabs.tab(page, "Propriétés par défaut du site").isVisible();
     }
 
     /**
      * Clique sur l'onglet "Propriétés par défaut du site".
      */
     public SitePropertiesPage clickDefaultPropertiesTab() {
-        page.getByRole(AriaRole.TAB,
-            new Page.GetByRoleOptions().setName("Propriétés par défaut du site")).click();
+        AdminTabs.tab(page, "Propriétés par défaut du site").click();
         return this;
     }
 
@@ -38,10 +36,8 @@ public class SitePropertiesPage {
      * Vérifie si l'onglet des propriétés par défaut est actif.
      */
     public boolean isDefaultPropertiesTabActive() {
-        Locator tab = page.getByRole(AriaRole.TAB,
-            new Page.GetByRoleOptions().setName("Propriétés par défaut du site"));
-        String ariaSelected = tab.getAttribute("aria-selected");
-        return "true".equals(ariaSelected);
+        Locator tab = AdminTabs.tab(page, "Propriétés par défaut du site");
+        return AdminTabs.isActive(tab);
     }
 
     /**
