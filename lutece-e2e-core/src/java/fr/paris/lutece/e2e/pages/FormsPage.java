@@ -5,6 +5,7 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.SelectOption;
 import fr.paris.lutece.e2e.core.BrowserSession;
+import fr.paris.lutece.e2e.pages.bo.AdminTabs;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 
@@ -322,8 +323,7 @@ public class FormsPage extends BasePage {
         navigate("/jsp/admin/plugins/forms/ManageQuestions.jsp?view=manageQuestions&id_step=" + stepId);
         waitForLoad();
         // Onglet "Parametres de l'etape"
-        page().getByRole(AriaRole.TAB,
-                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Paramètres de l'étape")).click();
+        AdminTabs.tab(page(), "Paramètres de l'étape").click();
         waitForLoad();
         page().getByRole(AriaRole.CHECKBOX,
                 new com.microsoft.playwright.Page.GetByRoleOptions().setName("Finale")).uncheck();
@@ -337,8 +337,7 @@ public class FormsPage extends BasePage {
 
     public FormsPage clickStepsTab() {
         waitForLoad();
-        page().getByRole(AriaRole.TAB,
-                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Etapes")).click();
+        AdminTabs.tab(page(), "Etapes").click();
         waitForLoad();
         return this;
     }
@@ -417,15 +416,13 @@ public class FormsPage extends BasePage {
      * Basé sur le script Playwright de l'utilisateur.
      */
     public FormsPage clickQuestionsTab() {
-        page().getByRole(AriaRole.TAB,
-                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Liste des Questions")).click();
+        AdminTabs.tab(page(), "Liste des Questions").click();
         waitForLoad();
         return this;
     }
 
     public FormsPage clickStepParametersTab() {
-        page().getByRole(AriaRole.TAB,
-                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Paramètres de l'étape")).click();
+        AdminTabs.tab(page(), "Paramètres de l'étape").click();
         waitForLoad();
         return this;
     }
@@ -896,8 +893,7 @@ public class FormsPage extends BasePage {
 
         // D'abord, s'assurer qu'on est sur l'onglet "Paramètres de l'étape"
         // car les transitions sont dans cet onglet, pas dans "Liste des Questions"
-        var stepParamsTab = page().getByRole(AriaRole.TAB,
-                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Paramètres de l'étape"));
+        var stepParamsTab = AdminTabs.tab(page(), "Paramètres de l'étape");
         if (stepParamsTab.isVisible()) {
             stepParamsTab.click();
             waitForLoad();
