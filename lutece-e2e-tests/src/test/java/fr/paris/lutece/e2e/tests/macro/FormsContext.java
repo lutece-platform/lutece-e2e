@@ -39,6 +39,29 @@ public class FormsContext {
     /** Id de la derniere reponse soumise en front office (null si aucune). */
     public Integer lastResponseId;
 
+    /** Ids des reponses du formulaire deja connues (resolues dans la multivue par les briques Verify*). */
+    public final List<Integer> responseIds = new ArrayList<>();
+
+    /** Ids des categories de formulaire creees (briques Categories). */
+    public final List<Integer> categoryIds = new ArrayList<>();
+
+    /** Id du formulaire produit par la derniere duplication (-1 si aucune). */
+    public int duplicatedFormId = -1;
+
+    /** Formulaires produits par une copie ou un import (id -> titre), a supprimer au nettoyage. */
+    public final java.util.Map<Integer, String> createdForms = new java.util.LinkedHashMap<>();
+
+    /** Dernier export JSON de formulaire telecharge (null si aucun). */
+    public java.nio.file.Path lastExportedJson;
+
+    /** Valeurs de liste (reponses possibles) creees : id_field -> id de la question qui les porte. */
+    public final java.util.Map<Integer, Integer> listValueIds = new java.util.LinkedHashMap<>();
+
+    /** Usager front-office (MyLutece database) cree par {@code CreateFrontUserBO} : login, mot de passe courant, id. */
+    public String frontUserLogin;
+    public String frontUserPassword;
+    public int frontUserId = -1;
+
     public FormsContext(Page page, String baseUrl, String runSuffix) {
         this.page = page;
         this.baseUrl = baseUrl;
