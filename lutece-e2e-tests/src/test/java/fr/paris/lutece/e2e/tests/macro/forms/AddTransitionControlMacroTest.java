@@ -2,6 +2,7 @@ package fr.paris.lutece.e2e.tests.macro.forms;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.TimeoutError;
 import com.microsoft.playwright.options.AriaRole;
 import fr.paris.lutece.e2e.tests.macro.FormsContext;
 import fr.paris.lutece.e2e.tests.macro.MacroSupport;
@@ -50,6 +51,12 @@ import org.junit.jupiter.api.Test;
 public class AddTransitionControlMacroTest extends MacroTest {
 
     private static final String TYPE_CONTROLE = "TRANSITION";
+
+    /** Delai laisse a forms pour soumettre de lui-meme le formulaire au changement d'une liste (LUT-34453). */
+    private static final double SOUMISSION_AUTOMATIQUE_MS = 5000;
+
+    /** Attribut pose sur le document avant un choix, absent du document recharge. */
+    private static final String MARQUE_ANCIEN_DOCUMENT = "data-e2e-avant-choix";
 
     @Step("Conditionner la transition")
     public static void run(@Param(excluded = true, mode = Parameter.Mode.HIDDEN) FormsContext ctx, TransitionControlDataSet data) {
@@ -111,10 +118,10 @@ public class AddTransitionControlMacroTest extends MacroTest {
         Locator questions = page.locator("select[name='id_question']");
         Assumptions.assumeTrue(questions.count() > 0,
             "Le formulaire de controle ne propose pas de question cible : non pilotable");
-        boolean choisie = AddConditionalControlMacroTest.selectByLabelContains(questions.first(), pilote.title);
-        Assumptions.assumeTrue(choisie,
+        String questionId = valeurDeLOption(questions.first(), pilote.title);
+        Assumptions.assumeTrue(questionId != null,
             "Question '" + pilote.title + "' absente de la liste des questions de l'etape source");
-        AddConditionalControlMacroTest.clickSubmit(page, "view_modifyControl", "validateQuestion");
+        choisirPuisValider(page, questions.first(), questionId, "validateQuestion");
 
         Locator validateurs = page.locator("select[name='validatorName']");
         Assumptions.assumeTrue(
@@ -122,8 +129,7 @@ public class AddTransitionControlMacroTest extends MacroTest {
                 && validateurs.locator("option[value='" + data.validatorName() + "']").count() > 0,
             "Type de controle '" + data.validatorName() + "' non propose pour la question '"
                 + pilote.title + "' : ce type de question ne le supporte pas sur ce site");
-        validateurs.first().selectOption(data.validatorName());
-        AddConditionalControlMacroTest.clickSubmit(page, "view_modifyControl", "validateValidator");
+        choisirPuisValider(page, validateurs.first(), data.validatorName(), "validateValidator");
 
         renseignerValeur(page, data.value());
 
@@ -137,6 +143,50 @@ public class AddTransitionControlMacroTest extends MacroTest {
             "Un controle devrait etre attache a la transition de l'etape '" + source.title
                 + "' apres enregistrement");
         ctx.controlIds.add(controlId);
+    }
+
+    /**
+     * Choisit une option d'une liste en cascade, puis attend l'ecran recharge avec ce choix.
+     *
+     * <p>Depuis LUT-34453, forms soumet le formulaire des que la liste change ; avant, c'etait le bouton de
+     * validation qui le faisait. Lire la page juste apres le choix tombait sur l'ancien document, ou sur aucun.
+     * La brique marque donc le document courant, et attend qu'un document sans cette marque l'ait remplace ; si
+     * aucun ne vient (forms anterieur, ou option deja choisie, qui ne declenche aucun changement), elle clique le
+     * bouton.</p>
+     *
+     * @param page         formulaire de controle
+     * @param liste        liste a renseigner
+     * @param valeur       valeur de l'option a choisir
+     * @param etapeCascade valeur du bouton {@code view_modifyControl} qui valide ce choix
+     */
+    private static void choisirPuisValider(Page page, Locator liste, String valeur, String etapeCascade) {
+        page.evaluate("() => document.body.setAttribute('" + MARQUE_ANCIEN_DOCUMENT + "', '')");
+        liste.selectOption(valeur);
+        try {
+            page.locator("body:not([" + MARQUE_ANCIEN_DOCUMENT + "])")
+                .waitFor(new Locator.WaitForOptions().setTimeout(SOUMISSION_AUTOMATIQUE_MS));
+        } catch (TimeoutError aucuneSoumission) {
+            AddConditionalControlMacroTest.clickSubmit(page, "view_modifyControl", etapeCascade);
+        }
+        page.waitForLoadState();
+    }
+
+    /**
+     * Valeur de la premiere option dont le libelle contient le texte donne.
+     *
+     * @param liste   liste a parcourir
+     * @param libelle texte recherche dans le libelle
+     * @return la valeur de l'option, ou null si aucune ne correspond
+     */
+    private static String valeurDeLOption(Locator liste, String libelle) {
+        for (Locator option : liste.locator("option").all()) {
+            String texte = option.textContent();
+            String valeur = option.getAttribute("value");
+            if (texte != null && texte.contains(libelle) && valeur != null && !valeur.isBlank()) {
+                return valeur;
+            }
+        }
+        return null;
     }
 
     /**
