@@ -36,9 +36,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * lancement est bloque sur l'etape 2. La question masquee garde la saisie invalide, le controle s'y applique et
  * l'etape est reaffichee avec « Saisie invalide » sur un champ invisible : l'usager ne voit aucun message. Cause lue
  * dans {@code FormsResponseUtils.fillResponseManagerWithResponses} : la seconde boucle applique les controles de
- * validation a toutes les reponses de l'etape sans tenir compte de {@code question.isVisible()}. Defaut couvert par
- * LUT-34074 : correctif fusionne sur {@code develop_4.0.2-beta-04.b} seulement, PR #677 ({@code develop}) ouverte au
- * 2026-11-12. Suite rouge sur {@code GoToSummaryFO} tant que cette PR n'est pas fusionnee.</p>
+ * validation a toutes les reponses de l'etape sans tenir compte de {@code question.isVisible()}. Corrige sur
+ * {@code develop} par LUT-34956 (cc2d0b21, 2026-11-18, « do not validate hidden questions ») : suite verte le
+ * 2026-11-20 (forms a98e50f2, 47/47 etapes). Elle garde ce cas en non-regression, rouge sur {@code GoToSummaryFO} si
+ * la garde disparait.</p>
  *
  * <p>Execution (banc lpe2e forms, port selon {@code lpe2e port}) :</p>
  * <pre>

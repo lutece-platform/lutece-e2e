@@ -274,7 +274,7 @@ le détail de la réponse, lui, est à jour immédiatement.
 | `FormsNonRegDynamicFOSuite` | contrôle de validation (regex Email), condition Oui/Non, enfants en groupe répétable (ajout/retrait d'itération), brouillon d'un usager FO (sauvegarde, absent déconnecté, restauré reconnecté) | 157 s |
 | `FormsNonRegNegativeSuite` | dernière étape finale, obligatoire vide en FO, suppression question puis groupe avec réponse, formulaire au maximum de réponses (limite 1, refus, limite levée et formulaire rouvert), formulaire dépublié, import non JSON — chaque refus sans effet | 82 s |
 | `FormsNonRegCrossStepConditionSuite` | étape 1 « Votre statut ? » (radio obligatoire, Contractuel/Fonctionnaire/Autre), étape 2 « Préciser Autre » (texte obligatoire) affichée si Autre ; 1er lancement Autre (affichée, remplie, validée, relue en BO), 2e lancement Fonctionnaire (masquée, récapitulatif sans erreur attendu) | ✅ (2026-11-09, `develop`) ; ❌ sur bd4a558f (2026-11-06 : 2e lancement bloqué sur l'étape 2, sans message, LUT-34462), corrigé upstream par LUT-34348 (`a20bf5bb`, visibilité serveur avec les réponses des autres étapes) |
-| `FormsNonRegCrossStepControlSuite` (2026-11-12) | même formulaire + contrôle de validation sur « Préciser Autre » (regex « Email », « Saisie invalide ») ; 1er lancement Autre (saisie invalide refusée sous le champ, valide acceptée, relue en BO), 2e lancement Fonctionnaire (masquée, récapitulatif, relue sans précision), 3e lancement changement d'avis (Autre, « @@@ » à l'étape 2, retour à l'étape 1 par le fil des étapes, Fonctionnaire) | ❌ défaut F = LUT-34074 non fusionné sur `develop` (PR #677 ouverte ; 2026-11-12, `develop` af1d2196) : 3e lancement bloqué sur l'étape 2, « Saisie invalide » sur le champ masqué, aucun message visible ; lancements 1 et 2 verts |
+| `FormsNonRegCrossStepControlSuite` (2026-11-12) | même formulaire + contrôle de validation sur « Préciser Autre » (regex « Email », « Saisie invalide ») ; 1er lancement Autre (saisie invalide refusée sous le champ, valide acceptée, relue en BO), 2e lancement Fonctionnaire (masquée, récapitulatif, relue sans précision), 3e lancement changement d'avis (Autre, « @@@ » à l'étape 2, retour à l'étape 1 par le fil des étapes, Fonctionnaire) | ✅ (2026-11-20, `develop` a98e50f2, 47/47 étapes) ; ❌ avant LUT-34956 (2026-11-12, `develop` af1d2196 ; 2026-11-17, 021e18f2) : défaut F, 3e lancement bloqué sur l'étape 2, « Saisie invalide » sur le champ masqué ; lancements 1 et 2 verts. Corrigé upstream par LUT-34956 (`cc2d0b21`, garde `isVisible()`) |
 
 Agrégateur (9 suites depuis le 2026-11-06) : `bo/testsuites/FormsNonRegressionSuite` (`-Dtest=fr.paris.lutece.e2e.tests.bo.testsuites.FormsNonRegressionSuite`).
 Agrégateur complet rejoué d'une traite le 2026-10-30 : 8/8, 0 skip, 572 s (banc avec le correctif LUT-34429) ; rejoué après correction des constats 1 et 2 (skip interdit, valeurs relues) : 8/8, 0 skip, 579 s ; après correction des
@@ -418,8 +418,11 @@ pilote) bloque l'étape sans message visible ; vide, elle passe (le validateur r
 **Couvert par LUT-34074** (revérifié le 2026-11-12) : son correctif `dd77198d` ajoute exactement la garde
 `bValidateQuestionStep && formQuestionResponse.getQuestion().isVisible()` dans la 2nde boucle (plus le contexte des étapes
 précédentes pour la visibilité). Fusionné seulement sur `develop_4.0.2-beta-04.b` (PR #678, statut Redmine « Delivered ») ;
-PR #677 (`develop`) et #676 (`develop_core7`) ouvertes, non fusionnées. Pas de nouveau ticket : la suite repassera au vert
-quand #677 sera fusionnée et le banc reconstruit. Preuve (2026-11-12) : `develop` af1d2196 + la seule garde `isVisible()`
+PR #677 (`develop`) et #676 (`develop_core7`) fermées sans fusion le 2026-11-17, jugées doublons de LUT-34348 ; or
+LUT-34348 (`a20bf5bb`) ne couvre pas ce cas : la suite restait rouge sur 021e18f2 qui la contient. **Corrigé sur `develop`
+par LUT-34956** (`cc2d0b21`, 2026-11-18, « do not validate hidden questions ») : la même garde dans la 2nde boucle. Rejeu
+du 2026-11-20 sur un banc forms `develop` a98e50f2 : `FormsNonRegCrossStepControlSuite` verte, 47/47 étapes, 116 s.
+Preuve antérieure (2026-11-12) : `develop` af1d2196 + la seule garde `isVisible()`
 de #677 (2nde boucle, sans commit, fichier restauré après), banc reconstruit → `FormsNonRegCrossStepControlSuite` verte,
 47/47 étapes Allure, 3e lancement compris (récapitulatif atteint, réponse relue sans la saisie abandonnée). La 1re partie
 de #677 (contexte des étapes précédentes) recoupe LUT-34348 déjà sur `develop` : GitHub la marque `CONFLICTING`, seule la
@@ -446,15 +449,17 @@ tests. Adaptations (les deux balisages acceptés, relevés sur l'instance) :
 
 Résultat : 7/10 au rejeu complet après les deux premières adaptations, puis les 3 suites restantes et les tests
 autonomes des briques adaptées rejoués : tout vert sauf `FormsNonRegCrossStepControlSuite`, rouge sur le défaut F
-(attendu sans #677). En 4.1.0, l'usager voit désormais un résumé d'erreurs en haut de l'étape (« Préciser Autre : Saisie
+(attendu : la garde `isVisible()` manque sur 021e18f2). En 4.1.0, l'usager voit désormais un résumé d'erreurs en haut de l'étape (« Préciser Autre : Saisie
 invalide ») mais reste bloqué sur une question qu'il ne peut pas afficher.
 Rejeu complet de contrôle le 2026-11-17 : `FormsNonRegressionSuite` 9/10 verts, 0 skip, 651 s, 363 étapes Allure ;
-seule `FormsNonRegCrossStepControlSuite` est rouge (défaut F, LUT-34074 / PR #677 non fusionnée).
+seule `FormsNonRegCrossStepControlSuite` est rouge (défaut F, garde absente de 021e18f2).
 Portage sur upstream `lutece-platform/lutece-e2e` `develop` 9412fdf (historique sans base commune avec le fork) :
 même résultat, 9/10 verts en 741 s, 363 étapes, suite 10 rouge sur le défaut F. Collisions résolues au profit d'upstream
 (`UnsetStepFinal`, `OpenResponseDetail`, `RunWorkflowActionOnResponse`, `ModifyStep`, modale « add task » d'`AddTaskToAction`) ;
 `AdminTabs` ajouté. Témoin upstream seul : `FormsCreationTest` et `WorkflowCreationTest` tombent sur les onglets,
 `AddTaskToAction` en skip ; avec `AdminTabs`, `FormsCreationTest` 9/9 et `AddTaskToAction` vert.
+Rejeu du 2026-11-20 sur un banc forms `develop` a98e50f2 (avec LUT-34956) : `FormsNonRegCrossStepControlSuite` verte,
+47/47 étapes, défaut F soldé.
 
 ## Cas remontés (`tests.regression.forms`, `@Tag("regression")`, une classe par cas, briques seules)
 
